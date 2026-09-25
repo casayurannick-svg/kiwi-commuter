@@ -669,8 +669,8 @@ describe('US-14: Plain-Language Financial Verdicts', () => {
 
     // Verify plain-language savings headline and subline formats
     assert.ok(
-      content.includes('You save $${delta}/month on public transport'),
-      'Must contain transit savings verdict headline'
+      content.includes('You save $${delta}/month on ${modeLabel}'),
+      'Must contain transit savings verdict headline (dynamic mode label)'
     );
     assert.ok(
       content.includes('You save $${delta}/month driving'),

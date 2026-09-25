@@ -27,6 +27,7 @@
 | **US-22** | Tooltip for Value of Your Time | **DONE** | [`src/components/CommuteForm.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/CommuteForm.tsx), [`src/components/__tests__/CommuteForm.test.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/__tests__/CommuteForm.test.tsx), [`tests/calculator.test.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/tests/calculator.test.ts) | Added accessible info icon and tooltip explaining the opportunity cost and transit duration multiplication calculation. |
 | **US-23** | Micro-Mobility First/Last Mile (Scooter & Ride) | **DONE** | [`src/types/index.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/types/index.ts), [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts), [`src/components/CommuteForm.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/CommuteForm.tsx), [`src/components/MiniReceipt.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/MiniReceipt.tsx), [`src/lib/urlParams.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/urlParams.ts) | 'Scooter & Ride' mode, 15 km/h leg recalculation, rental fees ($1 unlock + $0.45/min) atop AT HOP capped fare, owned scooter payback timeline. |
 | **US-24** | Empty String & Fallback Fuel Price Input Handling | **DONE** | [`src/components/CommuteForm.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/CommuteForm.tsx), [`src/config/fares.config.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/config/fares.config.ts), [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts), [`src/components/__tests__/CommuteForm.test.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/__tests__/CommuteForm.test.tsx), [`src/lib/__tests__/calculator.test.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/__tests__/calculator.test.ts) | Local string state for fuelCost with nullish coalescing (`fuelCost ?? ''`); clearing input does not snap back; calculation engine falls back to `DEFAULT_FUEL_RATE` when empty or NaN. |
+| **US-25** | Fix E-Bike Verdict Copy & Remove Leaked Transit Metadata | **DONE** | [`src/components/ComparisonCard.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/ComparisonCard.tsx), [`src/components/__tests__/ComparisonCard.test.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/__tests__/ComparisonCard.test.tsx), [`tests/calculator.test.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/tests/calculator.test.ts) | Dynamic verdict headline ("on an E-Bike" vs "on public transport"), AT HOP Cap/Corridor/badge hidden for E-Bike, footer shows "E-Bike energy cost" instead of cap text. |
 
 ---
 
@@ -351,6 +352,21 @@
   - The input `value` prop uses nullish coalescing (`value={fuelCost ?? ''}`) so clearing the field leaves it blank without snapping back.
   - When the user clears the field or inputs an invalid string, `handleFuelPriceChange` clears the override, allowing the calculation engine in `src/lib/calculator.ts` to apply `DEFAULT_FUEL_RATE` (2.72) only when the calculation is executed.
   - Unit tests in `src/components/__tests__/CommuteForm.test.tsx` verify that clearing the field does not snap back, and tests in `src/lib/__tests__/calculator.test.ts` verify that the engine defaults to `DEFAULT_FUEL_RATE` when fuel cost is undefined or NaN.
+
+---
+
+### US-25: Fix E-Bike Verdict Copy & Remove Leaked Transit Metadata
+**As a** commuter evaluating an E-Bike commute,  
+**I want** the verdict headline to say "You save $X/month on an E-Bike" instead of "on public transport", and transit-specific metadata (AT HOP Cap, Zone/Corridor labels, $50/wk badge) to be hidden,  
+**So that** the results card accurately reflects E-Bike mode without displaying irrelevant AT HOP fare structure details.
+
+* **Acceptance Criteria:**
+  - In `src/components/ComparisonCard.tsx`, the verdict headline dynamically uses `modeLabel` to display "on an E-Bike" when `transit.primaryMode === 'E-Bike'` and "on public transport" otherwise.
+  - The driving-wins subline also uses `altModeLabel` to say "compared to an E-Bike" when appropriate.
+  - The AT HOP Cap block, Corridor block, and `$50/wk Cap` badge are conditionally hidden when `transit.primaryMode === 'E-Bike'`.
+  - The transit card footer shows "E-Bike energy cost" instead of "Capped fare active" / "Under $50 cap" for E-Bike mode.
+  - Unit tests in `src/components/__tests__/ComparisonCard.test.tsx` verify headline wording and absence of AT HOP Cap, Corridor, and badge elements.
+  - The US-14 source-level test in `tests/calculator.test.ts` is updated to assert the dynamic `${modeLabel}` pattern.
 
 ---
 

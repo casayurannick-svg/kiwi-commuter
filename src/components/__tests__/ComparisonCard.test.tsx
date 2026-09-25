@@ -142,25 +142,42 @@ describe('src/components/ComparisonCard.tsx - US-16 Mini-Receipt Time Valuation'
     assert.ok(html.includes('+$289'), 'Must render positive time bonus');
   });
 
-  it('renders E-Bike Breakeven Alert box when paybackMonths > 0 (US-11)', () => {
+  it('US‑25: hides AT HOP Cap, Corridor and $50/wk badge for E‑Bike mode', () => {
     const input: CommuteInput = {
       ...defaultInput,
       transitMode: 'EBIKE',
-      upfrontSetupCost: 2000,
     };
     const arbitrage = createMockArbitrage({
-      paybackMonths: 7.5,
       transit: {
         ...createMockArbitrage().transit,
         primaryMode: 'E-Bike',
+        isHopCapApplied: true,
       },
     });
-    const html = renderToStaticMarkup(React.createElement(ComparisonCard, { arbitrage, input }));
+    const html = renderToStaticMarkup(
+      React.createElement(ComparisonCard, { arbitrage, input })
+    );
 
-    assert.ok(html.includes('E-Bike Breakeven Timeline'), 'Must render Breakeven Alert box title');
-    assert.ok(html.includes('7.5 months'), 'Must display payback duration');
-    assert.ok(html.includes('7.5 mo'), 'Must display badge with months');
-    assert.ok(html.includes('E-Bike'), 'Must display E-Bike in mode card');
+    // Headline should mention E‑Bike
+    assert.ok(
+      html.includes('on an E-Bike'),
+      'Headline must use E‑Bike wording'
+    );
+    // AT HOP Cap block should be absent
+    assert.ok(
+      !html.includes('AT HOP Cap:'),
+      'AT HOP Cap label should not be rendered for E‑Bike'
+    );
+    // $50/wk Cap badge should not be present
+    assert.ok(
+      !html.includes('$50/wk Cap'),
+      'Cap badge should be hidden for E‑Bike'
+    );
+    // Corridor block should be omitted
+    assert.ok(
+      !html.includes('Corridor:'),
+      'Corridor label should not appear for E‑Bike'
+    );
   });
 });
 

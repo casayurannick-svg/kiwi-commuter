@@ -37,13 +37,15 @@ export default function ComparisonCard({ arbitrage, input }: ComparisonCardProps
   let badgeColor = 'text-zinc-400 bg-zinc-800/60 border-zinc-700';
 
   if (isTransitCheaper && !isBreakEven) {
-    headline = `You save $${delta}/month on public transport`;
+    const modeLabel = arbitrage.transit.primaryMode === 'E-Bike' ? 'an E-Bike' : 'public transport';
+    headline = `You save $${delta}/month on ${modeLabel}`;
     subline = `Save $${annualDelta.toLocaleString('en-NZ')}/year compared to driving`;
     headlineColor = 'text-emerald-400';
     badgeColor = 'text-emerald-300 bg-emerald-500/20 border-emerald-500/30';
   } else if (isDrivingCheaper && !isBreakEven) {
     headline = `You save $${delta}/month driving`;
-    subline = `Save $${annualDelta.toLocaleString('en-NZ')}/year compared to public transport`;
+    const altModeLabel = arbitrage.transit.primaryMode === 'E-Bike' ? 'an E-Bike' : 'public transport';
+    subline = `Save $${annualDelta.toLocaleString('en-NZ')}/year compared to ${altModeLabel}`;
     headlineColor = 'text-amber-400';
     badgeColor = 'text-amber-300 bg-amber-500/20 border-amber-500/30';
   }
@@ -86,7 +88,7 @@ export default function ComparisonCard({ arbitrage, input }: ComparisonCardProps
                 ) : null}
                 {badgeLabel}
               </span>
-              {transit.isHopCapApplied && (
+              {transit.isHopCapApplied && transit.primaryMode !== 'E-Bike' && (
                 <span className="text-[10px] bg-emerald-500/15 text-emerald-300 font-semibold px-2 py-0.5 rounded-full border border-emerald-500/30 flex items-center gap-1">
                   <ShieldCheck className="w-3 h-3" />
                   $50/wk Cap
@@ -265,25 +267,27 @@ export default function ComparisonCard({ arbitrage, input }: ComparisonCardProps
               </span>
             </div>
 
-            <div className="flex items-center justify-between">
-              <span className="text-slate-400">
-                AT HOP Cap:
-              </span>
-              <span className="font-semibold text-emerald-300 tabular-nums">
-                {transit.isHopCapApplied ? '$50/wk applied' : `$${transit.weeklyTotal.toFixed(2)}/wk`}
-              </span>
-            </div>
+{transit.primaryMode !== 'E-Bike' && (
+              <div className="flex items-center justify-between">
+                <span className="text-slate-400">AT HOP Cap:</span>
+                <span className="font-semibold text-emerald-300 tabular-nums">
+                  {transit.isHopCapApplied ? '$50/wk applied' : `$${transit.weeklyTotal.toFixed(2)}/wk`}
+                </span>
+              </div>
+            )}
 
+{transit.primaryMode !== 'E-Bike' && (
             <div className="flex items-center justify-between">
               <span className="text-slate-400">Corridor:</span>
               <span className="font-semibold text-slate-300 truncate max-w-[140px]">
                 Zone {transit.zoneCount} • {transit.primaryMode}
               </span>
             </div>
+          )}
           </div>
 
           <div className="pt-1.5 border-t border-slate-800/80 text-[11px] text-slate-400 flex items-center justify-between">
-            <span>{transit.isHopCapApplied ? 'Capped fare active' : 'Under $50 cap'}</span>
+            <span>{transit.primaryMode === 'E-Bike' ? 'E-Bike energy cost' : (transit.isHopCapApplied ? 'Capped fare active' : 'Under $50 cap')}</span>
             <span className="tabular-nums">Weekly: ${transit.weeklyTotal.toFixed(0)}</span>
           </div>
         </div>
