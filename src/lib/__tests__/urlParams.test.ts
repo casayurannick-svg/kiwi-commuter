@@ -115,16 +115,21 @@ describe('src/lib/urlParams.ts - URL Search Param Synchronization', () => {
     assert.strictEqual(parsed.fuelPriceOverride, 0.85);
   });
 
-  it('serializes and parses hourlyTimeValue (timeVal) correctly', () => {
+  it('serializes and parses hourlyTimeValue (timeRate) correctly', () => {
     const inputWithTimeVal: CommuteInput = {
       ...defaultFallback,
       hourlyTimeValue: 50,
     };
 
     const params = serializeCommuteToParams(inputWithTimeVal);
-    assert.strictEqual(params.get('timeVal'), '50');
+    assert.strictEqual(params.get('timeRate'), '50');
 
     const parsed = parseCommuteFromParams(params, defaultFallback);
     assert.strictEqual(parsed.hourlyTimeValue, 50);
+
+    // Test backward compatibility with legacy 'timeVal' query param
+    const legacyParams = new URLSearchParams('timeVal=35');
+    const legacyParsed = parseCommuteFromParams(legacyParams, defaultFallback);
+    assert.strictEqual(legacyParsed.hourlyTimeValue, 35);
   });
 });

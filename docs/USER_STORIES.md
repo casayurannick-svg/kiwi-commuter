@@ -174,6 +174,7 @@
   - **And** render a travel time badge in the metrics row:
     - `"⚡ Saves X.X h/mo driving"` if driving is faster.
     - `"⚡ Saves X.X h/mo on transit"` if transit is faster.
+  - **And** synchronize `timeRate` to/from URL search params (`?timeRate=50`), supporting seamless share links with hourly time valuation.
 
 ---
 
