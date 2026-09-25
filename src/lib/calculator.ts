@@ -16,6 +16,7 @@ import {
   CommuteComparisonResult,
   CommuteInput,
   DrivingCostBreakdown,
+  TimeMetrics,
   TransitCostBreakdown,
   VehiclePowertrain,
   VehicleType,
@@ -266,6 +267,25 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
     })}/month cheaper than transit for your current setup.`;
   }
 
+  // Time metrics and opportunity cost calculations
+  const oneWayDriveMinutes = route.drivingTimePeakMins;
+  const oneWayTransitMinutes = route.transitTimeMins;
+  const drivingHoursMonthly = (oneWayDriveMinutes * 2 * totalCommuteDaysMonthly) / 60;
+  // Positive = driving takes more hours/mo; Negative = transit takes more hours/mo
+  const monthlyTimeDeltaHours = round1(drivingHoursMonthly - transitHoursMonthly);
+
+  const hourlyTimeValue = input.hourlyTimeValue ?? 0;
+  const monetizedMonthlyTimeCost = round2(monthlyTimeDeltaHours * hourlyTimeValue);
+  const generalizedMonthlySavings = round2(monthlySavings + monetizedMonthlyTimeCost);
+
+  const timeMetrics: TimeMetrics = {
+    oneWayDriveMinutes,
+    oneWayTransitMinutes,
+    monthlyTimeDeltaHours,
+    monetizedMonthlyTimeCost,
+    generalizedMonthlySavings,
+  };
+
   return {
     driving: drivingBreakdown,
     transit: transitBreakdown,
@@ -281,6 +301,7 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
     distanceKm: distanceOneWayKm,
     drivingTimeMins: route.drivingTimePeakMins,
     transitTimeMins: route.transitTimeMins,
+    timeMetrics,
   };
 }
 

@@ -276,4 +276,52 @@ describe('src/lib/calculator.ts - calculateCommuteArbitrage', () => {
       assert.strictEqual(tertiary.transit.singleTripConcessionFare, 4.80); // 20% off
     });
   });
+
+  describe('Time Metrics & Opportunity Cost (US-13)', () => {
+    it('computes timeMetrics with zero hourlyTimeValue by default', () => {
+      const result = calculateCommuteArbitrage({
+        originSuburbId: 'albany',
+        destinationSuburbId: 'cbd',
+        daysPerWeek: 5,
+        vehicleType: 'petrol91',
+        parkingDailyRate: 18.0,
+        parkingDaysPerWeek: 5,
+        concession: 'adult',
+        includeMaintenanceWear: true,
+        carpoolPassengers: 1,
+      });
+
+      assert.ok(result.timeMetrics, 'timeMetrics object must be present');
+      assert.strictEqual(typeof result.timeMetrics.oneWayDriveMinutes, 'number');
+      assert.strictEqual(typeof result.timeMetrics.oneWayTransitMinutes, 'number');
+      assert.strictEqual(typeof result.timeMetrics.monthlyTimeDeltaHours, 'number');
+      assert.strictEqual(result.timeMetrics.monetizedMonthlyTimeCost, 0);
+      assert.strictEqual(result.timeMetrics.generalizedMonthlySavings, result.monthlySavings);
+    });
+
+    it('computes monetizedMonthlyTimeCost and generalizedMonthlySavings with hourlyTimeValue', () => {
+      const hourlyValue = 35; // $35/hour
+      const result = calculateCommuteArbitrage({
+        originSuburbId: 'albany',
+        destinationSuburbId: 'cbd',
+        daysPerWeek: 5,
+        vehicleType: 'petrol91',
+        parkingDailyRate: 18.0,
+        parkingDaysPerWeek: 5,
+        concession: 'adult',
+        includeMaintenanceWear: true,
+        carpoolPassengers: 1,
+        hourlyTimeValue: hourlyValue,
+      });
+
+      assert.ok(result.timeMetrics);
+      const expectedMonetized = Math.round(result.timeMetrics.monthlyTimeDeltaHours * hourlyValue * 100) / 100;
+      assert.strictEqual(result.timeMetrics.monetizedMonthlyTimeCost, expectedMonetized);
+      assert.strictEqual(
+        result.timeMetrics.generalizedMonthlySavings,
+        Math.round((result.monthlySavings + expectedMonetized) * 100) / 100
+      );
+    });
+  });
 });
+

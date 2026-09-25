@@ -62,9 +62,18 @@ export interface CommuteInput {
   homeKWhRate?: number; // Alias for BEV electricity rate
   customFuelPricePerL?: number; // Alias for ICE fuel price
   evChargingMode?: EvChargingMode; // Preset: home_offpeak, home_flat, public_dc, custom
+  hourlyTimeValue?: number; // Value of commuter time in NZD/hour (default 0)
 }
 
 export type EvChargingMode = 'home_offpeak' | 'home_flat' | 'public_dc' | 'custom';
+
+export interface TimeMetrics {
+  oneWayDriveMinutes: number;
+  oneWayTransitMinutes: number;
+  monthlyTimeDeltaHours: number; // Positive = driving takes more hours/mo; Negative = transit takes more hours/mo
+  monetizedMonthlyTimeCost: number; // monthlyTimeDeltaHours * hourlyTimeValue
+  generalizedMonthlySavings: number; // financial monthlySavings + monetizedMonthlyTimeCost
+}
 
 export interface DrivingCostBreakdown {
   distanceOneWayKm: number;
@@ -122,6 +131,7 @@ export interface CommuteComparisonResult {
   distanceKm: number;
   drivingTimeMins: number;
   transitTimeMins: number;
+  timeMetrics?: TimeMetrics;
 }
 
 export type ArbitrageResult = CommuteComparisonResult;
