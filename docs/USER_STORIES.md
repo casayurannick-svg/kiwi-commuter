@@ -25,6 +25,7 @@
 | **US-19** | Tooltip for Vehicle Wear & Tear Benchmark | **DONE** | [`src/components/CommuteForm.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/CommuteForm.tsx), [`src/components/__tests__/CommuteForm.test.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/__tests__/CommuteForm.test.tsx), [`tests/calculator.test.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/tests/calculator.test.ts) | Added accessible info icon and tooltip explaining the $0.18/km AA/IRD tires, brakes, and servicing benchmark rate. |
 | **US-20** | Ferry Commute Mode & Waiheke Cap Exception | **DONE** | [`src/types/index.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/types/index.ts), [`src/config/fares.config.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/config/fares.config.ts), [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts), [`src/components/CommuteForm.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/CommuteForm.tsx), [`src/lib/__tests__/calculator.test.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/__tests__/calculator.test.ts) | Ferry mode selection, silent address Waiheke detection, Fullers commercial rates bypassing AT $50 cap while retaining cap for Devonport. |
 | **US-22** | Tooltip for Value of Your Time | **DONE** | [`src/components/CommuteForm.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/CommuteForm.tsx), [`src/components/__tests__/CommuteForm.test.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/__tests__/CommuteForm.test.tsx), [`tests/calculator.test.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/tests/calculator.test.ts) | Added accessible info icon and tooltip explaining the opportunity cost and transit duration multiplication calculation. |
+| **US-23** | Micro-Mobility First/Last Mile (Scooter & Ride) | **DONE** | [`src/types/index.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/types/index.ts), [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts), [`src/components/CommuteForm.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/CommuteForm.tsx), [`src/components/MiniReceipt.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/MiniReceipt.tsx), [`src/lib/urlParams.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/urlParams.ts) | 'Scooter & Ride' mode, 15 km/h leg recalculation, rental fees ($1 unlock + $0.45/min) atop AT HOP capped fare, owned scooter payback timeline. |
 
 ---
 
@@ -319,6 +320,23 @@
   - In `src/lib/calculator.ts`, zero out parking and RUC when mode is EBIKE, calculate energy cost based on `distance * ebikeCostPerKm`, and compute `paybackMonths` (`upfrontSetupCost / monthly car savings`).
   - In `src/components/MiniReceipt.tsx`, render a styled Breakeven Alert box showing the payback timeline if `paybackMonths > 0`.
   - Unit tests in `src/lib/__tests__/calculator.test.ts`, `src/components/__tests__/CommuteForm.test.tsx`, and `src/components/__tests__/ComparisonCard.test.tsx` verify calculations, UI state toggles, and alert box rendering.
+
+---
+
+### US-23: Micro-Mobility First/Last Mile (Scooter & Ride)
+**As a** commuter who uses an e-scooter to bridge the distance to and from the train station or bus interchange,  
+**I want to** evaluate a combined "Scooter & Ride" transit commute comparing rental e-scooters (e.g. Beam, Lime) or a personally owned scooter against driving,  
+**So that** I know my true end-to-end travel time savings, monthly rental fees atop AT HOP fares, or the break-even payback period of buying my own scooter.
+
+* **Acceptance Criteria:**
+  - Add `'MICROMOBILITY_TRANSIT'` (and aliases) to `TransitMode`. Support `scooterOwnership` (`'OWNED'` | `'RENTAL'`), `scooterCapitalCost` (default $900), and `walkDistanceKm` (default 2.0 km) in `CommuteInput`.
+  - In `src/components/CommuteForm.tsx`, provide a `'🛴 Scooter & Ride'` button in the mode selector grid. When active, display ownership toggle (`'⚡ Rental (Beam / Lime)'` vs `'🛴 Personally Owned'`). If rental, display read-only rates for $1.00 unlock and $0.45/min. If owned, provide an upfront capital cost input.
+  - In `src/lib/calculator.ts`, recalculate first/last mile legs at 15 km/h cruise speed (e.g., 2.0 km takes 8 minutes, saving 16 minutes vs 5 km/h walking).
+  - If rental: calculate daily cost as `2 * ($1.00 + durationMins * $0.45)`. Add this rental fee on top of the statutory capped AT HOP public transit fare.
+  - If owned: zero out rental fees, and compute `paybackMonths = round1(scooterCapitalCost / monthlyCarSavings)` against driving.
+  - In `src/components/MiniReceipt.tsx`, clearly split out rental scooter fees from capped AT HOP fares, or render the Breakeven Alert box for an owned scooter.
+  - In `src/lib/urlParams.ts`, serialize and parse `scooterType`, `scooterCost`, and `walkKm` query parameters.
+  - Unit tests in `src/lib/__tests__/calculator.test.ts`, `src/lib/__tests__/urlParams.test.ts`, and `src/components/__tests__/CommuteForm.test.tsx` verify calculation accuracy, speed overrides, and UI rendering.
 
 ---
 

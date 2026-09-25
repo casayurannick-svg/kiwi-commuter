@@ -45,13 +45,54 @@ export default function MiniReceipt({ arbitrage, input }: MiniReceiptProps) {
 
   const hasTimeValuation = hourlyTimeValue > 0;
   const hasPaybackTimeline = paybackMonths !== null && paybackMonths !== undefined && paybackMonths > 0;
+  const hasScooterRentalFees =
+    (transit.scooterRentalFeesMonthly ?? 0) > 0;
+  const isScooterMode =
+    input.transitMode === 'MICROMOBILITY_TRANSIT' ||
+    input.transitMode === 'Scooter & Ride' ||
+    input.transitMode === 'Scooter & Transit' ||
+    arbitrage.scooterOwnership !== undefined;
 
-  if (!hasTimeValuation && !hasPaybackTimeline) {
+  if (!hasTimeValuation && !hasPaybackTimeline && !hasScooterRentalFees) {
     return null;
   }
 
   return (
     <div className="space-y-3">
+      {/* US-23: Micro-Mobility Transit Breakdown (Rental Fees vs AT HOP Fares) */}
+      {hasScooterRentalFees && (
+        <div className="mt-4 bg-zinc-900/50 border border-zinc-800/50 rounded-lg p-3 sm:p-4 text-sm">
+          <h4 className="text-zinc-400 mb-2 font-medium flex items-center justify-between">
+            <span className="flex items-center gap-1.5">
+              <span>🛴 🚆</span> Scooter &amp; Transit Cost Split
+            </span>
+            <span className="text-[10px] text-emerald-400 font-mono">
+              ${transit.monthlyTotal.toFixed(0)}/mo Total
+            </span>
+          </h4>
+          <div className="space-y-1.5">
+            <div className="flex justify-between items-center tabular-nums">
+              <span className="text-zinc-300">AT HOP Transit Fares (Capped)</span>
+              <span className="text-zinc-100 font-semibold">
+                ${(transit.hopFareMonthly ?? 0).toFixed(2)}/mo
+              </span>
+            </div>
+            <div className="flex justify-between items-center tabular-nums">
+              <span className="text-zinc-300">Rental Scooter Fees ($1 unlock + $0.45/min)</span>
+              <span className="text-amber-400 font-semibold">
+                +${(transit.scooterRentalFeesMonthly ?? 0).toFixed(2)}/mo
+              </span>
+            </div>
+            <div className="border-t border-zinc-800/80 pt-2 mt-2 font-medium flex justify-between items-center tabular-nums">
+              <span className="text-zinc-200">Combined Commute Cost</span>
+              <span className="text-emerald-400 font-bold">
+                ${transit.monthlyTotal.toFixed(2)}/mo
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* US-16: Time Valuation Balance Sheet ("Mini-Receipt") */}
       {hasTimeValuation && (
         <div className="mt-4 bg-zinc-900/50 border border-zinc-800/50 rounded-lg p-3 sm:p-4 text-sm">
@@ -100,17 +141,17 @@ export default function MiniReceipt({ arbitrage, input }: MiniReceiptProps) {
         </div>
       )}
 
-      {/* US-11: E-Bike Breakeven Alert Box */}
+      {/* US-11 & US-23: Breakeven Alert Box (E-Bike or Owned Scooter) */}
       {hasPaybackTimeline && (
         <div className="p-3 bg-emerald-950/40 border border-emerald-500/40 rounded-lg text-sm flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <span className="text-xl">🚲</span>
+            <span className="text-xl">{isScooterMode ? '🛴' : '🚲'}</span>
             <div>
               <div className="text-xs font-bold uppercase tracking-wider text-emerald-400">
-                E-Bike Breakeven Timeline
+                {isScooterMode ? 'Owned Scooter Breakeven' : 'E-Bike Breakeven Timeline'}
               </div>
               <div className="text-xs text-slate-300">
-                At current driving costs, your E-Bike pays for itself in{' '}
+                At current driving costs, your {isScooterMode ? 'scooter' : 'E-Bike'} pays for itself in{' '}
                 <strong className="text-white font-bold">{paybackMonths} months</strong>.
               </div>
             </div>

@@ -93,6 +93,18 @@ export function serializeCommuteToParams(input: CommuteInput): URLSearchParams {
     params.set('waiheke', '1');
   }
 
+  if (input.scooterOwnership) {
+    params.set('scooterType', input.scooterOwnership);
+  }
+
+  if (input.scooterCapitalCost !== undefined) {
+    params.set('scooterCost', input.scooterCapitalCost.toString());
+  }
+
+  if (input.walkDistanceKm !== undefined) {
+    params.set('walkKm', input.walkDistanceKm.toString());
+  }
+
   return params;
 }
 
@@ -212,6 +224,18 @@ export function parseCommuteFromParams(
     hourlyTimeValue: timeVal !== undefined && !isNaN(timeVal) && timeVal >= 0 ? timeVal : fallback.hourlyTimeValue,
     transitMode: rawTransitMode || (isWaiheke ? 'FERRY' : fallback.transitMode),
     isWaihekeRoute: isWaiheke,
+    scooterOwnership:
+      params.get('scooterType') === 'OWNED' || params.get('scooterType') === 'RENTAL'
+        ? (params.get('scooterType') as 'OWNED' | 'RENTAL')
+        : fallback.scooterOwnership,
+    scooterCapitalCost:
+      params.has('scooterCost') && !isNaN(Number(params.get('scooterCost')))
+        ? Number(params.get('scooterCost'))
+        : fallback.scooterCapitalCost,
+    walkDistanceKm:
+      params.has('walkKm') && !isNaN(Number(params.get('walkKm')))
+        ? Number(params.get('walkKm'))
+        : fallback.walkDistanceKm,
   };
 }
 

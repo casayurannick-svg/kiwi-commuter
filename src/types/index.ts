@@ -31,7 +31,20 @@ export interface VehicleConfig {
   description: string;
 }
 
-export type TransitMode = 'BUS' | 'TRAIN' | 'BUSWAY' | 'FERRY' | 'EBIKE' | 'Bus' | 'Train' | 'Northern Busway' | 'Ferry' | 'E-Bike';
+export type TransitMode =
+  | 'BUS'
+  | 'TRAIN'
+  | 'BUSWAY'
+  | 'FERRY'
+  | 'EBIKE'
+  | 'MICROMOBILITY_TRANSIT'
+  | 'Bus'
+  | 'Train'
+  | 'Northern Busway'
+  | 'Ferry'
+  | 'E-Bike'
+  | 'Scooter & Ride'
+  | 'Scooter & Transit';
 
 export interface Suburb extends SuburbCentroid {
   zone: 1 | 2 | 3 | 4 | 5;
@@ -68,10 +81,13 @@ export interface CommuteInput {
   hourlyTimeValue?: number; // Value of commuter time in NZD/hour (default 0)
   drivingTimeMins?: number; // Optional one-way driving time in minutes override
   transitTimeMins?: number; // Optional one-way transit time in minutes override
-  transitMode?: TransitMode; // Selected transit mode e.g. 'FERRY' | 'BUS' | 'TRAIN' | 'EBIKE'
+  transitMode?: TransitMode; // Selected transit mode e.g. 'FERRY' | 'BUS' | 'TRAIN' | 'EBIKE' | 'MICROMOBILITY_TRANSIT'
   isWaihekeRoute?: boolean; // True if commuting via Waiheke Ferry (exempt from $50 AT cap)
   upfrontSetupCost?: number; // E-Bike upfront purchase cost (e.g. $2500)
   ebikeCostPerKm?: number; // E-Bike energy + wear per km (default $0.0027/km)
+  scooterOwnership?: 'OWNED' | 'RENTAL'; // US-23: Micro-mobility scooter ownership model
+  scooterCapitalCost?: number; // US-23: Upfront capital purchase cost for owned scooter
+  walkDistanceKm?: number; // US-23: First/last mile walk distance to transit station in km
 }
 
 export type EVChargingSource = 'HOME_OFFPEAK' | 'HOME_FLAT' | 'PUBLIC_DC' | 'CUSTOM';
@@ -124,6 +140,10 @@ export interface TransitCostBreakdown {
   monthlyCo2Kg: number;
   primaryMode: string;
   estimatedTransitTimeMins: number;
+  scooterRentalFeesDaily?: number;
+  scooterRentalFeesMonthly?: number;
+  scooterDurationMins?: number;
+  hopFareMonthly?: number;
 }
 
 export interface CommuteComparisonResult {
@@ -143,6 +163,7 @@ export interface CommuteComparisonResult {
   transitTimeMins: number;
   timeMetrics?: TimeMetrics;
   paybackMonths?: number | null;
+  scooterOwnership?: 'OWNED' | 'RENTAL';
 }
 
 export type ArbitrageResult = CommuteComparisonResult;

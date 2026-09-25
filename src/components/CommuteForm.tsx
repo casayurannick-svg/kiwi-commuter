@@ -172,6 +172,10 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
       : 'BUS');
 
   const isEbikeActive = activeTransitMode === 'EBIKE' || activeTransitMode === 'E-Bike';
+  const isMicromobilityActive =
+    activeTransitMode === 'MICROMOBILITY_TRANSIT' ||
+    activeTransitMode === 'Scooter & Ride' ||
+    activeTransitMode === 'Scooter & Transit';
 
   return (
     <div className="glass-panel rounded-2xl p-4 sm:p-5 border border-slate-800 space-y-4">
@@ -232,14 +236,14 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
         </div>
       </div>
 
-      {/* Transit Mode Selector (US-20, US-11) */}
+      {/* Transit Mode Selector (US-20, US-11, US-23) */}
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
           <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
             <Bus className="w-3.5 h-3.5 text-emerald-400" />
             Transit Mode
           </label>
-          {input.isWaihekeRoute && !isEbikeActive && (
+          {input.isWaihekeRoute && !isEbikeActive && !isMicromobilityActive && (
             <span className="text-[10px] text-amber-400 font-mono">
               Waiheke Fullers (AT Cap Exempt)
             </span>
@@ -249,43 +253,69 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
               Micro-Mobility
             </span>
           )}
+          {isMicromobilityActive && (
+            <span className="text-[10px] text-emerald-400 font-mono">
+              15 km/h First/Last Mile
+            </span>
+          )}
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
           <button
             type="button"
             onClick={() => handleTransitModeSelect('BUS')}
-            className={`min-h-[44px] px-2.5 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 border ${
-              !isEbikeActive && activeTransitMode !== 'FERRY' && activeTransitMode !== 'Ferry'
+            className={`min-h-[44px] px-2 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 border ${
+              !isEbikeActive && !isMicromobilityActive && activeTransitMode !== 'FERRY' && activeTransitMode !== 'Ferry'
                 ? 'bg-emerald-500 text-slate-950 font-black shadow-md border-emerald-500'
                 : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
             }`}
           >
-            <Bus className="w-4 h-4" />
+            <Bus className="w-3.5 h-3.5 shrink-0" />
             <span className="truncate">Bus / Train (AT HOP $50 Cap)</span>
           </button>
           <button
             type="button"
             onClick={() => handleTransitModeSelect('FERRY')}
-            className={`min-h-[44px] px-2.5 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 border ${
+            className={`min-h-[44px] px-2 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 border ${
               activeTransitMode === 'FERRY' || activeTransitMode === 'Ferry'
                 ? 'bg-sky-500 text-slate-950 font-black shadow-md border-sky-500'
                 : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
             }`}
           >
-            <Ship className="w-4 h-4" />
-            <span className="truncate">Ferry {input.isWaihekeRoute ? '(Waiheke Rates)' : '(AT HOP)'}</span>
+            <Ship className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">Ferry {input.isWaihekeRoute ? '(Waiheke)' : ''}</span>
           </button>
           <button
             type="button"
             onClick={() => handleTransitModeSelect('EBIKE')}
-            className={`min-h-[44px] px-2.5 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 border ${
+            className={`min-h-[44px] px-2 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 border ${
               isEbikeActive
                 ? 'bg-emerald-500 text-slate-950 font-black shadow-md border-emerald-500'
                 : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
             }`}
           >
-            <span>🚲</span>
+            <span className="shrink-0">🚲</span>
             <span className="truncate">🚲 E-Bike</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const updated = {
+                ...input,
+                transitMode: 'MICROMOBILITY_TRANSIT' as TransitMode,
+                scooterOwnership: input.scooterOwnership ?? 'RENTAL',
+                scooterCapitalCost: input.scooterCapitalCost ?? 900,
+                walkDistanceKm: input.walkDistanceKm ?? 2.0,
+              };
+              notifyChange(updated);
+            }}
+            className={`min-h-[44px] px-2 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 border ${
+              isMicromobilityActive
+                ? 'bg-emerald-500 text-slate-950 font-black shadow-md border-emerald-500'
+                : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
+            }`}
+          >
+            <span className="shrink-0">🛴</span>
+            <span className="truncate">Scooter &amp; Ride</span>
           </button>
         </div>
       </div>
@@ -386,7 +416,88 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
             </div>
           </div>
         </div>
-      ) : (
+      ) : null}
+
+      {/* US-23: Micro-Mobility First/Last Mile Scooter Parameters */}
+      {isMicromobilityActive ? (
+        <div className="space-y-3 p-3.5 bg-slate-900/60 border border-emerald-500/30 rounded-xl">
+          <div className="flex items-center justify-between pb-1.5 border-b border-slate-800">
+            <span className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+              <span>🛴</span> First/Last Mile Scooter Mode
+            </span>
+            <span className="text-[10px] text-slate-400 font-mono">15 km/h cruise</span>
+          </div>
+
+          {/* Ownership Toggle (OWNED vs RENTAL) */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-slate-300">Scooter Type</label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => handleFieldChange('scooterOwnership', 'RENTAL')}
+                className={`min-h-[44px] px-3 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 border ${
+                  (input.scooterOwnership ?? 'RENTAL') === 'RENTAL'
+                    ? 'bg-emerald-500 text-slate-950 font-black shadow-md border-emerald-500'
+                    : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                }`}
+              >
+                <span>⚡ Rental (Beam / Lime)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleFieldChange('scooterOwnership', 'OWNED')}
+                className={`min-h-[44px] px-3 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 border ${
+                  input.scooterOwnership === 'OWNED'
+                    ? 'bg-emerald-500 text-slate-950 font-black shadow-md border-emerald-500'
+                    : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                }`}
+              >
+                <span>🛴 Personally Owned</span>
+              </button>
+            </div>
+          </div>
+
+          {/* If RENTAL: display readonly rates ($1 unlock, $0.45/min) */}
+          {(input.scooterOwnership ?? 'RENTAL') === 'RENTAL' ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+              <div className="p-2.5 bg-slate-950/60 border border-slate-800 rounded-lg flex items-center justify-between">
+                <span className="text-xs text-slate-400">Unlock Fee:</span>
+                <span className="text-xs font-mono font-bold text-slate-200">$1.00 / trip</span>
+              </div>
+              <div className="p-2.5 bg-slate-950/60 border border-slate-800 rounded-lg flex items-center justify-between">
+                <span className="text-xs text-slate-400">Ride Rate:</span>
+                <span className="text-xs font-mono font-bold text-slate-200">$0.45 / min</span>
+              </div>
+            </div>
+          ) : (
+            /* If OWNED: upfront capital cost input */
+            <div className="space-y-1 pt-1">
+              <label className="text-xs font-semibold text-slate-300">
+                Scooter Capital Cost ($ NZD)
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="50"
+                value={input.scooterCapitalCost ?? 900}
+                onChange={(e) =>
+                  handleFieldChange(
+                    'scooterCapitalCost',
+                    e.target.value === '' ? 0 : parseFloat(e.target.value) || 0
+                  )
+                }
+                placeholder="900"
+                className="w-full min-h-[44px] bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-sm text-slate-100 font-mono focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+              />
+              <span className="text-[10px] text-slate-400 block">
+                Purchase price for breakeven &amp; payback calculation against driving
+              </span>
+            </div>
+          )}
+        </div>
+      ) : null}
+
+      {!isEbikeActive ? (
         <>
           {/* Powertrain (Segmented Pills with 44px min-height) */}
           <div className="space-y-1.5">
@@ -449,9 +560,6 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
               <div className="pt-1 flex items-center gap-2">
                 <span className="text-xs text-slate-400">Rate:</span>
                 <input
-                  type="number"
-                  min="0"
-                  max="150"
                   value={input.parkingDailyRate}
                   onChange={(e) => handleFieldChange('parkingDailyRate', parseFloat(e.target.value) || 0)}
                   className="w-24 min-h-[44px] bg-slate-900 border border-slate-700 rounded-xl px-3 py-1 text-sm text-slate-100"
@@ -461,7 +569,7 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
             )}
           </div>
         </>
-      )}
+      ) : null}
 
       {/* Disclosure: Custom Rates ▾ */}
       <div className="pt-1 border-t border-slate-800">

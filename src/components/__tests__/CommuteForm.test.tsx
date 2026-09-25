@@ -96,6 +96,45 @@ describe('src/components/CommuteForm.tsx - US-19 Wear & Tear Benchmark Tooltip',
     assert.ok(!htmlEbike.includes('Powertrain'), 'Must hide Powertrain when EBIKE is active');
     assert.ok(!htmlEbike.includes('Daily Parking'), 'Must hide Daily Parking when EBIKE is active');
   });
+
+  it('renders Scooter & Ride mode and switches between RENTAL and OWNED controls (US-23)', () => {
+    const htmlDefault = renderToStaticMarkup(
+      React.createElement(CommuteForm, { input: defaultInput })
+    );
+
+    // Verify Scooter & Ride button exists
+    assert.ok(htmlDefault.includes('Scooter &amp; Ride'), 'Must render Scooter & Ride button');
+
+    // When transitMode is MICROMOBILITY_TRANSIT with RENTAL
+    const rentalInput: CommuteInput = {
+      ...defaultInput,
+      transitMode: 'MICROMOBILITY_TRANSIT',
+      scooterOwnership: 'RENTAL',
+    };
+    const htmlRental = renderToStaticMarkup(
+      React.createElement(CommuteForm, { input: rentalInput })
+    );
+
+    assert.ok(htmlRental.includes('First/Last Mile Scooter Mode'), 'Must display scooter mode header');
+    assert.ok(htmlRental.includes('Rental (Beam / Lime)'), 'Must render rental button');
+    assert.ok(htmlRental.includes('Unlock Fee:'), 'Must show $1 unlock fee info');
+    assert.ok(htmlRental.includes('$0.45 / min'), 'Must show $0.45/min rate info');
+    assert.ok(htmlRental.includes('Powertrain'), 'Car powertrain must remain visible to compare against driving');
+
+    // When transitMode is MICROMOBILITY_TRANSIT with OWNED
+    const ownedInput: CommuteInput = {
+      ...defaultInput,
+      transitMode: 'MICROMOBILITY_TRANSIT',
+      scooterOwnership: 'OWNED',
+      scooterCapitalCost: 850,
+    };
+    const htmlOwned = renderToStaticMarkup(
+      React.createElement(CommuteForm, { input: ownedInput })
+    );
+
+    assert.ok(htmlOwned.includes('Personally Owned'), 'Must render personally owned button');
+    assert.ok(htmlOwned.includes('Scooter Capital Cost ($ NZD)'), 'Must show scooter capital cost input');
+  });
 });
 
 

@@ -512,5 +512,110 @@ describe('src/lib/calculator.ts - calculateCommuteArbitrage', () => {
       assert.strictEqual(result.paybackMonths, expectedPaybackMonths, 'paybackMonths must equal upfrontSetupCost / monthlyCarSavings');
     });
   });
+
+  describe('US-23: Micro-Mobility First/Last Mile (Scooter & Ride)', () => {
+    it('accurately applies 15 km/h scooter speed override to recalculate transit duration', () => {
+      // Baseline without scooter (pure transit)
+      const baseResult = calculateCommuteArbitrage({
+        originSuburbId: 'albany',
+        destinationSuburbId: 'cbd',
+        daysPerWeek: 5,
+        vehicleType: 'petrol91',
+        parkingDailyRate: 15,
+        concession: 'adult',
+        includeMaintenanceWear: false,
+        carpoolPassengers: 1,
+      });
+
+      // Micromobility with default 2.0 km walk distance
+      const scooterResult = calculateCommuteArbitrage({
+        originSuburbId: 'albany',
+        destinationSuburbId: 'cbd',
+        daysPerWeek: 5,
+        vehicleType: 'petrol91',
+        parkingDailyRate: 15,
+        concession: 'adult',
+        includeMaintenanceWear: false,
+        carpoolPassengers: 1,
+        transitMode: 'MICROMOBILITY_TRANSIT',
+        scooterOwnership: 'RENTAL',
+        walkDistanceKm: 2.0,
+      });
+
+      // 2.0 km walking at 5 km/h = 24 mins.
+      // 2.0 km scooting at 15 km/h = 8 mins.
+      // Saved time per leg = 16 mins.
+      // Scooter transit time should be base transit time - 16 mins.
+      const expectedDuration = Math.round(baseResult.transit.estimatedTransitTimeMins - 16);
+      assert.strictEqual(scooterResult.transit.estimatedTransitTimeMins, expectedDuration);
+      assert.strictEqual(scooterResult.transit.scooterDurationMins, 8);
+    });
+
+    it('accurately computes rental scooter fees ($1 unlock + $0.45/min) and adds them to AT HOP fare', () => {
+      const input: CommuteInput = {
+        originSuburbId: 'albany',
+        destinationSuburbId: 'cbd',
+        daysPerWeek: 5,
+        vehicleType: 'petrol91',
+        parkingDailyRate: 20,
+        parkingDaysPerWeek: 5,
+        concession: 'adult',
+        includeMaintenanceWear: false,
+        carpoolPassengers: 1,
+        transitMode: 'MICROMOBILITY_TRANSIT',
+        scooterOwnership: 'RENTAL',
+        walkDistanceKm: 2.0, // 8 mins per leg
+      };
+
+      const result = calculateCommuteArbitrage(input);
+
+      // Per leg: $1.00 + (8 mins * $0.45) = $1.00 + $3.60 = $4.60
+      // Daily return (2 legs): $4.60 * 2 = $9.20
+      assert.strictEqual(result.transit.scooterRentalFeesDaily, 9.20);
+
+      // Weekly rental fees: $9.20 * 5 days = $46.00
+      // Monthly rental fees: $46.00 * (52 / 12) = $199.33
+      assert.strictEqual(result.transit.scooterRentalFeesMonthly, 199.33);
+
+      // Albany to CBD is capped at AT HOP $50/week ($216.67/month)
+      // Combined monthly transit = $216.67 + $199.33 = $416.00
+      assert.strictEqual(result.transit.hopFareMonthly, 216.67);
+      assert.strictEqual(result.transit.monthlyTotal, 416.00);
+      assert.strictEqual(result.transit.primaryMode, 'Scooter & Ride');
+    });
+
+    it('accurately computes owned scooter payback timeline against car commute', () => {
+      const input: CommuteInput = {
+        originSuburbId: 'albany',
+        destinationSuburbId: 'cbd',
+        daysPerWeek: 5,
+        vehicleType: 'petrol91',
+        parkingDailyRate: 20,
+        parkingDaysPerWeek: 5,
+        concession: 'adult',
+        includeMaintenanceWear: true,
+        carpoolPassengers: 1,
+        transitMode: 'MICROMOBILITY_TRANSIT',
+        scooterOwnership: 'OWNED',
+        scooterCapitalCost: 900,
+        walkDistanceKm: 2.0,
+      };
+
+      const result = calculateCommuteArbitrage(input);
+
+      // Owned scooter incurs $0 in rental fees
+      assert.strictEqual(result.transit.scooterRentalFeesDaily, undefined);
+      assert.strictEqual(result.transit.scooterRentalFeesMonthly, undefined);
+      // Monthly transit is purely the AT HOP transit fare
+      assert.strictEqual(result.transit.monthlyTotal, 216.67);
+
+      // Payback period = 900 / monthlyCarSavings
+      const monthlyCarSavings = result.driving.monthlyTotal - result.transit.monthlyTotal;
+      const expectedPayback = Math.round((900 / monthlyCarSavings) * 10) / 10;
+      assert.ok(result.paybackMonths !== null && result.paybackMonths !== undefined && result.paybackMonths > 0);
+      assert.strictEqual(result.paybackMonths, expectedPayback);
+      assert.strictEqual(result.scooterOwnership, 'OWNED');
+    });
+  });
 });
 

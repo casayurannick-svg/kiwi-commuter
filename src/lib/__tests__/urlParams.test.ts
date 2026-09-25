@@ -154,4 +154,26 @@ describe('src/lib/urlParams.ts - URL Search Param Synchronization', () => {
     assert.strictEqual(parsed.transitMode, 'FERRY');
     assert.strictEqual(parsed.isWaihekeRoute, true);
   });
+
+  it('serializes and parses US-23 micromobility scooter parameters correctly', () => {
+    const inputWithScooter: CommuteInput = {
+      ...defaultFallback,
+      transitMode: 'MICROMOBILITY_TRANSIT',
+      scooterOwnership: 'RENTAL',
+      scooterCapitalCost: 950,
+      walkDistanceKm: 2.5,
+    };
+
+    const params = serializeCommuteToParams(inputWithScooter);
+    assert.strictEqual(params.get('transitMode'), 'MICROMOBILITY_TRANSIT');
+    assert.strictEqual(params.get('scooterType'), 'RENTAL');
+    assert.strictEqual(params.get('scooterCost'), '950');
+    assert.strictEqual(params.get('walkKm'), '2.5');
+
+    const parsed = parseCommuteFromParams(params, defaultFallback);
+    assert.strictEqual(parsed.transitMode, 'MICROMOBILITY_TRANSIT');
+    assert.strictEqual(parsed.scooterOwnership, 'RENTAL');
+    assert.strictEqual(parsed.scooterCapitalCost, 950);
+    assert.strictEqual(parsed.walkDistanceKm, 2.5);
+  });
 });
