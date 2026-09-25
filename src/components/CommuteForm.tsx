@@ -59,12 +59,18 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
     return 'custom';
   });
 
+  const currentVehicle = VEHICLE_PRESETS[input.vehicleType] || VEHICLE_PRESETS.petrol91;
+
+  // US-24: Store fuelCost as a string in local state so clearing the field doesn't snap back immediately
+  const [fuelCost, setFuelCost] = useState<string>(() => {
+    const initial = input.fuelPriceOverride ?? currentVehicle.defaultFuelPrice;
+    return initial !== undefined ? initial.toString() : '';
+  });
+
   const notifyChange = (updated: CommuteInput) => {
     if (onInputChange) onInputChange(updated);
     if (onChange) onChange(updated);
   };
-
-  const currentVehicle = VEHICLE_PRESETS[input.vehicleType] || VEHICLE_PRESETS.petrol91;
 
   const handleFieldChange = <K extends keyof CommuteInput>(key: K, value: CommuteInput[K]) => {
     const updated = {
@@ -74,8 +80,29 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
     notifyChange(updated);
   };
 
+  const handleFuelPriceChange = (valStr: string) => {
+    setFuelCost(valStr);
+    // Parse the string to a number, applying DEFAULT_FUEL_RATE only when the calculation is executed and the input is empty or NaN
+    const trimmed = valStr.trim();
+    if (trimmed === '') {
+      // Do not revert the string input to default, keep fuelPriceOverride undefined so calculation engine applies DEFAULT_FUEL_RATE
+      handleFieldChange('fuelPriceOverride', undefined);
+    } else {
+      const parsed = parseFloat(trimmed);
+      if (isNaN(parsed) || parsed <= 0) {
+        handleFieldChange('fuelPriceOverride', undefined);
+      } else {
+        handleFieldChange('fuelPriceOverride', parsed);
+      }
+    }
+  };
+
   const handlePowertrainSelect = (opt: typeof POWERTRAIN_OPTIONS[0]) => {
     const isEvOrPhev = opt.id === 'bev' || opt.id === 'phev';
+    const newVehicle = VEHICLE_PRESETS[opt.id] || VEHICLE_PRESETS.petrol91;
+    if (!isEvOrPhev) {
+      setFuelCost(newVehicle.defaultFuelPrice.toString());
+    }
     const updated: CommuteInput = {
       ...input,
       vehicleType: opt.id,
@@ -677,13 +704,11 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
                   <input
                     type="number"
                     step="0.01"
-                    value={input.fuelPriceOverride ?? currentVehicle.defaultFuelPrice}
-                    onChange={(e) =>
-                      handleFieldChange(
-                        'fuelPriceOverride',
-                        e.target.value ? parseFloat(e.target.value) : undefined
-                      )
-                    }
+                    aria-label="Fuel Price ($/L)"
+                    id="fuelPriceInput"
+                    value={fuelCost ?? ''}
+                    onChange={(e) => handleFuelPriceChange(e.target.value)}
+                    placeholder={currentVehicle.defaultFuelPrice.toFixed(2)}
                     className="w-full min-h-[44px] bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-sm text-slate-200"
                   />
                 </div>

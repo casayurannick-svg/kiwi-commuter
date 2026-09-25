@@ -20,6 +20,12 @@ export const NZ_EV_CHARGING_RATES: Record<EVChargingSource, number> = {
 };
 
 /**
+ * Standard NZ Retail Fuel Price Benchmark ($/L)
+ * Used as fallback rate when user input is empty or NaN.
+ */
+export const DEFAULT_FUEL_RATE = 2.72;
+
+/**
  * EV & PHEV Charging Presets (NZ Electricity & Public Fast Charging Benchmarks)
  * - Home Off-Peak: Overnight EV plans (e.g., Genesis EV plan, Electric Kiwi Night Owl) ~$0.18/kWh
  * - Home Flat: Standard flat-rate residential electricity ~$0.30/kWh

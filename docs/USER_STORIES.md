@@ -26,6 +26,7 @@
 | **US-20** | Ferry Commute Mode & Waiheke Cap Exception | **DONE** | [`src/types/index.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/types/index.ts), [`src/config/fares.config.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/config/fares.config.ts), [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts), [`src/components/CommuteForm.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/CommuteForm.tsx), [`src/lib/__tests__/calculator.test.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/__tests__/calculator.test.ts) | Ferry mode selection, silent address Waiheke detection, Fullers commercial rates bypassing AT $50 cap while retaining cap for Devonport. |
 | **US-22** | Tooltip for Value of Your Time | **DONE** | [`src/components/CommuteForm.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/CommuteForm.tsx), [`src/components/__tests__/CommuteForm.test.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/__tests__/CommuteForm.test.tsx), [`tests/calculator.test.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/tests/calculator.test.ts) | Added accessible info icon and tooltip explaining the opportunity cost and transit duration multiplication calculation. |
 | **US-23** | Micro-Mobility First/Last Mile (Scooter & Ride) | **DONE** | [`src/types/index.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/types/index.ts), [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts), [`src/components/CommuteForm.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/CommuteForm.tsx), [`src/components/MiniReceipt.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/MiniReceipt.tsx), [`src/lib/urlParams.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/urlParams.ts) | 'Scooter & Ride' mode, 15 km/h leg recalculation, rental fees ($1 unlock + $0.45/min) atop AT HOP capped fare, owned scooter payback timeline. |
+| **US-24** | Empty String & Fallback Fuel Price Input Handling | **DONE** | [`src/components/CommuteForm.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/CommuteForm.tsx), [`src/config/fares.config.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/config/fares.config.ts), [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts), [`src/components/__tests__/CommuteForm.test.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/__tests__/CommuteForm.test.tsx), [`src/lib/__tests__/calculator.test.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/__tests__/calculator.test.ts) | Local string state for fuelCost with nullish coalescing (`fuelCost ?? ''`); clearing input does not snap back; calculation engine falls back to `DEFAULT_FUEL_RATE` when empty or NaN. |
 
 ---
 
@@ -337,6 +338,19 @@
   - In `src/components/MiniReceipt.tsx`, clearly split out rental scooter fees from capped AT HOP fares, or render the Breakeven Alert box for an owned scooter.
   - In `src/lib/urlParams.ts`, serialize and parse `scooterType`, `scooterCost`, and `walkKm` query parameters.
   - Unit tests in `src/lib/__tests__/calculator.test.ts`, `src/lib/__tests__/urlParams.test.ts`, and `src/components/__tests__/CommuteForm.test.tsx` verify calculation accuracy, speed overrides, and UI rendering.
+
+---
+
+### US-24: Fix Fuel Cost Input Field to Allow Empty String Values
+**As a** commuter customizing my fuel expenses,  
+**I want to** backspace or clear the Fuel Price input field completely without it immediately snapping back to the default rate,  
+**So that** I can fluidly type my own local pump price without fighting automatic input reversion.
+
+* **Acceptance Criteria:**
+  - In `src/components/CommuteForm.tsx`, store `fuelCost` as a string in local component state.
+  - The input `value` prop uses nullish coalescing (`value={fuelCost ?? ''}`) so clearing the field leaves it blank without snapping back.
+  - When the user clears the field or inputs an invalid string, `handleFuelPriceChange` clears the override, allowing the calculation engine in `src/lib/calculator.ts` to apply `DEFAULT_FUEL_RATE` (2.72) only when the calculation is executed.
+  - Unit tests in `src/components/__tests__/CommuteForm.test.tsx` verify that clearing the field does not snap back, and tests in `src/lib/__tests__/calculator.test.ts` verify that the engine defaults to `DEFAULT_FUEL_RATE` when fuel cost is undefined or NaN.
 
 ---
 

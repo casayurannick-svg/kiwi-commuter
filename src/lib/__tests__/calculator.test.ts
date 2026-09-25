@@ -617,5 +617,39 @@ describe('src/lib/calculator.ts - calculateCommuteArbitrage', () => {
       assert.strictEqual(result.scooterOwnership, 'OWNED');
     });
   });
+
+  describe('US-24: Empty String & Fallback Fuel Price Handling', () => {
+    it('applies DEFAULT_FUEL_RATE when fuelPriceOverride is undefined or NaN during calculation execution', () => {
+      // Input with fuelPriceOverride set to undefined (as when a user empties the text field)
+      const emptyInput: CommuteInput = {
+        originSuburbId: 'takapuna',
+        destinationSuburbId: 'cbd',
+        daysPerWeek: 5,
+        vehicleType: 'petrol91',
+        powertrain: 'PETROL_91',
+        fuelPriceOverride: undefined,
+        parkingDailyRate: 0,
+        parkingDaysPerWeek: 0,
+        concession: 'adult',
+        includeMaintenanceWear: false,
+        carpoolPassengers: 1,
+      };
+
+      const result = calculateCommuteArbitrage(emptyInput);
+
+      // Takapuna to CBD: 9.1 km one-way, 18.2 km round trip
+      // Petrol 91: 7.2 L/100km * 18.2 km = 1.3104 L
+      // DEFAULT_FUEL_RATE: 2.72 -> 1.3104 * 2.72 = $3.564288 -> round2 = $3.56
+      assert.strictEqual(result.driving.dailyFuelCost, 3.56);
+
+      // Input with NaN override
+      const nanInput: CommuteInput = {
+        ...emptyInput,
+        fuelPriceOverride: NaN,
+      };
+      const nanResult = calculateCommuteArbitrage(nanInput);
+      assert.strictEqual(nanResult.driving.dailyFuelCost, 3.56);
+    });
+  });
 });
 

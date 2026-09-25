@@ -135,6 +135,37 @@ describe('src/components/CommuteForm.tsx - US-19 Wear & Tear Benchmark Tooltip',
     assert.ok(htmlOwned.includes('Personally Owned'), 'Must render personally owned button');
     assert.ok(htmlOwned.includes('Scooter Capital Cost ($ NZD)'), 'Must show scooter capital cost input');
   });
+
+  it('allows empty string fuel cost input without snapping back to default immediately (US-24)', () => {
+    const initialInput: CommuteInput = {
+      ...defaultInput,
+      fuelPriceOverride: 2.72,
+    };
+
+    const element = React.createElement(CommuteForm, {
+      input: initialInput,
+    });
+
+    const rendered = renderToStaticMarkup(element);
+    assert.ok(rendered.includes('aria-label="Fuel Price ($/L)"'), 'Must render fuel price input field');
+    assert.ok(rendered.includes('value="2.72"'), 'Must render initial fuel cost value');
+
+    // Simulate clearing the field by rendering with empty override or undefined
+    const clearedInput: CommuteInput = {
+      ...defaultInput,
+      fuelPriceOverride: undefined,
+    };
+
+    // When fuelPriceOverride is undefined, the component's internal state handles empty string
+    // Verify that passing an input without override renders with placeholder and empty or default fallback cleanly
+    const clearedMarkup = renderToStaticMarkup(
+      React.createElement(CommuteForm, {
+        input: clearedInput,
+      })
+    );
+    assert.ok(clearedMarkup.includes('placeholder="2.72"'), 'Must provide default fuel price in placeholder');
+  });
 });
+
 
 

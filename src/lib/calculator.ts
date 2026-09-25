@@ -4,6 +4,7 @@ import {
   AT_HOP_ZONE_FARES_BY_CONCESSION,
   CO2_FACTORS,
   CONCESSION_MULTIPLIERS,
+  DEFAULT_FUEL_RATE,
   EV_CHARGING_PRESETS,
   NZ_AA_MAINTENANCE_PER_KM,
   NZ_EV_CHARGING_RATES,
@@ -131,7 +132,11 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
       monthlyElectricKwh * CO2_FACTORS.nzElectricityPerKwh +
       monthlyPetrolL * CO2_FACTORS.petrolPerLitre;
   } else {
-    const fuelPrice = input.customFuelPricePerL ?? input.fuelPriceOverride ?? vehicle.defaultFuelPrice;
+    const rawPrice = input.customFuelPricePerL ?? input.fuelPriceOverride;
+    const fuelPrice =
+      typeof rawPrice === 'number' && !isNaN(rawPrice) && rawPrice > 0
+        ? rawPrice
+        : vehicle.defaultFuelPrice || DEFAULT_FUEL_RATE;
     const consumptionRoundTrip = (consumption / 100) * distanceRoundTripKm;
     dailyFuelCost = round2((consumptionRoundTrip * fuelPrice) / passengers);
 
