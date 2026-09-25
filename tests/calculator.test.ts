@@ -753,3 +753,23 @@ describe('US-18: Remove Header Metadata and Status Badges', () => {
     );
   });
 });
+
+describe('US-19: Tooltip for Vehicle Wear & Tear Benchmark', () => {
+  it('verifies CommuteForm source contains info icon and exact AA/IRD benchmark tooltip text', () => {
+    const formPath = path.resolve(process.cwd(), 'src/components/CommuteForm.tsx');
+    const content = fs.readFileSync(formPath, 'utf-8');
+
+    assert.ok(
+      content.includes('AA/IRD annual benchmark: $0.18/km covers the average cost of tires, brake pads, and routine servicing for a typical NZ vehicle.'),
+      'Must include exact AA/IRD benchmark tooltip explanation'
+    );
+    assert.ok(
+      content.includes('aria-label="Wear & Tear benchmark info"'),
+      'Must include accessible button with aria-label for info tooltip'
+    );
+    assert.ok(
+      content.includes('role="tooltip"'),
+      'Must include tooltip container with role="tooltip"'
+    );
+  });
+});

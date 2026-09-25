@@ -8,6 +8,7 @@ import {
   ChevronDown,
   Clock,
   CreditCard,
+  Info,
   MapPin,
   Settings2,
   Users,
@@ -483,7 +484,7 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
 
               {/* Wear & Tear */}
               <div className="flex items-center pt-4">
-                <label className="text-xs text-slate-300 flex items-center gap-2 cursor-pointer">
+                <label className="text-xs text-slate-300 flex items-center gap-2 cursor-pointer select-none">
                   <input
                     type="checkbox"
                     checked={input.includeMaintenanceWear}
@@ -495,6 +496,21 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
                     AA Wear & Tires ($0.18/km)
                   </span>
                 </label>
+                <div className="relative inline-flex items-center ml-1.5 group">
+                  <button
+                    type="button"
+                    aria-label="Wear & Tear benchmark info"
+                    className="text-slate-400 hover:text-slate-200 transition-colors p-1 -m-1 focus:outline-none focus:text-slate-200"
+                  >
+                    <Info className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-200 transition-colors" />
+                  </button>
+                  <div
+                    role="tooltip"
+                    className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 sm:left-0 sm:translate-x-0 mb-2 w-64 p-2.5 bg-slate-900/95 border border-slate-700 rounded-lg text-[11px] text-slate-200 leading-snug shadow-xl backdrop-blur-md opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-150 z-50 pointer-events-none"
+                  >
+                    AA/IRD annual benchmark: $0.18/km covers the average cost of tires, brake pads, and routine servicing for a typical NZ vehicle.
+                  </div>
+                </div>
               </div>
             </div>
 

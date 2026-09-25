@@ -22,6 +22,7 @@
 | **US-16** | Plain-Language Time Valuation Balance Sheet ("Mini-Receipt") | **DONE** | [`src/components/ComparisonCard.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/ComparisonCard.tsx), [`src/components/__tests__/ComparisonCard.test.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/__tests__/ComparisonCard.test.tsx) | Recessed card balance sheet breaking down Cash Saved, Time Cost/Gained, and Your True Benefit. |
 | **US-17** | Remove Corridors Preset Menu | **DONE** | [`src/components/DashboardClient.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/DashboardClient.tsx) | Completely removed horizontal scrolling Corridors preset buttons, data structure, and handlers to reduce UI distraction. |
 | **US-18** | Remove Header Metadata and Status Badges | **DONE** | [`src/components/CommuteForm.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/CommuteForm.tsx), [`src/components/DashboardClient.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/DashboardClient.tsx), [`tests/calculator.test.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/tests/calculator.test.ts) | Removed "Real-time delta" text, "Auckland Transport & MBIE Weekly Sync" footer text, and policy badges ("2026 RUC Active", "AT $50 Cap") to declutter the UI. |
+| **US-19** | Tooltip for Vehicle Wear & Tear Benchmark | **DONE** | [`src/components/CommuteForm.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/CommuteForm.tsx), [`src/components/__tests__/CommuteForm.test.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/__tests__/CommuteForm.test.tsx), [`tests/calculator.test.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/tests/calculator.test.ts) | Added accessible info icon and tooltip explaining the $0.18/km AA/IRD tires, brakes, and servicing benchmark rate. |
 
 ---
 
@@ -258,6 +259,20 @@
   - The "2026 RUC Active" and "AT $50 Cap" pill badges in the `src/components/DashboardClient.tsx` header are deleted from the UI.
   - Unused icon imports (`Zap`, `ShieldCheck`) in `DashboardClient.tsx` are cleaned up.
   - Unit tests in `tests/calculator.test.ts` verify the absence of these elements from the components.
+
+---
+
+### US-19: Tooltip for Vehicle Wear & Tear Benchmark
+**As a** commuter evaluating my true driving costs,  
+**I want** to see an explanatory tooltip for the default $0.18/km wear and tear rate,  
+**So that** I understand the figure is derived from credible New Zealand benchmarks and not arbitrarily inflated.  
+
+* **Acceptance Criteria:**
+  - Add an info icon (`<Info />` from `lucide-react`) next to the "AA Wear & Tires ($0.18/km)" label in the UI within the Custom Rates panel of `CommuteForm`.
+  - On hover or focus/tap, display an accessible tooltip containing the exact text:  
+    *"AA/IRD annual benchmark: $0.18/km covers the average cost of tires, brake pads, and routine servicing for a typical NZ vehicle."*
+  - Ensure the tooltip is accessible with proper `aria-label` and `role="tooltip"`, fitting within mobile viewports without horizontal overflow.
+  - Unit tests in `src/components/__tests__/CommuteForm.test.tsx` and `tests/calculator.test.ts` verify rendering of the info button and tooltip text.
 
 ---
 
