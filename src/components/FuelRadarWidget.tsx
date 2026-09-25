@@ -1,6 +1,5 @@
 'use client';
 
-import { FuelSnapshot } from '@/types';
 import {
   ArrowUpRight,
   BatteryCharging,
@@ -12,11 +11,25 @@ import {
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 
-export default function FuelRadarWidget() {
+interface FuelRadarWidgetProps {
+  initialFuelData?: {
+    regular_91: number;
+    premium_95: number;
+    diesel: number;
+    date: string;
+    source: 'supabase' | 'fallback';
+  };
+}
+
+export default function FuelRadarWidget({ initialFuelData }: FuelRadarWidgetProps = {}) {
   const [tankSize, setTankSize] = useState<number>(50);
-  const [snapshots, setSnapshots] = useState<FuelSnapshot[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [lastRefreshed, setLastRefreshed] = useState<string>('');
+  const [benchmarkDate, setBenchmarkDate] = useState<string>(initialFuelData?.date ?? '');
+  const [price91, setPrice91] = useState<number>(initialFuelData?.regular_91 ?? 2.72);
+  const [price95, setPrice95] = useState<number>(initialFuelData?.premium_95 ?? 2.94);
+  const [priceDiesel, setPriceDiesel] = useState<number>(initialFuelData?.diesel ?? 2.05);
+  const [priceEv] = useState<number>(0.28);
 
   const fetchFuel = async () => {
     setLoading(true);
@@ -24,10 +37,11 @@ export default function FuelRadarWidget() {
       const res = await fetch('/api/fuel');
       if (res.ok) {
         const json = await res.json();
-        if (json.fuelSnapshots) {
-          setSnapshots(json.fuelSnapshots);
-          setLastRefreshed(new Date(json.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
-        }
+        if (json.regular_91) setPrice91(json.regular_91);
+        if (json.premium_95) setPrice95(json.premium_95);
+        if (json.diesel) setPriceDiesel(json.diesel);
+        if (json.date) setBenchmarkDate(json.date);
+        setLastRefreshed(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
       }
     } catch (e) {
       console.warn('Failed to load live fuel snapshots:', e);
@@ -37,15 +51,13 @@ export default function FuelRadarWidget() {
   };
 
   useEffect(() => {
-    fetchFuel();
-  }, []);
-
-  const price91 = snapshots.find((s) => s.fuelType === 'unleaded91')?.price ?? 2.72;
-  const price95 = snapshots.find((s) => s.fuelType === 'premium95')?.price ?? 2.94;
-  const priceDiesel = snapshots.find((s) => s.fuelType === 'diesel')?.price ?? 2.05;
-  const priceEv = snapshots.find((s) => s.fuelType === 'electricity')?.price ?? 0.28;
+    if (!initialFuelData) {
+      fetchFuel();
+    }
+  }, [initialFuelData]);
 
   const tankFillCost91 = price91 * tankSize;
+  const standard50LFillCost = Math.round(price91 * 50);
   // With $50 7-day cap, how many days or weeks of unlimited transit does 1 tank buy?
   const hopWeeksFunded = tankFillCost91 / 50.0;
   const hopDaysFunded = Math.round(hopWeeksFunded * 7);
@@ -61,8 +73,8 @@ export default function FuelRadarWidget() {
           <div>
             <h3 className="text-base font-bold text-white flex items-center gap-1.5">
               NZ Fuel Radar & Tank Arbitrage
-              <span className="text-[10px] bg-slate-800 text-slate-300 font-mono px-1.5 py-0.5 rounded border border-slate-700">
-                MBIE Sync
+              <span className="text-[10px] bg-amber-500/20 text-amber-300 font-mono px-2 py-0.5 rounded border border-amber-500/30">
+                {benchmarkDate ? `MBIE: ${benchmarkDate}` : 'MBIE Weekly'}
               </span>
             </h3>
             <p className="text-xs text-slate-400">
@@ -132,6 +144,17 @@ export default function FuelRadarWidget() {
             <span className="text-teal-400/90">Off-peak</span>
           </div>
         </div>
+      </div>
+
+      {/* Quick Calculator Tip */}
+      <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl px-3.5 py-2.5 flex items-center justify-between text-xs text-amber-200">
+        <span className="flex items-center gap-2">
+          <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
+          <span>Quick Tip: <strong>Filling a 50L tank currently costs ~${standard50LFillCost}</strong>.</span>
+        </span>
+        <span className="text-[11px] text-amber-400/80 font-mono">
+          (${price91.toFixed(2)}/L)
+        </span>
       </div>
 
       {/* Tank Fill vs AT HOP Arbitrage Spotlight */}

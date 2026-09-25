@@ -861,7 +861,8 @@ export const AUCKLAND_SUBURBS: Suburb[] = SUBURB_CENTROIDS.map((c) => {
 });
 
 export function getSuburbById(id: string): Suburb {
-  const found = AUCKLAND_SUBURBS.find((s) => s.id === id);
+  const normalizedId = id === 'britomart_cbd' ? 'cbd' : id;
+  const found = AUCKLAND_SUBURBS.find((s) => s.id === normalizedId || s.id === id);
   if (!found) {
     return AUCKLAND_SUBURBS[0];
   }
@@ -869,7 +870,8 @@ export function getSuburbById(id: string): Suburb {
 }
 
 export function getSuburbCentroidById(id: string): SuburbCentroid {
-  const found = SUBURB_CENTROIDS.find((s) => s.id === id);
+  const normalizedId = id === 'britomart_cbd' ? 'cbd' : id;
+  const found = SUBURB_CENTROIDS.find((s) => s.id === normalizedId || s.id === id);
   if (!found) {
     return SUBURB_CENTROIDS[0];
   }

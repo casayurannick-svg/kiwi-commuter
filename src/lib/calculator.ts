@@ -69,7 +69,7 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
   const passengers = Math.max(1, input.carpoolPassengers || 1);
 
   // Parking daily rate: support parkingTier preset or explicit parkingDailyRate
-  let effectiveParkingRate = input.parkingDailyRate;
+  let effectiveParkingRate = typeof input.parkingDailyRate === 'number' ? input.parkingDailyRate : 0;
   if (input.parkingTier && PARKING_TIER_RATES[input.parkingTier]) {
     if (typeof input.parkingDailyRate !== 'number' || input.parkingDailyRate === 0) {
       effectiveParkingRate = PARKING_TIER_RATES[input.parkingTier].rate;
@@ -82,8 +82,9 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
   const dailyRucCost = round2((distanceRoundTripKm * rucRate) / passengers);
   const dailyMaintenanceCost = round2((distanceRoundTripKm * maintenanceRate) / passengers);
 
-  // Parking: applies for parkingDaysPerWeek days per week
-  const effectiveParkingDays = Math.min(input.parkingDaysPerWeek, input.daysPerWeek);
+  // Parking: applies for parkingDaysPerWeek days per week (defaults to daysPerWeek)
+  const parkingDays = typeof input.parkingDaysPerWeek === 'number' ? input.parkingDaysPerWeek : input.daysPerWeek;
+  const effectiveParkingDays = Math.min(parkingDays, input.daysPerWeek);
   const weeklyParkingCost = round2((effectiveParkingRate * effectiveParkingDays) / passengers);
   const dailyParkingCost = input.daysPerWeek > 0 ? round2(weeklyParkingCost / input.daysPerWeek) : 0;
 

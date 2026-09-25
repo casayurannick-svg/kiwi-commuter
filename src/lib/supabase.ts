@@ -163,3 +163,49 @@ export async function getLatestFuelPrices(): Promise<FuelSnapshot[]> {
 
   return FALLBACK_FUEL_SNAPSHOTS;
 }
+
+export interface FuelBenchmarkDto {
+  regular_91: number;
+  premium_95: number;
+  diesel: number;
+  date: string;
+  source: 'supabase' | 'fallback';
+}
+
+export async function getLatestBenchmarkSummary(): Promise<FuelBenchmarkDto> {
+  if (supabase) {
+    try {
+      const { data, error } = await supabase
+        .from('fuel_benchmarks')
+        .select('*')
+        .order('week_ending_date', { ascending: false })
+        .limit(1);
+
+      if (!error && data && data.length > 0) {
+        const row = data[0];
+        const r91 = Number(row.regular_91);
+        const p95 = Number(row.premium_95);
+        const dsl = Number(row.diesel);
+
+        return {
+          regular_91: Number((r91 > 10 ? r91 / 100 : r91).toFixed(2)),
+          premium_95: Number((p95 > 10 ? p95 / 100 : p95).toFixed(2)),
+          diesel: Number((dsl > 10 ? dsl / 100 : dsl).toFixed(2)),
+          date: row.week_ending_date,
+          source: 'supabase',
+        };
+      }
+    } catch (e) {
+      console.warn('Failed to query fuel_benchmarks in Supabase:', e);
+    }
+  }
+
+  const now = new Date();
+  return {
+    regular_91: 2.72,
+    premium_95: 2.94,
+    diesel: 2.05,
+    date: now.toISOString().split('T')[0],
+    source: 'fallback',
+  };
+}

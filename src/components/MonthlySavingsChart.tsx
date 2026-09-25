@@ -41,20 +41,20 @@ export default function MonthlySavingsChart({ arbitrage }: MonthlySavingsChartPr
   const breakdownData = [
     {
       category: 'Private Driving',
-      Fuel: driving.monthlyFuelCost,
-      RUC: driving.monthlyRucCost,
-      Parking: driving.monthlyParkingCost,
-      Maintenance: driving.monthlyMaintenanceCost,
-      TransitFare: 0,
+      'Fuel / Power': driving.monthlyFuelCost,
+      'NZTA RUC': driving.monthlyRucCost,
+      'Central Parking': driving.monthlyParkingCost,
+      'Wear & Tear': driving.monthlyMaintenanceCost,
+      'AT HOP Fare': 0,
       Total: driving.monthlyTotal,
     },
     {
       category: 'Public Transport',
-      Fuel: 0,
-      RUC: 0,
-      Parking: 0,
-      Maintenance: 0,
-      TransitFare: transit.monthlyTotal,
+      'Fuel / Power': 0,
+      'NZTA RUC': 0,
+      'Central Parking': 0,
+      'Wear & Tear': 0,
+      'AT HOP Fare': transit.monthlyTotal,
       Total: transit.monthlyTotal,
     },
   ];
@@ -88,7 +88,7 @@ export default function MonthlySavingsChart({ arbitrage }: MonthlySavingsChartPr
                   <span className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
                   {entry.name}:
                 </span>
-                <span className="font-bold text-slate-100">${Number(entry.value).toFixed(0)}</span>
+                <span className="font-bold text-slate-100">${Number(entry.value).toFixed(2)} NZD</span>
               </div>
             );
           })}
@@ -157,15 +157,17 @@ export default function MonthlySavingsChart({ arbitrage }: MonthlySavingsChartPr
                 wrapperStyle={{ fontSize: 12, paddingTop: 10 }}
                 formatter={(val) => <span className="text-slate-300">{val}</span>}
               />
-              <Bar dataKey="Fuel" stackId="a" fill="#f59e0b" name="Fuel / Energy" radius={[0, 0, 0, 0]} />
-              <Bar dataKey="RUC" stackId="a" fill="#eab308" name="NZTA RUC" />
-              <Bar dataKey="Parking" stackId="a" fill="#0284c7" name="Central Parking" />
-              <Bar dataKey="Maintenance" stackId="a" fill="#64748b" name="Wear & Tear" />
+              <Bar dataKey="Fuel / Power" stackId="a" fill="#f59e0b" name="Fuel / Power" radius={[0, 0, 0, 0]} />
+              <Bar dataKey="NZTA RUC" stackId="a" fill="#eab308" name="NZTA RUC" />
+              <Bar dataKey="Central Parking" stackId="a" fill="#0284c7" name="Central Parking" />
+              {arbitrage.driving.monthlyMaintenanceCost > 0 && (
+                <Bar dataKey="Wear & Tear" stackId="a" fill="#64748b" name="Wear & Tear" />
+              )}
               <Bar
-                dataKey="TransitFare"
+                dataKey="AT HOP Fare"
                 stackId="a"
                 fill="#10b981"
-                name="AT HOP Capped Fare"
+                name="AT HOP Fare"
                 radius={[4, 4, 0, 0]}
               />
             </BarChart>

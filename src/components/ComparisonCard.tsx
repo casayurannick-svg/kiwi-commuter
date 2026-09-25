@@ -61,11 +61,11 @@ export default function ComparisonCard({ arbitrage, input }: ComparisonCardProps
             <h3 className="text-2xl sm:text-3xl font-extrabold text-white">
               {isTransitWinner ? (
                 <span>
-                  Save <span className="text-emerald-400">${monthlySavings.toLocaleString('en-NZ')}</span> / month on Public Transport
+                  Save <span className="text-emerald-400">${monthlySavings.toLocaleString('en-NZ')}</span> / month by switching to AT Transit
                 </span>
               ) : (
                 <span>
-                  Driving is <span className="text-sky-400">${Math.abs(monthlySavings).toLocaleString('en-NZ')}</span> / month cheaper
+                  Driving is <span className="text-amber-400">${Math.abs(monthlySavings).toLocaleString('en-NZ')}</span> cheaper per month
                 </span>
               )}
             </h3>

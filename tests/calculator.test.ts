@@ -296,3 +296,96 @@ describe('Step 4: Supabase Schema & MBIE Fuel Scraper', () => {
     assert.ok(ymlContent.includes('SUPABASE_SERVICE_ROLE_KEY'));
   });
 });
+
+describe('Step 5: Next.js API Layer & Interactive Frontend Dashboard UI', () => {
+  it('verifies /api/fuel GET handler returns benchmark shape with 1-hour cache', async () => {
+    const { GET, revalidate } = await import('../src/app/api/fuel/route');
+    assert.strictEqual(revalidate, 3600, 'Must have revalidate = 3600');
+
+    const res = await GET();
+    assert.strictEqual(res.status, 200);
+
+    const json = await res.json();
+    assert.strictEqual(typeof json.regular_91, 'number');
+    assert.strictEqual(typeof json.premium_95, 'number');
+    assert.strictEqual(typeof json.diesel, 'number');
+    assert.ok(json.date && typeof json.date === 'string');
+    assert.ok(json.source === 'supabase' || json.source === 'fallback');
+    assert.ok(json.regular_91 > 1.0 && json.regular_91 < 10.0, 'Price must be in dollars per litre');
+  });
+
+  it('verifies /api/calculate POST handler enriches fuel benchmark when price override is missing', async () => {
+    const { POST } = await import('../src/app/api/calculate/route');
+
+    const req = new Request('http://localhost:3000/api/calculate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        originSuburbId: 'epsom',
+        destinationSuburbId: 'cbd',
+        daysPerWeek: 3,
+        vehicleType: 'petrol91',
+        parkingDailyRate: 22.0,
+      }),
+    });
+
+    const res = await POST(req);
+    assert.strictEqual(res.status, 200);
+
+    const json = await res.json();
+    assert.strictEqual(json.success, true);
+    assert.ok(json.driving, 'Must contain driving breakdown');
+    assert.ok(json.transit, 'Must contain transit breakdown');
+    assert.strictEqual(typeof json.monthlySavings, 'number');
+    assert.strictEqual(typeof json.annualSavings, 'number');
+    assert.strictEqual(json.input.daysPerWeek, 3);
+    assert.strictEqual(json.input.parkingDailyRate, 22.0);
+    assert.ok(json.input.fuelPriceOverride, 'Should be enriched from benchmark');
+  });
+
+  it('evaluates Epsom to CBD default commute with 3 days and $22 CBD Early-Bird parking', () => {
+    const { calculateCommuteArbitrage } = require('../src/lib/calculator');
+    const result = calculateCommuteArbitrage({
+      originSuburbId: 'epsom',
+      destinationSuburbId: 'cbd',
+      daysPerWeek: 3,
+      vehicleType: 'petrol91',
+      parkingDailyRate: 22.0,
+      parkingTier: 'CBD_EARLY_BIRD',
+      concession: 'adult',
+      includeMaintenanceWear: true,
+      carpoolPassengers: 1,
+    });
+
+    assert.strictEqual(result.transit.zoneCount, 1);
+    assert.strictEqual(result.transit.singleTripStandardFare, 2.60);
+    assert.strictEqual(result.transit.dailyFare, 5.20);
+    // 3 days * $5.20 = $15.60/wk (under $50 cap)
+    assert.strictEqual(result.transit.weeklyTotal, 15.60);
+    assert.strictEqual(result.transit.isHopCapApplied, false);
+
+    // Driving includes fuel, $0 RUC, $22/day parking, and maintenance
+    assert.strictEqual(result.driving.dailyParkingCost, 22.0);
+    assert.strictEqual(result.driving.dailyRucCost, 0.0);
+    assert.ok(result.driving.monthlyTotal > result.transit.monthlyTotal);
+    assert.ok(result.monthlySavings > 0, 'Transit should yield substantial positive monthly arbitrage');
+  });
+
+  it('verifies all interactive UI dashboard components are properly created and structured', () => {
+    const componentFiles = [
+      'src/components/CommuteForm.tsx',
+      'src/components/ComparisonCard.tsx',
+      'src/components/MonthlySavingsChart.tsx',
+      'src/components/FuelRadarWidget.tsx',
+      'src/components/RouteMap.tsx',
+      'src/components/DashboardClient.tsx',
+      'src/app/page.tsx',
+    ];
+
+    for (const comp of componentFiles) {
+      const fullPath = path.resolve(process.cwd(), comp);
+      assert.ok(fs.existsSync(fullPath), `Component file must exist: ${comp}`);
+    }
+  });
+});
+
