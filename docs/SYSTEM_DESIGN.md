@@ -1,6 +1,40 @@
-# Kiwi Commuter System Design & Architecture Specification
+# System Design & Architecture Specification
 
-## 1. System Overview
+## 1. System Architecture Diagram
+
+```text
+                          ┌─────────────────────────────┐
+                          │   MBIE Data.govt.nz Feed    │
+                          │   (Weekly Fuel Retail CSV)  │
+                          └──────────────┬──────────────┘
+                                         │
+                                         ▼ (Weekly Cron: Sat 02:00 UTC)
+                          ┌─────────────────────────────┐
+                          │   GitHub Actions Runner     │
+                          │   (scripts/fetch-mbie-fuel) │
+                          └──────────────┬──────────────┘
+                                         │
+                                          (Service Role Upsert)
+                          ┌─────────────────────────────┐
+                          │     Supabase PostgreSQL     │
+                          │   (fuel_benchmarks table)   │
+                          └──────────────┬──────────────┘
+                                         │
+ ┌──────────────────────┐                │ (Public Read / Fallback)
+ │ Mapbox Directions    │                ▼
+ │ API (Vector Routing) │◄───────┐ ┌───────────────┐
+ └──────────┬───────────┘        │ │ Next.js Server │
+            │                    ├─┤ Route Handlers│
+            ▼                    │ │ (/api/fuel,   │
+ ┌──────────────────────┐        │ │  /api/calc)   │
+ │   Client Browser     │◄───────┘ └───────────────┘
+ │   (React / Next.js)  │
+ │   - CommuteForm      │
+ │   - ComparisonCard   │
+ │   - RouteMap         │
+ │   - SavingsChart     │
+ └──────────────────────┘
+```
 
 Kiwi Commuter is a full-stack, edge-cached web application architected to compare the total financial cost of personal vehicle ownership and commuting against Auckland Transport (AT) public transit in real time.
 
