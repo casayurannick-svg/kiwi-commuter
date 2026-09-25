@@ -26,263 +26,209 @@ export default function ComparisonCard({ arbitrage, input }: ComparisonCardProps
     arbitrage;
 
   const isTransitWinner = monthlySavings > 0;
+  const absMonthlyDelta = Math.round(Math.abs(monthlySavings));
+  const absAnnualDelta = Math.round(Math.abs(annualSavings));
 
   return (
-    <div className="space-y-6">
-      {/* Hero Arbitrage Banner */}
+    <div className="space-y-4">
+      {/* Hero Arbitrage Banner (Clean Minimalist Metrics) */}
       <div
-        className={`glass-panel-elevated rounded-2xl p-6 border relative overflow-hidden transition-all duration-300 ${
+        className={`glass-panel rounded-2xl p-5 sm:p-6 border transition-all ${
           isTransitWinner
-            ? 'border-emerald-500/50 bg-gradient-to-br from-emerald-950/40 via-slate-900/90 to-teal-950/40 shadow-emerald-950/30'
-            : 'border-sky-500/50 bg-gradient-to-br from-sky-950/40 via-slate-900/90 to-blue-950/40'
+            ? 'border-emerald-500/40 bg-gradient-to-br from-emerald-950/30 via-slate-900/90 to-slate-900/95'
+            : 'border-amber-500/40 bg-gradient-to-br from-amber-950/30 via-slate-900/90 to-slate-900/95'
         }`}
       >
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
-          <div className="space-y-2">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-1.5">
             <div className="flex items-center gap-2">
               <span
-                className={`text-xs uppercase font-extrabold tracking-wider px-2.5 py-1 rounded-full flex items-center gap-1.5 ${
+                className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full flex items-center gap-1 ${
                   isTransitWinner
                     ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                    : 'bg-sky-500/20 text-sky-300 border border-sky-500/30'
+                    : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
                 }`}
               >
-                {isTransitWinner ? <TrendingDown className="w-3.5 h-3.5" /> : <TrendingUp className="w-3.5 h-3.5" />}
-                Monthly Cost Arbitrage
+                {isTransitWinner ? <TrendingDown className="w-3 h-3" /> : <TrendingUp className="w-3 h-3" />}
+                Monthly Arbitrage
               </span>
               {transit.isHopCapApplied && (
-                <span className="text-xs bg-amber-500/20 text-amber-300 font-bold px-2 py-0.5 rounded-full border border-amber-500/30 flex items-center gap-1">
-                  <ShieldCheck className="w-3.5 h-3.5" />
-                  $50 7-Day Cap Active
+                <span className="text-[10px] bg-emerald-500/15 text-emerald-300 font-semibold px-2 py-0.5 rounded-full border border-emerald-500/30 flex items-center gap-1">
+                  <ShieldCheck className="w-3 h-3" />
+                  $50/wk Cap
                 </span>
               )}
             </div>
 
-            <h3 className="text-2xl sm:text-3xl font-extrabold text-white">
+            {/* Large metric headline */}
+            <div className="text-2xl sm:text-3xl font-black tracking-tight tabular-nums">
               {isTransitWinner ? (
-                <span>
-                  Save <span className="text-emerald-400">${monthlySavings.toLocaleString('en-NZ')}</span> / month by switching to AT Transit
+                <span className="text-emerald-400">
+                  +${absMonthlyDelta.toLocaleString('en-NZ')}/mo with AT Transit
                 </span>
               ) : (
-                <span>
-                  Driving is <span className="text-amber-400">${Math.abs(monthlySavings).toLocaleString('en-NZ')}</span> cheaper per month
+                <span className="text-amber-400">
+                  +${absMonthlyDelta.toLocaleString('en-NZ')}/mo Driving
                 </span>
               )}
-            </h3>
-
-            <p className="text-sm text-slate-300 max-w-xl">
-              {arbitrage.arbitrageTagline}
-            </p>
+            </div>
           </div>
 
-          {/* Quick Metrics Badges */}
-          <div className="flex flex-wrap md:flex-col gap-3 justify-end shrink-0">
-            <div className="bg-slate-900/80 border border-slate-700/60 rounded-xl px-4 py-2.5 text-right">
-              <span className="text-[11px] text-slate-400 block font-medium">Annual Financial Delta</span>
+          {/* Quick Metrics Badges (Single Row on Mobile) */}
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 text-xs">
+            <div className="bg-slate-900/90 border border-slate-800 px-3 py-1.5 rounded-xl text-left">
+              <span className="text-[10px] text-slate-400 block font-medium">Annual Delta</span>
               <span
-                className={`text-xl font-black ${
-                  isTransitWinner ? 'text-emerald-400' : 'text-sky-400'
+                className={`text-sm font-bold tabular-nums ${
+                  isTransitWinner ? 'text-emerald-400' : 'text-amber-400'
                 }`}
               >
-                {isTransitWinner ? '+' : '-'}${Math.abs(annualSavings).toLocaleString('en-NZ')} / yr
+                {isTransitWinner ? '+' : '-'}${absAnnualDelta.toLocaleString('en-NZ')}/yr
               </span>
             </div>
 
-            <div className="flex gap-2">
-              <div className="bg-slate-900/80 border border-slate-700/60 rounded-xl px-3 py-1.5 flex items-center gap-2">
-                <Leaf className="w-4 h-4 text-emerald-400" />
-                <div className="text-left">
-                  <span className="text-[10px] text-slate-400 block">CO₂ Cut</span>
-                  <span className="text-xs font-bold text-slate-200">{co2SavedMonthlyKg} kg/mo</span>
-                </div>
+            <div className="bg-slate-900/90 border border-slate-800 px-3 py-1.5 rounded-xl flex items-center gap-1.5">
+              <Leaf className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+              <div>
+                <span className="text-[10px] text-slate-400 block font-medium">CO₂ Saved</span>
+                <span className="text-xs font-bold text-slate-200 tabular-nums">{co2SavedMonthlyKg} kg/mo</span>
               </div>
+            </div>
 
-              <div className="bg-slate-900/80 border border-slate-700/60 rounded-xl px-3 py-1.5 flex items-center gap-2">
-                <Clock className="w-4 h-4 text-sky-400" />
-                <div className="text-left">
-                  <span className="text-[10px] text-slate-400 block">Productive Time</span>
-                  <span className="text-xs font-bold text-slate-200">{hoursReclaimedMonthly} hrs/mo</span>
-                </div>
+            <div className="bg-slate-900/90 border border-slate-800 px-3 py-1.5 rounded-xl flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+              <div>
+                <span className="text-[10px] text-slate-400 block font-medium">Time Gained</span>
+                <span className="text-xs font-bold text-slate-200 tabular-nums">{hoursReclaimedMonthly}h/mo</span>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Side-by-Side Breakdown Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+      {/* Side-by-Side Breakdown Cards (Tight List Items) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* DRIVING CARD */}
-        <div className="glass-panel rounded-2xl p-5 sm:p-6 border border-slate-700/70 shadow-lg space-y-4 flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between pb-3 border-b border-slate-700/50">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 bg-slate-800 text-sky-400 rounded-xl">
-                  <Car className="w-5 h-5" />
-                </div>
-                <div>
-                  <h4 className="text-base font-bold text-white">Private Vehicle</h4>
-                  <span className="text-xs text-slate-400">
-                    {driving.distanceRoundTripKm} km round-trip daily
-                  </span>
-                </div>
+        <div className="glass-panel rounded-2xl p-4 sm:p-5 border border-slate-800 space-y-3">
+          <div className="flex items-center justify-between pb-2.5 border-b border-slate-800">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 bg-slate-800 text-sky-400 rounded-lg">
+                <Car className="w-4 h-4" />
               </div>
-              <div className="text-right">
-                <span className="text-xs text-slate-400 block">Monthly Total</span>
-                <span className="text-xl font-black text-rose-400">
-                  ${driving.monthlyTotal.toFixed(2)}
-                </span>
-              </div>
+              <span className="text-sm font-bold text-white">Private Vehicle</span>
             </div>
-
-            {/* Driving Cost Items */}
-            <div className="space-y-3 pt-4 text-sm">
-              {/* Fuel */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-slate-300">
-                  <Fuel className="w-4 h-4 text-amber-400" />
-                  <span>Fuel / Energy</span>
-                </div>
-                <div className="text-right">
-                  <span className="font-semibold text-slate-100">${driving.monthlyFuelCost.toFixed(2)}</span>
-                  <span className="text-[11px] text-slate-500 block">
-                    ${driving.dailyFuelCost.toFixed(2)} / day
-                  </span>
-                </div>
-              </div>
-
-              {/* RUC */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-slate-300">
-                  <Zap className="w-4 h-4 text-amber-400" />
-                  <span>NZTA RUC (Road User Charges)</span>
-                </div>
-                <div className="text-right">
-                  <span className="font-semibold text-slate-100">
-                    ${driving.monthlyRucCost.toFixed(2)}
-                  </span>
-                  <span className="text-[11px] text-slate-500 block">
-                    {driving.dailyRucCost > 0 ? `$${driving.dailyRucCost.toFixed(2)} / day` : 'Exempt / at pump'}
-                  </span>
-                </div>
-              </div>
-
-              {/* Parking */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-slate-300">
-                  <ParkingCircle className="w-4 h-4 text-sky-400" />
-                  <span>Auckland CBD Parking</span>
-                </div>
-                <div className="text-right">
-                  <span className="font-semibold text-slate-100">
-                    ${driving.monthlyParkingCost.toFixed(2)}
-                  </span>
-                  <span className="text-[11px] text-slate-500 block">
-                    ${driving.dailyParkingCost.toFixed(2)} / day
-                  </span>
-                </div>
-              </div>
-
-              {/* Maintenance */}
-              {input.includeMaintenanceWear && (
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-slate-300">
-                    <Coins className="w-4 h-4 text-slate-400" />
-                    <span>NZ AA Wear, WOF & Tires</span>
-                  </div>
-                  <div className="text-right">
-                    <span className="font-semibold text-slate-100">
-                      ${driving.monthlyMaintenanceCost.toFixed(2)}
-                    </span>
-                    <span className="text-[11px] text-slate-500 block">
-                      ${driving.dailyMaintenanceCost.toFixed(2)} / day
-                    </span>
-                  </div>
-                </div>
-              )}
+            <div className="text-right">
+              <span className="text-base font-black text-rose-400 tabular-nums">
+                ${driving.monthlyTotal.toFixed(0)}
+              </span>
+              <span className="text-[10px] text-slate-400 block">/mo</span>
             </div>
           </div>
 
-          <div className="pt-3 border-t border-slate-800 text-xs text-slate-400 flex items-center justify-between">
-            <span>Weekly: <strong>${driving.weeklyTotal.toFixed(2)}</strong></span>
-            <span>Annual: <strong>${driving.annualTotal.toFixed(0)}</strong></span>
+          {/* Tight List Items */}
+          <div className="space-y-2 text-xs">
+            <div className="flex items-center justify-between">
+              <span className="text-slate-400 flex items-center gap-1.5">
+                <Fuel className="w-3 h-3 text-amber-400" />
+                Fuel:
+              </span>
+              <span className="font-semibold text-slate-200 tabular-nums">
+                ${driving.monthlyFuelCost.toFixed(0)}/mo
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-slate-400 flex items-center gap-1.5">
+                <Zap className="w-3 h-3 text-amber-400" />
+                RUC ({driving.dailyRucCost > 0 ? '$0.076/km' : 'Exempt'}):
+              </span>
+              <span className="font-semibold text-slate-200 tabular-nums">
+                {driving.monthlyRucCost > 0 ? `$${driving.monthlyRucCost.toFixed(0)}/mo` : '$0'}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-slate-400 flex items-center gap-1.5">
+                <ParkingCircle className="w-3 h-3 text-sky-400" />
+                Parking:
+              </span>
+              <span className="font-semibold text-slate-200 tabular-nums">
+                ${driving.monthlyParkingCost.toFixed(0)}/mo
+              </span>
+            </div>
+
+            {input.includeMaintenanceWear && (
+              <div className="flex items-center justify-between">
+                <span className="text-slate-400 flex items-center gap-1.5">
+                  <Coins className="w-3 h-3 text-slate-400" />
+                  Wear & WOF:
+                </span>
+                <span className="font-semibold text-slate-200 tabular-nums">
+                  ${driving.monthlyMaintenanceCost.toFixed(0)}/mo
+                </span>
+              </div>
+            )}
+          </div>
+
+          <div className="pt-2 border-t border-slate-800/80 text-[11px] text-slate-400 flex items-center justify-between">
+            <span>{driving.distanceRoundTripKm} km daily</span>
+            <span className="tabular-nums">Weekly: ${driving.weeklyTotal.toFixed(0)}</span>
           </div>
         </div>
 
         {/* TRANSIT CARD */}
-        <div className="glass-panel rounded-2xl p-5 sm:p-6 border border-emerald-500/40 shadow-lg space-y-4 flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between pb-3 border-b border-slate-700/50">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 bg-emerald-950/60 text-emerald-400 rounded-xl border border-emerald-500/30">
-                  <Bus className="w-5 h-5" />
-                </div>
-                <div>
-                  <h4 className="text-base font-bold text-white">Auckland Transport (AT HOP)</h4>
-                  <span className="text-xs text-emerald-400 font-medium">
-                    {transit.zoneCount} {transit.zoneCount === 1 ? 'Zone' : 'Zones'} • {transit.primaryMode}
-                  </span>
-                </div>
+        <div className="glass-panel rounded-2xl p-4 sm:p-5 border border-emerald-500/30 space-y-3">
+          <div className="flex items-center justify-between pb-2.5 border-b border-slate-800">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 bg-emerald-950/60 text-emerald-400 rounded-lg border border-emerald-500/30">
+                <Bus className="w-4 h-4" />
               </div>
-              <div className="text-right">
-                <span className="text-xs text-slate-400 block">Monthly Total</span>
-                <span className="text-xl font-black text-emerald-400">
-                  ${transit.monthlyTotal.toFixed(2)}
-                </span>
-              </div>
+              <span className="text-sm font-bold text-white">AT HOP Transit</span>
             </div>
-
-            {/* Transit Cost Items */}
-            <div className="space-y-3 pt-4 text-sm">
-              {/* Single trip */}
-              <div className="flex items-center justify-between">
-                <div className="text-slate-300">Single Journey Fare</div>
-                <div className="text-right">
-                  <span className="font-semibold text-slate-100">
-                    ${transit.singleTripConcessionFare.toFixed(2)}
-                  </span>
-                  {transit.singleTripConcessionFare < transit.singleTripStandardFare && (
-                    <span className="text-[11px] text-emerald-400 line-through block">
-                      ${transit.singleTripStandardFare.toFixed(2)} std
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* Daily Fare */}
-              <div className="flex items-center justify-between">
-                <div className="text-slate-300">Daily Return (2 Trips)</div>
-                <span className="font-semibold text-slate-100">${transit.dailyFare.toFixed(2)}</span>
-              </div>
-
-              {/* AT 7-Day Cap Benefit */}
-              <div className="p-3 bg-slate-900/90 border border-emerald-500/30 rounded-xl space-y-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-emerald-300 flex items-center gap-1">
-                    <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                    AT 7-Day $50 Fare Cap
-                  </span>
-                  <span className="text-xs font-bold text-white">
-                    ${transit.weeklyTotal.toFixed(2)} / wk
-                  </span>
-                </div>
-                <p className="text-[11px] text-slate-400">
-                  {transit.isHopCapApplied ? (
-                    <span className="text-emerald-300 font-medium">
-                      Cap applied! Saves ${(transit.uncappedWeeklyFare - 50).toFixed(2)}/week over uncapped fares.
-                    </span>
-                  ) : (
-                    <span>
-                      Travels within standard cap. Cap automatically activates at $50/week.
-                    </span>
-                  )}
-                </p>
-              </div>
+            <div className="text-right">
+              <span className="text-base font-black text-emerald-400 tabular-nums">
+                ${transit.monthlyTotal.toFixed(0)}
+              </span>
+              <span className="text-[10px] text-slate-400 block">/mo</span>
             </div>
           </div>
 
-          <div className="pt-3 border-t border-slate-800 text-xs text-slate-400 flex items-center justify-between">
-            <span>Weekly Capped: <strong>${transit.weeklyTotal.toFixed(2)}</strong></span>
-            <span>Annual: <strong>${transit.annualTotal.toFixed(0)}</strong></span>
+          {/* Tight List Items */}
+          <div className="space-y-2 text-xs">
+            <div className="flex items-center justify-between">
+              <span className="text-slate-400">Single Fare:</span>
+              <span className="font-semibold text-slate-200 tabular-nums">
+                ${transit.singleTripConcessionFare.toFixed(2)}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-slate-400">Daily Return (2x):</span>
+              <span className="font-semibold text-slate-200 tabular-nums">
+                ${transit.dailyFare.toFixed(2)}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-slate-400">
+                AT HOP Cap:
+              </span>
+              <span className="font-semibold text-emerald-300 tabular-nums">
+                {transit.isHopCapApplied ? '$50/wk applied' : `$${transit.weeklyTotal.toFixed(2)}/wk`}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-slate-400">Corridor:</span>
+              <span className="font-semibold text-slate-300 truncate max-w-[140px]">
+                Zone {transit.zoneCount} • {transit.primaryMode}
+              </span>
+            </div>
+          </div>
+
+          <div className="pt-2 border-t border-slate-800/80 text-[11px] text-slate-400 flex items-center justify-between">
+            <span>{transit.isHopCapApplied ? 'Capped fare active' : 'Under $50 cap'}</span>
+            <span className="tabular-nums">Weekly: ${transit.weeklyTotal.toFixed(0)}</span>
           </div>
         </div>
       </div>

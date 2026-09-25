@@ -86,6 +86,7 @@ export default function RouteMap({
           style: 'mapbox://styles/mapbox/dark-v11',
           bounds: bounds,
           fitBoundsOptions: { padding: 45 },
+          cooperativeGestures: true, // Prevent scroll trapping on mobile
         });
 
         mapInstance = map;
@@ -200,7 +201,7 @@ export default function RouteMap({
   const westernLineD = 'M 55 49 Q 47 52 38 56 Q 30 58 25 54';
 
   return (
-    <div className="glass-panel rounded-2xl overflow-hidden flex flex-col h-[380px] sm:h-[440px] relative border border-slate-700/60 shadow-xl">
+    <div className="glass-panel rounded-2xl overflow-hidden flex flex-col h-56 sm:h-64 md:h-[380px] lg:h-[400px] relative border border-slate-800 shadow-xl">
       {/* Header bar overlay */}
       <div className="absolute top-3 left-3 right-3 z-10 flex flex-wrap items-center justify-between gap-2 pointer-events-none">
         <div className="flex items-center gap-2 bg-slate-900/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-700/80 shadow pointer-events-auto">

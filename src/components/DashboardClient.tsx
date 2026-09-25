@@ -12,21 +12,19 @@ import { CommuteInput } from '@/types';
 import {
   Bus,
   Compass,
-  Fuel,
-  MapPin,
   ShieldCheck,
   Zap,
 } from 'lucide-react';
 import React, { useMemo, useState } from 'react';
 
 const QUICK_COMMUTE_PRESETS = [
-  { name: 'Epsom ➔ CBD (City Link)', origin: 'epsom', dest: 'cbd', days: 3 },
-  { name: 'Albany ➔ CBD (NX1 Rapid)', origin: 'albany', dest: 'cbd', days: 5 },
-  { name: 'Henderson ➔ CBD (Western Train)', origin: 'henderson', dest: 'cbd', days: 5 },
+  { name: 'Epsom ➔ CBD', origin: 'epsom', dest: 'cbd', days: 3 },
+  { name: 'Albany ➔ CBD (NX1)', origin: 'albany', dest: 'cbd', days: 5 },
+  { name: 'Henderson ➔ CBD (Train)', origin: 'henderson', dest: 'cbd', days: 5 },
   { name: 'Takapuna ➔ CBD (Busway)', origin: 'takapuna', dest: 'cbd', days: 5 },
-  { name: 'Manukau ➔ CBD (Southern Line)', origin: 'manukau', dest: 'cbd', days: 5 },
+  { name: 'Manukau ➔ CBD (Train)', origin: 'manukau', dest: 'cbd', days: 5 },
   { name: 'Devonport ➔ CBD (Ferry)', origin: 'devonport', dest: 'cbd', days: 5 },
-  { name: 'Hobsonville ➔ CBD (Ferry/WX1)', origin: 'hobsonville', dest: 'cbd', days: 5 },
+  { name: 'Hobsonville ➔ CBD (WX1)', origin: 'hobsonville', dest: 'cbd', days: 5 },
 ];
 
 interface DashboardClientProps {
@@ -66,58 +64,47 @@ export default function DashboardClient({ initialFuelPrices }: DashboardClientPr
     }));
   };
 
-  const current91 = initialFuelPrices?.regular_91 ?? 2.72;
-
   return (
-    <div className="min-h-screen bg-[#090d16] text-slate-100 flex flex-col selection:bg-emerald-500 selection:text-white">
-      {/* Top Navbar */}
-      <header className="sticky top-0 z-30 bg-[#090d16]/90 backdrop-blur-md border-b border-slate-800/80 px-4 sm:px-8 py-3.5 shadow-sm">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-500 via-teal-500 to-sky-500 p-0.5 shadow-lg shadow-emerald-500/20 flex items-center justify-center">
-              <div className="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center">
-                <Bus className="w-5 h-5 text-emerald-400" />
-              </div>
+    <div className="min-h-screen bg-[#090d16] text-slate-100 flex flex-col selection:bg-emerald-500 selection:text-white safe-pb">
+      {/* Top Navbar / Header (Minimalist & Functional) */}
+      <header className="sticky top-0 z-30 bg-[#090d16]/90 backdrop-blur-md border-b border-slate-800/80 px-4 sm:px-6 py-3">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center border border-emerald-500/30 shrink-0">
+              <Bus className="w-4 h-4" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-lg font-black tracking-tight text-white flex items-center gap-1.5">
-                  Kiwi Commuter <span className="text-emerald-400 font-bold">Arbitrage</span>
-                </h1>
-                <span className="text-[10px] bg-emerald-500/20 text-emerald-300 font-extrabold px-2 py-0.5 rounded border border-emerald-500/30">
-                  Auckland 2026 Transit & RUC Rates Active
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-400">
-                Compare daily driving expenses (Fuel + NZ RUC + Central Parking) against Auckland Public Transport ($50 7-Day Cap)
+              <h1 className="text-base sm:text-lg font-bold tracking-tight text-white leading-tight">
+                Kiwi Commuter
+              </h1>
+              <p className="text-xs text-slate-400 leading-none mt-0.5">
+                Auckland driving vs AT transit cost arbitrage.
               </p>
             </div>
           </div>
 
-          {/* Key Badges */}
-          <div className="flex items-center gap-2 self-start sm:self-auto text-xs">
-            <div className="bg-slate-900 border border-slate-700/80 px-3 py-1.5 rounded-lg flex items-center gap-1.5 text-slate-300">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-              <span className="font-semibold text-white">$50</span>
-              <span className="text-slate-400">7-Day PT Cap</span>
-            </div>
-            <div className="bg-slate-900 border border-slate-700/80 px-3 py-1.5 rounded-lg flex items-center gap-1.5 text-slate-300">
-              <Fuel className="w-3.5 h-3.5 text-amber-400" />
-              <span className="font-semibold text-white">${current91.toFixed(2)}</span>
-              <span className="text-slate-400">MBIE 91/L</span>
-            </div>
+          {/* Minimal Badges */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            <span className="text-[11px] bg-slate-900 border border-slate-800 text-slate-300 px-2 py-1 rounded-lg flex items-center gap-1 font-medium">
+              <Zap className="w-3 h-3 text-amber-400" />
+              2026 RUC Active
+            </span>
+            <span className="text-[11px] bg-slate-900 border border-slate-800 text-slate-300 px-2 py-1 rounded-lg flex items-center gap-1 font-medium">
+              <ShieldCheck className="w-3 h-3 text-emerald-400" />
+              AT $50 Cap
+            </span>
           </div>
         </div>
       </header>
 
-      {/* Quick Corridor Selection Bar */}
-      <section className="bg-slate-900/60 border-b border-slate-800/80 px-4 sm:px-8 py-2.5 overflow-x-auto">
+      {/* Quick Corridor Selection Strip */}
+      <section className="bg-slate-900/40 border-b border-slate-800/80 px-4 sm:px-6 py-2 overflow-x-auto">
         <div className="max-w-7xl mx-auto flex items-center gap-2 text-xs">
-          <span className="text-slate-400 shrink-0 font-medium flex items-center gap-1">
-            <Compass className="w-3.5 h-3.5 text-teal-400" />
-            Top Corridors:
+          <span className="text-slate-400 shrink-0 font-medium flex items-center gap-1 text-[11px]">
+            <Compass className="w-3 h-3 text-teal-400" />
+            Corridors:
           </span>
-          <div className="flex items-center gap-1.5 overflow-x-auto py-0.5">
+          <div className="flex items-center gap-1.5 overflow-x-auto py-0.5 no-scrollbar">
             {QUICK_COMMUTE_PRESETS.map((p) => {
               const isActive =
                 commuteInput.originSuburbId === p.origin && commuteInput.destinationSuburbId === p.dest;
@@ -125,10 +112,10 @@ export default function DashboardClient({ initialFuelPrices }: DashboardClientPr
                 <button
                   key={p.name}
                   onClick={() => applyPreset(p.origin, p.dest, p.days)}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition border ${
+                  className={`min-h-[36px] px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition border ${
                     isActive
-                      ? 'bg-emerald-500 text-slate-950 border-emerald-400 shadow-sm'
-                      : 'bg-slate-950/80 text-slate-300 border-slate-800 hover:border-slate-700 hover:text-white'
+                      ? 'bg-emerald-500 text-slate-950 border-emerald-400 shadow-sm font-bold'
+                      : 'bg-slate-900/80 text-slate-300 border-slate-800 hover:border-slate-700 hover:text-white'
                   }`}
                 >
                   {p.name}
@@ -139,20 +126,21 @@ export default function DashboardClient({ initialFuelPrices }: DashboardClientPr
         </div>
       </section>
 
-      {/* Main Workspace Body */}
-      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-8 py-6 space-y-8">
-        {/* Top Split Layout: Configuration & Live Comparison (Desktop 2-Col / Mobile Stacked) */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          {/* Left Column (5 cols on lg): Commute Configuration & Fuel Radar */}
-          <div className="lg:col-span-5 space-y-6">
+      {/* Main Workspace Body (Mobile First Responsive Stack & Desktop 2-Column Grid) */}
+      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 py-4 sm:py-6">
+        <div className="flex flex-col lg:grid lg:grid-cols-12 gap-4 sm:gap-5 items-start">
+          {/* 1. Commute Form (order-1 on mobile, left col 1..5 on desktop) */}
+          <div className="w-full order-1 lg:order-none lg:col-span-5 lg:col-start-1 lg:row-start-1">
             <CommuteForm input={commuteInput} onChange={setCommuteInput} onInputChange={setCommuteInput} />
-            <FuelRadarWidget initialFuelData={initialFuelPrices} />
           </div>
 
-          {/* Right Column (7 cols on lg): Comparison Hero, Visual Charts, and Interactive Map */}
-          <div className="lg:col-span-7 space-y-6">
+          {/* 2. Result Comparison Card (order-2 on mobile, right col 6..12 on desktop) */}
+          <div className="w-full order-2 lg:order-none lg:col-span-7 lg:col-start-6 lg:row-start-1">
             <ComparisonCard arbitrage={arbitrage} input={commuteInput} />
-            <MonthlySavingsChart arbitrage={arbitrage} />
+          </div>
+
+          {/* 3. Interactive Route Map (order-3 on mobile, right col row 2 on desktop) */}
+          <div className="w-full order-3 lg:order-none lg:col-span-7 lg:col-start-6 lg:row-start-2">
             <RouteMap
               origin={origin}
               destination={destination}
@@ -161,61 +149,55 @@ export default function DashboardClient({ initialFuelPrices }: DashboardClientPr
               transitTimeMins={arbitrage.transitTimeMins}
             />
           </div>
+
+          {/* 4. Cost Breakdown Chart (order-4 on mobile, right col row 3 on desktop) */}
+          <div className="w-full order-4 lg:order-none lg:col-span-7 lg:col-start-6 lg:row-start-3">
+            <MonthlySavingsChart arbitrage={arbitrage} />
+          </div>
+
+          {/* 5. Fuel Radar Widget (order-5 on mobile, left col row 2 on desktop) */}
+          <div className="w-full order-5 lg:order-none lg:col-span-5 lg:col-start-1 lg:row-start-2">
+            <FuelRadarWidget initialFuelData={initialFuelPrices} />
+          </div>
         </div>
-
-        {/* Regulatory & Economic Context Cards */}
-        <section className="grid grid-cols-1 md:grid-cols-3 gap-5 pt-4">
-          {/* Card 1: AT HOP $50 Cap */}
-          <div className="glass-panel rounded-2xl p-5 border border-slate-700/60 shadow space-y-2">
-            <div className="flex items-center gap-2 text-emerald-400 font-bold text-sm">
-              <ShieldCheck className="w-4 h-4" />
-              AT HOP $50 7-Day Fare Cap
-            </div>
-            <p className="text-xs text-slate-300 leading-relaxed">
-              Under Auckland Transport’s fare structure, commuters pay no more than $50 for all bus, train, and
-              inner-harbour ferry travel within any rolling 7-day period. Once the cap is hit, remaining rides that week are 100% free.
-            </p>
-          </div>
-
-          {/* Card 2: 2024–2026 NZTA RUC Policy */}
-          <div className="glass-panel rounded-2xl p-5 border border-slate-700/60 shadow space-y-2">
-            <div className="flex items-center gap-2 text-amber-400 font-bold text-sm">
-              <Zap className="w-4 h-4" />
-              NZTA Road User Charges (RUC)
-            </div>
-            <p className="text-xs text-slate-300 leading-relaxed">
-              Light electric vehicles (BEVs) pay $76 per 1,000 km ($0.076/km), and plug-in hybrids (PHEVs) pay $38 per 1,000 km.
-              Standard diesel vehicles pay $76/1,000 km. This dashboard automatically factors these statutory liabilities into daily driving costs.
-            </p>
-          </div>
-
-          {/* Card 3: Central Auckland Parking Reality */}
-          <div className="glass-panel rounded-2xl p-5 border border-slate-700/60 shadow space-y-2">
-            <div className="flex items-center gap-2 text-sky-400 font-bold text-sm">
-              <MapPin className="w-4 h-4" />
-              Central Auckland Parking Premium
-            </div>
-            <p className="text-xs text-slate-300 leading-relaxed">
-              Central Auckland CBD parking typically costs $22/day for early bird, and $35/day for casual commercial bays.
-              Over 3–5 commute days per week, parking alone accounts for $260–$700+ monthly, frequently exceeding total vehicle fuel expenditure.
-            </p>
-          </div>
-        </section>
       </main>
 
-      {/* Footer */}
-      <footer className="bg-[#060a12] border-t border-slate-800/80 px-4 sm:px-8 py-6 text-xs text-slate-500 mt-12">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <span className="font-semibold text-slate-400">Kiwi Commuter Dashboard</span>
-            <span>•</span>
-            <span>Data from MBIE Fuel Monitoring, Auckland Transport GTFS, and NZTA Waka Kotahi</span>
+      {/* Minimal Footer with Compact Inline Links */}
+      <footer className="border-t border-slate-800/80 px-4 sm:px-6 py-4 text-xs text-slate-400 mt-8">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
+          <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-2 gap-y-1">
+            <span className="font-semibold text-slate-300">Kiwi Commuter</span>
+            <span>·</span>
+            <a
+              href="https://www.nzta.govt.nz/vehicles/licensing-rego/road-user-charges/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-emerald-400 underline underline-offset-2 transition"
+            >
+              Waka Kotahi RUC
+            </a>
+            <span>·</span>
+            <a
+              href="https://at.govt.nz/bus-train-ferry/fares-discounts"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-emerald-400 underline underline-offset-2 transition"
+            >
+              AT 2026 Fares
+            </a>
+            <span>·</span>
+            <a
+              href="https://www.mbie.govt.nz/building-and-energy/energy-and-natural-resources/energy-statistics-and-modelling/energy-statistics/weekly-fuel-price-monitoring/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-emerald-400 underline underline-offset-2 transition"
+            >
+              MBIE Data
+            </a>
           </div>
-          <div className="flex items-center gap-4">
-            <span className="text-[11px] text-slate-500">Built for Auckland commuters</span>
-            <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800 font-mono text-[10px]">
-              Next.js 14 App Router
-            </span>
+
+          <div className="text-[11px] text-slate-500 font-mono">
+            Auckland Transport & MBIE Weekly Sync
           </div>
         </div>
       </footer>

@@ -16,7 +16,8 @@ const geistMono = localFont({
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 5,
+  maximumScale: 1, // Prevent iOS Safari accidental zoom on input focus
+  viewportFit: 'cover',
   themeColor: '#090d16',
 };
 

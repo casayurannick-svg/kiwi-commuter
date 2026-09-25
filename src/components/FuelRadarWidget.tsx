@@ -1,13 +1,10 @@
 'use client';
 
 import {
-  ArrowUpRight,
   BatteryCharging,
   Fuel,
-  Info,
   RefreshCw,
   Sparkles,
-  TrendingDown,
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 
@@ -22,9 +19,7 @@ interface FuelRadarWidgetProps {
 }
 
 export default function FuelRadarWidget({ initialFuelData }: FuelRadarWidgetProps = {}) {
-  const [tankSize, setTankSize] = useState<number>(50);
   const [loading, setLoading] = useState(false);
-  const [lastRefreshed, setLastRefreshed] = useState<string>('');
   const [benchmarkDate, setBenchmarkDate] = useState<string>(initialFuelData?.date ?? '');
   const [price91, setPrice91] = useState<number>(initialFuelData?.regular_91 ?? 2.72);
   const [price95, setPrice95] = useState<number>(initialFuelData?.premium_95 ?? 2.94);
@@ -41,7 +36,6 @@ export default function FuelRadarWidget({ initialFuelData }: FuelRadarWidgetProp
         if (json.premium_95) setPrice95(json.premium_95);
         if (json.diesel) setPriceDiesel(json.diesel);
         if (json.date) setBenchmarkDate(json.date);
-        setLastRefreshed(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
       }
     } catch (e) {
       console.warn('Failed to load live fuel snapshots:', e);
@@ -56,164 +50,66 @@ export default function FuelRadarWidget({ initialFuelData }: FuelRadarWidgetProp
     }
   }, [initialFuelData]);
 
-  const tankFillCost91 = price91 * tankSize;
   const standard50LFillCost = Math.round(price91 * 50);
-  // With $50 7-day cap, how many days or weeks of unlimited transit does 1 tank buy?
-  const hopWeeksFunded = tankFillCost91 / 50.0;
-  const hopDaysFunded = Math.round(hopWeeksFunded * 7);
 
   return (
-    <div className="glass-panel rounded-2xl p-5 sm:p-6 border border-slate-700/60 shadow-xl space-y-5">
+    <div className="glass-panel rounded-2xl p-4 border border-slate-800 space-y-3">
       {/* Header */}
-      <div className="flex items-center justify-between pb-3 border-b border-slate-700/50">
+      <div className="flex items-center justify-between pb-2 border-b border-slate-800">
         <div className="flex items-center gap-2">
-          <div className="p-2 bg-amber-500/20 text-amber-400 rounded-xl">
-            <Fuel className="w-5 h-5" />
-          </div>
-          <div>
-            <h3 className="text-base font-bold text-white flex items-center gap-1.5">
-              NZ Fuel Radar & Tank Arbitrage
-              <span className="text-[10px] bg-amber-500/20 text-amber-300 font-mono px-2 py-0.5 rounded border border-amber-500/30">
-                {benchmarkDate ? `MBIE: ${benchmarkDate}` : 'MBIE Weekly'}
-              </span>
-            </h3>
-            <p className="text-xs text-slate-400">
-              Auckland regional pump pricing vs unlimited AT HOP travel equivalence
-            </p>
-          </div>
+          <Fuel className="w-4 h-4 text-amber-400" />
+          <span className="text-xs font-bold text-white">NZ Pump Benchmark</span>
+          <span className="text-[10px] bg-slate-800 text-slate-300 font-mono px-1.5 py-0.5 rounded border border-slate-700">
+            {benchmarkDate ? `MBIE ${benchmarkDate}` : 'MBIE Sync'}
+          </span>
         </div>
 
         <button
           onClick={fetchFuel}
           disabled={loading}
-          className="text-slate-400 hover:text-slate-200 transition p-1.5 rounded-lg hover:bg-slate-800/80"
+          className="text-slate-400 hover:text-slate-200 transition p-1 rounded-md"
           title="Refresh prices"
         >
-          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-amber-400' : ''}`} />
+          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-amber-400' : ''}`} />
         </button>
       </div>
 
-      {/* Fuel Rate Tiles */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      {/* Fuel Rate Pill Strip (Horizontal & Compact) */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
         {/* 91 */}
-        <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-3 relative overflow-hidden group hover:border-amber-500/40 transition">
-          <div className="text-[11px] font-bold text-slate-400 uppercase">Unleaded 91</div>
-          <div className="text-xl font-black text-amber-400 mt-1">${price91.toFixed(2)}</div>
-          <div className="text-[10px] text-slate-500 mt-0.5 flex items-center justify-between">
-            <span>per litre</span>
-            <span className="text-emerald-400 flex items-center">
-              <TrendingDown className="w-2.5 h-2.5 mr-0.5" /> -0.8%
-            </span>
-          </div>
+        <div className="bg-slate-900/90 border border-slate-800/80 rounded-xl p-2 text-center">
+          <span className="text-[10px] text-slate-400 block font-medium">91 Unleaded</span>
+          <span className="text-sm font-black text-amber-400 tabular-nums">${price91.toFixed(2)}/L</span>
         </div>
 
         {/* 95 */}
-        <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-3 relative overflow-hidden group hover:border-amber-500/40 transition">
-          <div className="text-[11px] font-bold text-slate-400 uppercase">Premium 95</div>
-          <div className="text-xl font-black text-slate-200 mt-1">${price95.toFixed(2)}</div>
-          <div className="text-[10px] text-slate-500 mt-0.5 flex items-center justify-between">
-            <span>per litre</span>
-            <span className="text-slate-400">Stable</span>
-          </div>
+        <div className="bg-slate-900/90 border border-slate-800/80 rounded-xl p-2 text-center">
+          <span className="text-[10px] text-slate-400 block font-medium">95 Premium</span>
+          <span className="text-sm font-black text-slate-200 tabular-nums">${price95.toFixed(2)}/L</span>
         </div>
 
         {/* Diesel */}
-        <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-3 relative overflow-hidden group hover:border-amber-500/40 transition">
-          <div className="text-[11px] font-bold text-slate-400 uppercase flex items-center justify-between">
-            <span>Diesel</span>
-            <span className="text-[9px] text-amber-400 font-mono">+RUC</span>
-          </div>
-          <div className="text-xl font-black text-amber-300 mt-1">${priceDiesel.toFixed(2)}</div>
-          <div className="text-[10px] text-slate-500 mt-0.5 flex items-center justify-between">
-            <span>per litre</span>
-            <span className="text-amber-400/90 flex items-center">
-              <ArrowUpRight className="w-2.5 h-2.5 mr-0.5" /> +1.2%
-            </span>
-          </div>
+        <div className="bg-slate-900/90 border border-slate-800/80 rounded-xl p-2 text-center">
+          <span className="text-[10px] text-slate-400 block font-medium">Diesel (+RUC)</span>
+          <span className="text-sm font-black text-amber-300 tabular-nums">${priceDiesel.toFixed(2)}/L</span>
         </div>
 
-        {/* EV Residential */}
-        <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-3 relative overflow-hidden group hover:border-teal-500/40 transition">
-          <div className="text-[11px] font-bold text-slate-400 uppercase flex items-center justify-between">
-            <span>EV Home Grid</span>
-            <BatteryCharging className="w-3 h-3 text-teal-400" />
-          </div>
-          <div className="text-xl font-black text-teal-400 mt-1">${priceEv.toFixed(2)}</div>
-          <div className="text-[10px] text-slate-500 mt-0.5 flex items-center justify-between">
-            <span>per kWh</span>
-            <span className="text-teal-400/90">Off-peak</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Quick Calculator Tip */}
-      <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl px-3.5 py-2.5 flex items-center justify-between text-xs text-amber-200">
-        <span className="flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
-          <span>Quick Tip: <strong>Filling a 50L tank currently costs ~${standard50LFillCost}</strong>.</span>
-        </span>
-        <span className="text-[11px] text-amber-400/80 font-mono">
-          (${price91.toFixed(2)}/L)
-        </span>
-      </div>
-
-      {/* Tank Fill vs AT HOP Arbitrage Spotlight */}
-      <div className="bg-gradient-to-r from-amber-950/30 via-slate-900/90 to-emerald-950/30 border border-amber-500/30 rounded-xl p-4 space-y-3">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <span className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
-            <Sparkles className="w-4 h-4 text-amber-400" />
-            Tank-to-Transit Power Purchasing Equivalence
+        {/* EV */}
+        <div className="bg-slate-900/90 border border-slate-800/80 rounded-xl p-2 text-center">
+          <span className="text-[10px] text-slate-400 block font-medium flex items-center justify-center gap-1">
+            <BatteryCharging className="w-2.5 h-2.5 text-teal-400" /> EV Power
           </span>
-
-          {/* Quick Tank Size Selector */}
-          <div className="flex items-center gap-1 bg-slate-950/80 p-1 rounded-lg border border-slate-800 self-start sm:self-auto text-xs">
-            <span className="text-[10px] text-slate-400 px-1 font-medium">Tank:</span>
-            {[45, 50, 65, 80].map((size) => (
-              <button
-                key={size}
-                onClick={() => setTankSize(size)}
-                className={`px-2 py-0.5 rounded text-[11px] font-bold transition ${
-                  tankSize === size
-                    ? 'bg-amber-500 text-slate-950 shadow'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                {size}L
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
-          <div className="bg-slate-950/60 p-3 rounded-lg border border-slate-800/80">
-            <span className="text-[11px] text-slate-400 block">Single {tankSize}L Petrol 91 Fill-up</span>
-            <span className="text-2xl font-black text-white mt-0.5 block">
-              ${tankFillCost91.toFixed(2)} NZD
-            </span>
-            <span className="text-[11px] text-slate-500">Excludes parking and vehicle wear</span>
-          </div>
-
-          <div className="bg-emerald-950/40 p-3 rounded-lg border border-emerald-500/30">
-            <span className="text-[11px] text-emerald-300 font-semibold block">
-              AT HOP Unlimited Travel Equivalent
-            </span>
-            <span className="text-2xl font-black text-emerald-400 mt-0.5 block">
-              {hopWeeksFunded.toFixed(1)} Weeks ({hopDaysFunded} Days)
-            </span>
-            <span className="text-[11px] text-emerald-300/80">
-              Unlimited bus, train, & ferry under the $50 cap
-            </span>
-          </div>
+          <span className="text-sm font-black text-teal-400 tabular-nums">${priceEv.toFixed(2)}/kWh</span>
         </div>
       </div>
 
-      {/* Footer note */}
-      <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1">
-        <span className="flex items-center gap-1">
-          <Info className="w-3 h-3 text-slate-400" />
-          Auckland regional fuel tax ended in mid-2024. Prices reflect current MBIE weekly data.
+      {/* Quick Tip Strip */}
+      <div className="flex items-center justify-between text-xs text-slate-400 bg-slate-950/60 px-3 py-1.5 rounded-xl border border-slate-800/80">
+        <span className="flex items-center gap-1.5 text-slate-300">
+          <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+          <span>Filling a 50L tank currently costs ~${standard50LFillCost}</span>
         </span>
-        {lastRefreshed && <span>Updated today at {lastRefreshed}</span>}
+        <span className="text-[11px] text-emerald-400 font-medium">~{(standard50LFillCost / 50).toFixed(1)} wks transit</span>
       </div>
     </div>
   );
