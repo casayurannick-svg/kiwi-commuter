@@ -773,3 +773,24 @@ describe('US-19: Tooltip for Vehicle Wear & Tear Benchmark', () => {
     );
   });
 });
+
+describe('US-22: Tooltip for Value of Your Time', () => {
+  it('verifies CommuteForm source contains info icon and exact Value of Your Time tooltip text', () => {
+    const formPath = path.resolve(process.cwd(), 'src/components/CommuteForm.tsx');
+    const content = fs.readFileSync(formPath, 'utf-8');
+
+    assert.ok(
+      content.includes('The monetary value of your free time. We multiply this hourly rate by your total transit duration to reveal the'),
+      'Must include start of Value of Your Time tooltip explanation'
+    );
+    assert.ok(
+      content.includes('hidden cost') && content.includes('of your commute.'),
+      'Must include end of Value of Your Time tooltip explanation'
+    );
+    assert.ok(
+      content.includes('aria-label="Value of Your Time info"'),
+      'Must include accessible button with aria-label for Value of Your Time info tooltip'
+    );
+  });
+});
+

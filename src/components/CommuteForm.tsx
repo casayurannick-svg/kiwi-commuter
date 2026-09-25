@@ -601,10 +601,27 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
             {/* Value of Your Time Segmented Control (US-13) */}
             <div className="space-y-1.5 pt-2 border-t border-slate-800/80">
               <div className="flex items-center justify-between">
-                <label className="text-[11px] font-semibold text-slate-300 flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5 text-sky-400" />
-                  Value of Your Time
-                </label>
+                <div className="flex items-center gap-1.5">
+                  <label className="text-[11px] font-semibold text-slate-300 flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-sky-400" />
+                    Value of Your Time
+                  </label>
+                  <div className="relative inline-flex items-center group">
+                    <button
+                      type="button"
+                      aria-label="Value of Your Time info"
+                      className="text-slate-400 hover:text-slate-200 transition-colors p-1 -m-1 focus:outline-none focus:text-slate-200"
+                    >
+                      <Info className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-200 transition-colors" />
+                    </button>
+                    <div
+                      role="tooltip"
+                      className="pointer-events-none absolute bottom-full left-0 mb-2 w-64 sm:w-72 max-w-[calc(100vw-3rem)] p-2.5 bg-slate-900/95 border border-slate-700 rounded-lg text-[11px] text-slate-200 leading-snug shadow-xl backdrop-blur-md opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-150 z-50"
+                    >
+                      The monetary value of your free time. We multiply this hourly rate by your total transit duration to reveal the &apos;hidden cost&apos; of your commute.
+                    </div>
+                  </div>
+                </div>
                 <span className="text-[11px] font-bold text-sky-400 font-mono">
                   {(input.hourlyTimeValue ?? 0) > 0 ? `$${input.hourlyTimeValue}/hr` : 'Off ($0/hr)'}
                 </span>

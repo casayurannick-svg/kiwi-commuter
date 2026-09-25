@@ -52,4 +52,22 @@ describe('src/components/CommuteForm.tsx - US-19 Wear & Tear Benchmark Tooltip',
     assert.ok(html.includes('Ferry'), 'Must render Ferry button');
     assert.ok(html.includes('Waiheke Island (Matiatia)'), 'Must include Waiheke Island in suburb list');
   });
+
+  it('renders Value of Your Time info icon and tooltip explanation (US-22)', () => {
+    const html = renderToStaticMarkup(
+      React.createElement(CommuteForm, { input: defaultInput })
+    );
+
+    assert.ok(html.includes('Value of Your Time'), 'Must render Value of Your Time label');
+    assert.ok(
+      html.includes('aria-label="Value of Your Time info"'),
+      'Must render accessible info button for Value of Your Time'
+    );
+    assert.ok(
+      html.includes('The monetary value of your free time. We multiply this hourly rate by your total transit duration to reveal the') &&
+      html.includes('hidden cost'),
+      'Must contain exact Value of Your Time tooltip explanation'
+    );
+  });
 });
+

@@ -24,6 +24,7 @@
 | **US-18** | Remove Header Metadata and Status Badges | **DONE** | [`src/components/CommuteForm.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/CommuteForm.tsx), [`src/components/DashboardClient.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/DashboardClient.tsx), [`tests/calculator.test.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/tests/calculator.test.ts) | Removed "Real-time delta" text, "Auckland Transport & MBIE Weekly Sync" footer text, and policy badges ("2026 RUC Active", "AT $50 Cap") to declutter the UI. |
 | **US-19** | Tooltip for Vehicle Wear & Tear Benchmark | **DONE** | [`src/components/CommuteForm.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/CommuteForm.tsx), [`src/components/__tests__/CommuteForm.test.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/__tests__/CommuteForm.test.tsx), [`tests/calculator.test.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/tests/calculator.test.ts) | Added accessible info icon and tooltip explaining the $0.18/km AA/IRD tires, brakes, and servicing benchmark rate. |
 | **US-20** | Ferry Commute Mode & Waiheke Cap Exception | **DONE** | [`src/types/index.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/types/index.ts), [`src/config/fares.config.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/config/fares.config.ts), [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts), [`src/components/CommuteForm.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/CommuteForm.tsx), [`src/lib/__tests__/calculator.test.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/__tests__/calculator.test.ts) | Ferry mode selection, silent address Waiheke detection, Fullers commercial rates bypassing AT $50 cap while retaining cap for Devonport. |
+| **US-22** | Tooltip for Value of Your Time | **DONE** | [`src/components/CommuteForm.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/CommuteForm.tsx), [`src/components/__tests__/CommuteForm.test.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/__tests__/CommuteForm.test.tsx), [`tests/calculator.test.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/tests/calculator.test.ts) | Added accessible info icon and tooltip explaining the opportunity cost and transit duration multiplication calculation. |
 
 ---
 
@@ -290,6 +291,20 @@
     - When `transitMode === 'FERRY'` on standard inner-harbour routes (e.g., Devonport, Birkenhead, Hobsonville), apply standard AT HOP zonal fares and enforce the $50 7-day cap.
   - In `src/components/CommuteForm.tsx`, add a Transit Mode selector with 44px min-height buttons ("Bus / Train" and "Ferry") and silent address detection updating `isWaihekeRoute` when Waiheke is selected.
   - Unit tests verify Devonport ferry respects the $50 cap while Waiheke route exceeds the cap.
+
+---
+
+### US-22: Tooltip for Value of Your Time
+**As a** commuter comparing my transit options,  
+**I want** to understand what the "Value of Your Time" field means,  
+**So that** I know why the calculator is asking for my hourly rate and how it affects the final cost.  
+
+* **Acceptance Criteria:**
+  - Add an info icon (`<Info />` from `lucide-react`) next to the "Value of Your Time" input label in `src/components/CommuteForm.tsx`.
+  - On hover or tap/focus, display an accessible tooltip containing the exact text:  
+    *"The monetary value of your free time. We multiply this hourly rate by your total transit duration to reveal the 'hidden cost' of your commute."*
+  - Ensure the tooltip does not overflow on smaller mobile screens with responsive boundaries (`left-0`, `max-w-[calc(100vw-3rem)]`).
+  - Unit tests in `src/components/__tests__/CommuteForm.test.tsx` and `tests/calculator.test.ts` verify the presence of the info button and tooltip text in the DOM and component source.
 
 ---
 
