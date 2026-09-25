@@ -17,7 +17,7 @@
 | **US-11** | Active Commute & Micro-Mobility Mode | **PENDING** | Backlog (`src/types/index.ts`) | E-Bike / active commute mode with capex payback timeline not yet implemented. |
 | **US-12** | Park & Ride Multimodal Hybrid Route | **PENDING** | Backlog (`src/config/suburbs.ts`) | Station parking + rail transfer multi-leg route calculations not yet modeled. |
 | **US-13** | Monetized Travel Time & Opportunity Cost | **PARTIAL** | [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts), [`src/components/ComparisonCard.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/ComparisonCard.tsx) | Monthly transit hours reclaimed is computed, but hourly wage presets are not yet wired. |
-| **US-14** | Plain-Language Financial Verdicts | **PARTIAL** | [`src/components/ComparisonCard.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/ComparisonCard.tsx) | Headlines display plain verdicts ("+$X/mo with AT Transit"), but badge says "Arbitrage". |
+| **US-14** | Plain-Language Financial Verdicts | **DONE** | [`src/components/ComparisonCard.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/ComparisonCard.tsx) | Direct conversational savings verdicts ("You save $X/mo...", "MONTHLY VERDICT" badge). |
 | **US-15** | Privacy-Friendly Traffic & Web Analytics Integration | **DONE** | [`src/app/layout.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/app/layout.tsx), [`package.json`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/package.json) | `@vercel/analytics` installed and `<Analytics />` component embedded in RootLayout. |
 
 ---
@@ -157,6 +157,23 @@
 
 ---
 
+### US-14: Plain-Language Financial Verdicts
+**As a** first-time visitor,  
+**I want** simple, jargon-free verdicts on which mode saves me money,  
+**So that** I understand the bottom line without analyzing finance or arbitrage terminology.
+
+* **Acceptance Criteria:**
+  - **Given** commute parameters entered into the comparison engine,
+  - **When** viewing the primary outcome card ([`src/components/ComparisonCard.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/ComparisonCard.tsx)),
+  - **Then** display a direct plain-language savings verdict:
+    - `"You save $X/month on public transport"` with emerald styling when transit is cheaper.
+    - `"You save $X/month driving"` with amber styling when driving is cheaper.
+    - `"Costs are roughly identical"` when delta is negligible (< $1/mo).
+  - **And** display a conversational annual subline (e.g. `"Save $X/year compared to driving"`).
+  - **And** replace abstract financial badges like `"Monthly Arbitrage"` with `"MONTHLY VERDICT"`.
+
+---
+
 ### US-15: Privacy-Friendly Traffic & Web Analytics Integration
 **As a** product owner and maintainer,  
 **I want to** monitor live aggregate visitor volume, referrer sources, and device breakdowns via Vercel Web Analytics,  
@@ -185,19 +202,6 @@
 * **Gaps Remaining for Full Completion:**
   - UI slider/presets for hourly travel time valuation ($0, $25, $50/hr).
   - Generalized cost calculation factoring monetized time deltas into net arbitrage verdict.
-
----
-
-### US-14: Plain-Language Financial Verdicts
-**As a** first-time visitor,  
-**I want** simple, jargon-free verdicts on which mode saves me money,  
-**So that** I understand the bottom line without analyzing finance or arbitrage terminology.
-
-* **Current Implementation:**
-  - Headline clearly states: `+$X/mo with AT Transit` or `+$X/mo Driving`.
-  - Math engine computes plain-English verdict taglines (`arbitrageTagline`).
-* **Gaps Remaining for Full Completion:**
-  - Secondary card badge currently says "Monthly Arbitrage" rather than plain-English "Savings Verdict".
 
 ---
 

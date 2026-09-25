@@ -658,6 +658,36 @@ describe('US-15: Privacy-Friendly Traffic & Web Analytics Integration', () => {
   });
 });
 
+describe('US-14: Plain-Language Financial Verdicts', () => {
+  it('verifies ComparisonCard source uses natural plain-language verdict copy and MONTHLY VERDICT badge', () => {
+    const cardPath = path.resolve(process.cwd(), 'src/components/ComparisonCard.tsx');
+    const content = fs.readFileSync(cardPath, 'utf-8');
+
+    // Verify replacement of abstract Monthly Arbitrage badge
+    assert.ok(!content.includes('Monthly Arbitrage'), 'Must eliminate abstract "Monthly Arbitrage" copy');
+    assert.ok(content.includes('MONTHLY VERDICT'), 'Must display plain-language "MONTHLY VERDICT" badge');
+
+    // Verify plain-language savings headline and subline formats
+    assert.ok(
+      content.includes('You save $${delta}/month on public transport'),
+      'Must contain transit savings verdict headline'
+    );
+    assert.ok(
+      content.includes('You save $${delta}/month driving'),
+      'Must contain driving savings verdict headline'
+    );
+    assert.ok(
+      content.includes('Save $${annualDelta.toLocaleString('),
+      'Must contain annual comparison subline'
+    );
+    assert.ok(
+      content.includes('Costs are roughly identical'),
+      'Must handle roughly identical break-even commutes'
+    );
+  });
+});
+
+
 
 
 

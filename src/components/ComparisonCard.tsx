@@ -20,37 +20,57 @@ interface ComparisonCardProps {
   arbitrage: ArbitrageResult;
   input: CommuteInput;
 }
-
 export default function ComparisonCard({ arbitrage, input }: ComparisonCardProps) {
-  const { driving, transit, monthlySavings, annualSavings, co2SavedMonthlyKg, hoursReclaimedMonthly } =
-    arbitrage;
+  const { driving, transit, co2SavedMonthlyKg, hoursReclaimedMonthly } = arbitrage;
 
-  const isTransitWinner = monthlySavings > 0;
-  const absMonthlyDelta = Math.round(Math.abs(monthlySavings));
-  const absAnnualDelta = Math.round(Math.abs(annualSavings));
+  const delta = Math.round(Math.abs(driving.monthlyTotal - transit.monthlyTotal));
+  const annualDelta = Math.round(delta * 12);
+  const isTransitCheaper = transit.monthlyTotal < driving.monthlyTotal;
+  const isDrivingCheaper = driving.monthlyTotal < transit.monthlyTotal;
+  const isBreakEven = delta < 1;
+
+  let headline = 'Costs are roughly identical';
+  let subline = 'Both commute options cost about the same each month.';
+  let headlineColor = 'text-zinc-100';
+  const badgeLabel = 'MONTHLY VERDICT';
+  let badgeColor = 'text-zinc-400 bg-zinc-800/60 border-zinc-700';
+
+  if (isTransitCheaper && !isBreakEven) {
+    headline = `You save $${delta}/month on public transport`;
+    subline = `Save $${annualDelta.toLocaleString('en-NZ')}/year compared to driving`;
+    headlineColor = 'text-emerald-400';
+    badgeColor = 'text-emerald-300 bg-emerald-500/20 border-emerald-500/30';
+  } else if (isDrivingCheaper && !isBreakEven) {
+    headline = `You save $${delta}/month driving`;
+    subline = `Save $${annualDelta.toLocaleString('en-NZ')}/year compared to public transport`;
+    headlineColor = 'text-amber-400';
+    badgeColor = 'text-amber-300 bg-amber-500/20 border-amber-500/30';
+  }
 
   return (
     <div className="space-y-3">
       {/* Hero Arbitrage Banner (Clean Minimalist Metrics) */}
       <div
         className={`glass-panel rounded-2xl p-3.5 sm:p-4 border transition-all ${
-          isTransitWinner
+          isTransitCheaper && !isBreakEven
             ? 'border-emerald-500/40 bg-gradient-to-br from-emerald-950/30 via-slate-900/90 to-slate-900/95'
-            : 'border-amber-500/40 bg-gradient-to-br from-amber-950/30 via-slate-900/90 to-slate-900/95'
+            : isDrivingCheaper && !isBreakEven
+            ? 'border-amber-500/40 bg-gradient-to-br from-amber-950/30 via-slate-900/90 to-slate-900/95'
+            : 'border-slate-700 bg-gradient-to-br from-slate-900/90 via-slate-900/80 to-slate-900/95'
         }`}
       >
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <span
-                className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full flex items-center gap-1 ${
-                  isTransitWinner
-                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                    : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                }`}
+                className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border flex items-center gap-1 ${badgeColor}`}
               >
-                {isTransitWinner ? <TrendingDown className="w-3 h-3" /> : <TrendingUp className="w-3 h-3" />}
-                Monthly Arbitrage
+                {isTransitCheaper && !isBreakEven ? (
+                  <TrendingDown className="w-3 h-3" />
+                ) : isDrivingCheaper && !isBreakEven ? (
+                  <TrendingUp className="w-3 h-3" />
+                ) : null}
+                {badgeLabel}
               </span>
               {transit.isHopCapApplied && (
                 <span className="text-[10px] bg-emerald-500/15 text-emerald-300 font-semibold px-2 py-0.5 rounded-full border border-emerald-500/30 flex items-center gap-1">
@@ -60,17 +80,14 @@ export default function ComparisonCard({ arbitrage, input }: ComparisonCardProps
               )}
             </div>
 
-            {/* Large metric headline */}
-            <div className="text-xl sm:text-2xl font-black tracking-tight tabular-nums">
-              {isTransitWinner ? (
-                <span className="text-emerald-400">
-                  +${absMonthlyDelta.toLocaleString('en-NZ')}/mo with AT Transit
-                </span>
-              ) : (
-                <span className="text-amber-400">
-                  +${absMonthlyDelta.toLocaleString('en-NZ')}/mo Driving
-                </span>
-              )}
+            {/* Large metric headline & plain-language subline */}
+            <div>
+              <div className={`text-xl sm:text-2xl font-black tracking-tight tabular-nums ${headlineColor}`}>
+                {headline}
+              </div>
+              <div className="text-xs text-slate-400 mt-0.5 font-medium">
+                {subline}
+              </div>
             </div>
           </div>
 
@@ -80,10 +97,16 @@ export default function ComparisonCard({ arbitrage, input }: ComparisonCardProps
               <span className="text-[10px] text-slate-400 block font-medium">Annual Delta</span>
               <span
                 className={`text-sm font-bold tabular-nums ${
-                  isTransitWinner ? 'text-emerald-400' : 'text-amber-400'
+                  isTransitCheaper && !isBreakEven
+                    ? 'text-emerald-400'
+                    : isDrivingCheaper && !isBreakEven
+                    ? 'text-amber-400'
+                    : 'text-slate-300'
                 }`}
               >
-                {isTransitWinner ? '+' : '-'}${absAnnualDelta.toLocaleString('en-NZ')}/yr
+                {isBreakEven
+                  ? '$0/yr'
+                  : `${isTransitCheaper ? '+' : '-'}$${annualDelta.toLocaleString('en-NZ')}/yr`}
               </span>
             </div>
 
