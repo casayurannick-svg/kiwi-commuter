@@ -701,6 +701,24 @@ describe('US-13: Monetized Travel Time & Opportunity Cost', () => {
     assert.ok(content.includes('step="5"'), 'Custom number input must use step 5');
     assert.ok(content.includes('$/hr'), 'Must display $/hr unit suffix');
   });
+
+  it('verifies ComparisonCard source includes time-factored secondary subline and time badge', () => {
+    const cardPath = path.resolve(process.cwd(), 'src/components/ComparisonCard.tsx');
+    const content = fs.readFileSync(cardPath, 'utf-8');
+
+    assert.ok(
+      content.includes('Factoring your time ($${hourlyTimeValue}/hr): Net +$${absNet.toLocaleString('),
+      'Must render time-factored secondary subline when hourlyTimeValue > 0'
+    );
+    assert.ok(
+      content.includes('⚡ Saves ${monthlyHoursSaved.toFixed(1)} h/mo driving'),
+      'Must construct driving time savings badge'
+    );
+    assert.ok(
+      content.includes('⚡ Saves ${monthlyHoursSaved.toFixed(1)} h/mo on transit'),
+      'Must construct transit time savings badge'
+    );
+  });
 });
 
 

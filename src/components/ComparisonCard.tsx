@@ -21,7 +21,7 @@ interface ComparisonCardProps {
   input: CommuteInput;
 }
 export default function ComparisonCard({ arbitrage, input }: ComparisonCardProps) {
-  const { driving, transit, co2SavedMonthlyKg, hoursReclaimedMonthly } = arbitrage;
+  const { driving, transit, co2SavedMonthlyKg, timeMetrics } = arbitrage;
 
   const delta = Math.round(Math.abs(driving.monthlyTotal - transit.monthlyTotal));
   const annualDelta = Math.round(delta * 12);
@@ -46,6 +46,29 @@ export default function ComparisonCard({ arbitrage, input }: ComparisonCardProps
     headlineColor = 'text-amber-400';
     badgeColor = 'text-amber-300 bg-amber-500/20 border-amber-500/30';
   }
+
+  // US-13: Time opportunity cost calculations
+  const hourlyTimeValue = input.hourlyTimeValue ?? 0;
+  let timeFactoredSubline: string | null = null;
+  if (hourlyTimeValue > 0 && timeMetrics) {
+    const netSavings = timeMetrics.generalizedMonthlySavings;
+    const absNet = Math.round(Math.abs(netSavings));
+    const modeLabel = netSavings >= 0 ? 'transit' : 'driving';
+    timeFactoredSubline = `Factoring your time ($${hourlyTimeValue}/hr): Net +$${absNet.toLocaleString('en-NZ')}/mo on ${modeLabel}`;
+  }
+
+  // Time saving comparison: difference in one-way commute duration
+  const oneWayDrive = timeMetrics?.oneWayDriveMinutes ?? arbitrage.drivingTimeMins;
+  const oneWayTransit = timeMetrics?.oneWayTransitMinutes ?? arbitrage.transitTimeMins;
+  // Monthly hours saved on the faster mode
+  const monthlyHoursSaved = Math.abs(timeMetrics?.monthlyTimeDeltaHours ?? 0);
+  const isDriveFaster = oneWayDrive < oneWayTransit;
+  const isTransitFaster = oneWayTransit < oneWayDrive;
+  const timeBadgeLabel = isDriveFaster
+    ? `⚡ Saves ${monthlyHoursSaved.toFixed(1)} h/mo driving`
+    : isTransitFaster
+    ? `⚡ Saves ${monthlyHoursSaved.toFixed(1)} h/mo on transit`
+    : `⚡ Same commute time`;
 
   return (
     <div className="space-y-3">
@@ -88,6 +111,12 @@ export default function ComparisonCard({ arbitrage, input }: ComparisonCardProps
               <div className="text-xs text-slate-400 mt-0.5 font-medium">
                 {subline}
               </div>
+              {timeFactoredSubline && (
+                <div className="text-xs font-semibold text-sky-400 mt-1 flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 shrink-0" />
+                  <span>{timeFactoredSubline}</span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -121,8 +150,8 @@ export default function ComparisonCard({ arbitrage, input }: ComparisonCardProps
             <div className="bg-slate-900/90 border border-slate-800 px-2.5 py-1 rounded-xl flex items-center gap-1.5">
               <Clock className="w-3.5 h-3.5 text-sky-400 shrink-0" />
               <div>
-                <span className="text-[10px] text-slate-400 block font-medium">Time Gained</span>
-                <span className="text-xs font-bold text-slate-200 tabular-nums">{hoursReclaimedMonthly}h/mo</span>
+                <span className="text-[10px] text-slate-400 block font-medium">Travel Time</span>
+                <span className="text-xs font-bold text-slate-200 tabular-nums">{timeBadgeLabel}</span>
               </div>
             </div>
           </div>
