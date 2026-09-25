@@ -2,8 +2,9 @@
 
 import { NZ_EV_CHARGING_RATES, VEHICLE_PRESETS } from '@/config/fares.config';
 import { AUCKLAND_SUBURBS } from '@/config/suburbs';
-import { CommuteInput, ConcessionType, EVChargingSource, EvChargingMode, ParkingTier, VehiclePowertrain, VehicleType } from '@/types';
+import { CommuteInput, ConcessionType, EVChargingSource, EvChargingMode, ParkingTier, TransitMode, VehiclePowertrain, VehicleType } from '@/types';
 import {
+  Bus,
   Car,
   ChevronDown,
   Clock,
@@ -11,6 +12,7 @@ import {
   Info,
   MapPin,
   Settings2,
+  Ship,
   Users,
   Wrench,
   Zap,
@@ -126,6 +128,47 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
     // If 'custom', retain current or default to 30
   };
 
+  const handleOriginChange = (originId: string) => {
+    const isWaiheke = originId === 'waiheke' || input.destinationSuburbId === 'waiheke';
+    const updated: CommuteInput = {
+      ...input,
+      originSuburbId: originId,
+      isWaihekeRoute: isWaiheke,
+      transitMode: isWaiheke ? 'FERRY' : input.transitMode,
+    };
+    notifyChange(updated);
+  };
+
+  const handleDestinationChange = (destId: string) => {
+    const isWaiheke = input.originSuburbId === 'waiheke' || destId === 'waiheke';
+    const updated: CommuteInput = {
+      ...input,
+      destinationSuburbId: destId,
+      isWaihekeRoute: isWaiheke,
+      transitMode: isWaiheke ? 'FERRY' : input.transitMode,
+    };
+    notifyChange(updated);
+  };
+
+  const handleTransitModeSelect = (mode: TransitMode) => {
+    const isWaiheke =
+      input.originSuburbId === 'waiheke' ||
+      input.destinationSuburbId === 'waiheke' ||
+      (mode === 'FERRY' && input.isWaihekeRoute);
+    const updated: CommuteInput = {
+      ...input,
+      transitMode: mode,
+      isWaihekeRoute: isWaiheke,
+    };
+    notifyChange(updated);
+  };
+
+  const activeTransitMode: TransitMode =
+    input.transitMode ??
+    (input.originSuburbId === 'waiheke' || input.destinationSuburbId === 'waiheke'
+      ? 'FERRY'
+      : 'BUS');
+
   return (
     <div className="glass-panel rounded-2xl p-4 sm:p-5 border border-slate-800 space-y-4">
       {/* Header */}
@@ -149,7 +192,7 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
           <div className="relative">
             <select
               value={input.originSuburbId}
-              onChange={(e) => handleFieldChange('originSuburbId', e.target.value)}
+              onChange={(e) => handleOriginChange(e.target.value)}
               className="w-full min-h-[44px] bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2 text-sm text-slate-100 font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-none transition appearance-none cursor-pointer"
             >
               {AUCKLAND_SUBURBS.map((suburb) => (
@@ -171,7 +214,7 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
           <div className="relative">
             <select
               value={input.destinationSuburbId}
-              onChange={(e) => handleFieldChange('destinationSuburbId', e.target.value)}
+              onChange={(e) => handleDestinationChange(e.target.value)}
               className="w-full min-h-[44px] bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2 text-sm text-slate-100 font-medium focus:ring-2 focus:ring-sky-500 focus:outline-none transition appearance-none cursor-pointer"
             >
               {AUCKLAND_SUBURBS.map((suburb) => (
@@ -182,6 +225,47 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
             </select>
             <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-3.5 pointer-events-none" />
           </div>
+        </div>
+      </div>
+
+      {/* Transit Mode Selector (US-20) */}
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between">
+          <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+            <Bus className="w-3.5 h-3.5 text-emerald-400" />
+            Transit Mode
+          </label>
+          {input.isWaihekeRoute && (
+            <span className="text-[10px] text-amber-400 font-mono">
+              Waiheke Fullers (AT Cap Exempt)
+            </span>
+          )}
+        </div>
+        <div className="grid grid-cols-2 gap-1.5">
+          <button
+            type="button"
+            onClick={() => handleTransitModeSelect('BUS')}
+            className={`min-h-[44px] px-3 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 border ${
+              activeTransitMode !== 'FERRY' && activeTransitMode !== 'Ferry'
+                ? 'bg-emerald-500 text-slate-950 font-black shadow-md border-emerald-500'
+                : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
+            }`}
+          >
+            <Bus className="w-4 h-4" />
+            Bus / Train (AT HOP $50 Cap)
+          </button>
+          <button
+            type="button"
+            onClick={() => handleTransitModeSelect('FERRY')}
+            className={`min-h-[44px] px-3 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 border ${
+              activeTransitMode === 'FERRY' || activeTransitMode === 'Ferry'
+                ? 'bg-sky-500 text-slate-950 font-black shadow-md border-sky-500'
+                : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
+            }`}
+          >
+            <Ship className="w-4 h-4" />
+            Ferry {input.isWaihekeRoute ? '(Waiheke Rates)' : '(AT HOP)'}
+          </button>
         </div>
       </div>
 

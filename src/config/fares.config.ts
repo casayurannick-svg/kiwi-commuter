@@ -171,8 +171,26 @@ export const AT_HOP_ZONE_FARES_BY_CONCESSION: Record<FareConcession, Record<numb
 /**
  * Auckland Transport 7-Day Fare Cap
  * Passengers never pay more than $50 for all bus, train, and inner ferry travel over any 7-day rolling window.
+ * Note: Exempt commercial services like Waiheke Ferry (Fullers360) are NOT eligible for the $50 cap.
  */
 export const AT_HOP_7_DAY_CAP = 50.00;
+
+/**
+ * Waiheke Ferry Rates (Fullers360 Commercial Ferry Service)
+ * Statutory exemption from the AT $50 7-day fare cap.
+ */
+export const WAIHEKE_FERRY_FARES = {
+  singleTripStandard: 32.00, // Standard adult one-way HOP fare
+  dailyReturnStandard: 64.00,
+  monthlyPass: 403.00, // Fullers Waiheke Commuter Monthly Pass
+  concessionFares: {
+    adult: 32.00,
+    tertiary: 25.60,
+    community_connect: 16.00,
+    youth: 16.00,
+    supergold: 16.00, // Off-peak concessions/resident
+  } as Record<ConcessionType, number>,
+};
 
 export const CONCESSION_MULTIPLIERS: Record<
   ConcessionType,

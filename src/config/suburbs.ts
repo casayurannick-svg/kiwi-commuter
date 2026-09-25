@@ -166,6 +166,14 @@ export const SUBURB_CENTROIDS: SuburbCentroid[] = [
     defaultZonesToCBD: 3,
     approxDistanceKmToCBD: 12.9,
   },
+  {
+    id: 'waiheke',
+    name: 'Waiheke Island (Matiatia)',
+    region: 'Auckland Central',
+    coordinates: [174.9984, -36.7828],
+    defaultZonesToCBD: 5,
+    approxDistanceKmToCBD: 21.5,
+  },
 
   // North Shore
   {
@@ -598,6 +606,13 @@ const TRANSIT_METADATA: Record<
     primaryTransitMode: 'Train',
     transitTimeToCbdMins: 20,
     transitRouteNotes: 'Sylvia Park Train Station (Eastern Line direct to Britomart)',
+  },
+  waiheke: {
+    drivingTimePeakMins: 65,
+    drivingTimeOffPeakMins: 40,
+    primaryTransitMode: 'Ferry',
+    transitTimeToCbdMins: 40,
+    transitRouteNotes: 'Fullers360 Matiatia ⇄ Downtown Ferry Terminal (Exempt from AT $50 Cap)',
   },
   takapuna: {
     drivingTimePeakMins: 35,

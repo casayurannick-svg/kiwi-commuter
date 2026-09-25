@@ -31,6 +31,8 @@ export interface VehicleConfig {
   description: string;
 }
 
+export type TransitMode = 'BUS' | 'TRAIN' | 'BUSWAY' | 'FERRY' | 'Bus' | 'Train' | 'Northern Busway' | 'Ferry';
+
 export interface Suburb extends SuburbCentroid {
   zone: 1 | 2 | 3 | 4 | 5;
   drivingDistanceToCbdKm: number;
@@ -66,6 +68,8 @@ export interface CommuteInput {
   hourlyTimeValue?: number; // Value of commuter time in NZD/hour (default 0)
   drivingTimeMins?: number; // Optional one-way driving time in minutes override
   transitTimeMins?: number; // Optional one-way transit time in minutes override
+  transitMode?: TransitMode; // Selected transit mode e.g. 'FERRY' | 'BUS' | 'TRAIN'
+  isWaihekeRoute?: boolean; // True if commuting via Waiheke Ferry (exempt from $50 AT cap)
 }
 
 export type EVChargingSource = 'HOME_OFFPEAK' | 'HOME_FLAT' | 'PUBLIC_DC' | 'CUSTOM';

@@ -11,6 +11,7 @@ import {
   PARKING_TIER_RATES,
   STATUTORY_NZTA_RUC_RATES,
   VEHICLE_PRESETS,
+  WAIHEKE_FERRY_FARES,
 } from '@/config/fares.config';
 import { estimateRouteMetrics, getSuburbById } from '@/config/suburbs';
 import {
@@ -186,29 +187,72 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
     monthlyCo2Kg: round1(monthlyCo2KgDriving),
   };
 
-  // --- Public Transport (AT HOP) Costs ---
-  const zoneCount = route.zonesTraveled;
-  const singleTripStandardFare = AT_HOP_ZONE_FARES[zoneCount] || 2.60;
+  // --- Public Transport (AT HOP / Ferry) Costs ---
+  const isFerry =
+    input.transitMode === 'FERRY' ||
+    input.transitMode === 'Ferry' ||
+    (!input.transitMode && origin.primaryTransitMode === 'Ferry');
 
-  // Concession calculation
+  const isWaiheke = Boolean(
+    input.isWaihekeRoute ||
+    (isFerry && (input.originSuburbId === 'waiheke' || input.destinationSuburbId === 'waiheke'))
+  );
+
+  const zoneCount = route.zonesTraveled;
+
+  let singleTripStandardFare: number;
   let singleTripConcessionFare: number;
-  if (input.fareConcession && AT_HOP_ZONE_FARES_BY_CONCESSION[input.fareConcession]) {
-    singleTripConcessionFare = AT_HOP_ZONE_FARES_BY_CONCESSION[input.fareConcession][zoneCount];
+  let isHopCapApplied = false;
+  let hopCappedWeeklyFare: number;
+  let weeklyTransitTotal: number;
+  let monthlyTransitTotal: number;
+
+  if (isFerry && isWaiheke) {
+    // US-20: Waiheke Ferry (Fullers360) bypasses the AT $50 weekly cap and applies Fullers commercial rates
+    singleTripStandardFare = WAIHEKE_FERRY_FARES.singleTripStandard;
+    const concessionRate = WAIHEKE_FERRY_FARES.concessionFares[input.concession] ?? singleTripStandardFare;
+    singleTripConcessionFare = round2(concessionRate);
+
+    const dailyTransitFare = round2(singleTripConcessionFare * 2);
+    const uncappedWeeklyFare = round2(dailyTransitFare * input.daysPerWeek);
+
+    // Fullers Waiheke Ferry is exempt from AT $50 7-day cap
+    isHopCapApplied = false;
+    hopCappedWeeklyFare = uncappedWeeklyFare;
+    weeklyTransitTotal = hopCappedWeeklyFare;
+
+    // Use monthly pass rate if adult 5-day commute weekly total exceeds monthly pass breakdown
+    const rawMonthly = round2(weeklyTransitTotal * WEEKS_PER_MONTH);
+    monthlyTransitTotal =
+      input.concession === 'adult' && rawMonthly > WAIHEKE_FERRY_FARES.monthlyPass
+        ? WAIHEKE_FERRY_FARES.monthlyPass
+        : rawMonthly;
   } else {
-    const concessionInfo =
-      CONCESSION_MULTIPLIERS[input.concession] || CONCESSION_MULTIPLIERS.adult;
-    singleTripConcessionFare = round2(singleTripStandardFare * concessionInfo.multiplier);
+    // Standard AT HOP Zonal Fares (Devonport, Birkenhead, Hobsonville ferries & bus/train)
+    singleTripStandardFare = AT_HOP_ZONE_FARES[zoneCount] || 2.60;
+
+    // Concession calculation
+    if (input.fareConcession && AT_HOP_ZONE_FARES_BY_CONCESSION[input.fareConcession]) {
+      singleTripConcessionFare = AT_HOP_ZONE_FARES_BY_CONCESSION[input.fareConcession][zoneCount];
+    } else {
+      const concessionInfo =
+        CONCESSION_MULTIPLIERS[input.concession] || CONCESSION_MULTIPLIERS.adult;
+      singleTripConcessionFare = round2(singleTripStandardFare * concessionInfo.multiplier);
+    }
+
+    const dailyTransitFare = round2(singleTripConcessionFare * 2);
+    const uncappedWeeklyFare = round2(dailyTransitFare * input.daysPerWeek);
+
+    // Apply AT HOP 7-Day $50 Cap
+    isHopCapApplied = uncappedWeeklyFare > AT_HOP_7_DAY_CAP;
+    hopCappedWeeklyFare = isHopCapApplied ? AT_HOP_7_DAY_CAP : uncappedWeeklyFare;
+
+    weeklyTransitTotal = round2(hopCappedWeeklyFare);
+    monthlyTransitTotal = round2(weeklyTransitTotal * WEEKS_PER_MONTH);
   }
 
   const dailyTransitFare = round2(singleTripConcessionFare * 2);
   const uncappedWeeklyFare = round2(dailyTransitFare * input.daysPerWeek);
-
-  // Apply AT HOP 7-Day $50 Cap
-  const isHopCapApplied = uncappedWeeklyFare > AT_HOP_7_DAY_CAP;
-  const hopCappedWeeklyFare = isHopCapApplied ? AT_HOP_7_DAY_CAP : uncappedWeeklyFare;
-
-  const weeklyTransitTotal = round2(hopCappedWeeklyFare);
-  const monthlyTransitTotal = round2(weeklyTransitTotal * WEEKS_PER_MONTH);
   const annualTransitTotal = round2(monthlyTransitTotal * 12);
 
   // Monthly CO2 for transit (kg)
@@ -227,7 +271,7 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
     monthlyTotal: monthlyTransitTotal,
     annualTotal: annualTransitTotal,
     monthlyCo2Kg: round1(monthlyCo2KgTransit),
-    primaryMode: origin.primaryTransitMode,
+    primaryMode: isFerry ? 'Ferry' : origin.primaryTransitMode,
     estimatedTransitTimeMins: route.transitTimeMins,
   };
 

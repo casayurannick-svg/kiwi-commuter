@@ -23,6 +23,7 @@
 | **US-17** | Remove Corridors Preset Menu | **DONE** | [`src/components/DashboardClient.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/DashboardClient.tsx) | Completely removed horizontal scrolling Corridors preset buttons, data structure, and handlers to reduce UI distraction. |
 | **US-18** | Remove Header Metadata and Status Badges | **DONE** | [`src/components/CommuteForm.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/CommuteForm.tsx), [`src/components/DashboardClient.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/DashboardClient.tsx), [`tests/calculator.test.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/tests/calculator.test.ts) | Removed "Real-time delta" text, "Auckland Transport & MBIE Weekly Sync" footer text, and policy badges ("2026 RUC Active", "AT $50 Cap") to declutter the UI. |
 | **US-19** | Tooltip for Vehicle Wear & Tear Benchmark | **DONE** | [`src/components/CommuteForm.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/CommuteForm.tsx), [`src/components/__tests__/CommuteForm.test.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/__tests__/CommuteForm.test.tsx), [`tests/calculator.test.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/tests/calculator.test.ts) | Added accessible info icon and tooltip explaining the $0.18/km AA/IRD tires, brakes, and servicing benchmark rate. |
+| **US-20** | Ferry Commute Mode & Waiheke Cap Exception | **DONE** | [`src/types/index.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/types/index.ts), [`src/config/fares.config.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/config/fares.config.ts), [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts), [`src/components/CommuteForm.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/CommuteForm.tsx), [`src/lib/__tests__/calculator.test.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/__tests__/calculator.test.ts) | Ferry mode selection, silent address Waiheke detection, Fullers commercial rates bypassing AT $50 cap while retaining cap for Devonport. |
 
 ---
 
@@ -273,6 +274,22 @@
     *"AA/IRD annual benchmark: $0.18/km covers the average cost of tires, brake pads, and routine servicing for a typical NZ vehicle."*
   - Ensure the tooltip is accessible with proper `aria-label` and `role="tooltip"`, fitting within mobile viewports without horizontal overflow.
   - Unit tests in `src/components/__tests__/CommuteForm.test.tsx` and `tests/calculator.test.ts` verify rendering of the info button and tooltip text.
+
+---
+
+### US-20: Ferry Commute Mode and Waiheke Cap Exception
+**As a** maritime or island commuter,  
+**I want to** select Ferry as a distinct transit mode and calculate accurate ferry fares,  
+**So that** inner-harbour routes benefit from the AT $50 7-day cap while exempt routes like Waiheke Island accurately reflect Fullers commercial rates without artificial capping.  
+
+* **Acceptance Criteria:**
+  - Extend `TransitMode` union and add `transitMode?: TransitMode` and `isWaihekeRoute?: boolean` to `CommuteInput`.
+  - Add `WAIHEKE_FERRY_FARES` to `src/config/fares.config.ts` with standard HOP single trip ($32.00), daily return ($64.00), monthly pass ($403.00), and concession schedules.
+  - In `src/lib/calculator.ts`:
+    - When `transitMode === 'FERRY'` and `isWaihekeRoute === true` (or suburb is Waiheke), bypass the AT $50 weekly cap and apply Fullers commercial rates.
+    - When `transitMode === 'FERRY'` on standard inner-harbour routes (e.g., Devonport, Birkenhead, Hobsonville), apply standard AT HOP zonal fares and enforce the $50 7-day cap.
+  - In `src/components/CommuteForm.tsx`, add a Transit Mode selector with 44px min-height buttons ("Bus / Train" and "Ferry") and silent address detection updating `isWaihekeRoute` when Waiheke is selected.
+  - Unit tests verify Devonport ferry respects the $50 cap while Waiheke route exceeds the cap.
 
 ---
 

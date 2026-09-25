@@ -5,6 +5,7 @@ import {
   EVChargingSource,
   EvChargingMode,
   ParkingTier,
+  TransitMode,
   VehiclePowertrain,
   VehicleType,
 } from '@/types';
@@ -84,6 +85,14 @@ export function serializeCommuteToParams(input: CommuteInput): URLSearchParams {
     params.set('timeRate', input.hourlyTimeValue.toString());
   }
 
+  if (input.transitMode) {
+    params.set('transitMode', input.transitMode);
+  }
+
+  if (input.isWaihekeRoute) {
+    params.set('waiheke', '1');
+  }
+
   return params;
 }
 
@@ -126,6 +135,16 @@ export function parseCommuteFromParams(
   const wearVal = params.has('wear')
     ? params.get('wear') === '1' || params.get('wear') === 'true'
     : undefined;
+  const rawTransitMode = params.get('transitMode') as TransitMode | undefined;
+  const rawWaiheke = params.get('waiheke');
+  const fromSuburb = params.get('from') || fallback.originSuburbId;
+  const toSuburb = params.get('to') || fallback.destinationSuburbId;
+  const isWaiheke =
+    rawWaiheke === '1' ||
+    rawWaiheke === 'true' ||
+    fromSuburb === 'waiheke' ||
+    toSuburb === 'waiheke' ||
+    Boolean(fallback.isWaihekeRoute);
 
   const rawChargeSource = params.get('chargeSource') || params.get('evChargeMode');
   let evChargingSource: EVChargingSource | undefined = fallback.evChargingSource;
@@ -191,6 +210,8 @@ export function parseCommuteFromParams(
     evChargingSource,
     evChargingMode,
     hourlyTimeValue: timeVal !== undefined && !isNaN(timeVal) && timeVal >= 0 ? timeVal : fallback.hourlyTimeValue,
+    transitMode: rawTransitMode || (isWaiheke ? 'FERRY' : fallback.transitMode),
+    isWaihekeRoute: isWaiheke,
   };
 }
 

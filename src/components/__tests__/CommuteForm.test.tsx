@@ -41,4 +41,15 @@ describe('src/components/CommuteForm.tsx - US-19 Wear & Tear Benchmark Tooltip',
       'Must contain exact AA/IRD benchmark tooltip explanation'
     );
   });
+
+  it('renders Transit Mode selector including Ferry options (US-20)', () => {
+    const html = renderToStaticMarkup(
+      React.createElement(CommuteForm, { input: defaultInput })
+    );
+
+    assert.ok(html.includes('Transit Mode'), 'Must render Transit Mode label');
+    assert.ok(html.includes('Bus / Train (AT HOP $50 Cap)'), 'Must render Bus / Train button');
+    assert.ok(html.includes('Ferry'), 'Must render Ferry button');
+    assert.ok(html.includes('Waiheke Island (Matiatia)'), 'Must include Waiheke Island in suburb list');
+  });
 });

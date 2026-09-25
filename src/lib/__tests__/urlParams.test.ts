@@ -135,4 +135,23 @@ describe('src/lib/urlParams.ts - URL Search Param Synchronization', () => {
     const legacyParsed = parseCommuteFromParams(legacyParams, defaultFallback);
     assert.strictEqual(legacyParsed.hourlyTimeValue, 35);
   });
+
+  it('serializes and parses transitMode and isWaihekeRoute correctly', () => {
+    const inputWithFerry: CommuteInput = {
+      ...defaultFallback,
+      originSuburbId: 'waiheke',
+      transitMode: 'FERRY',
+      isWaihekeRoute: true,
+    };
+
+    const params = serializeCommuteToParams(inputWithFerry);
+    assert.strictEqual(params.get('from'), 'waiheke');
+    assert.strictEqual(params.get('transitMode'), 'FERRY');
+    assert.strictEqual(params.get('waiheke'), '1');
+
+    const parsed = parseCommuteFromParams(params, defaultFallback);
+    assert.strictEqual(parsed.originSuburbId, 'waiheke');
+    assert.strictEqual(parsed.transitMode, 'FERRY');
+    assert.strictEqual(parsed.isWaihekeRoute, true);
+  });
 });

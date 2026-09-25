@@ -105,6 +105,56 @@ describe('src/lib/calculator.ts - calculateCommuteArbitrage', () => {
       assert.strictEqual(result.transit.hopCappedWeeklyFare, 10.40);
       assert.strictEqual(result.transit.weeklyTotal, 10.40);
     });
+
+    it('US-20: Devonport ferry respects the AT $50 7-day cap', () => {
+      // Devonport to CBD: Zone 2 ($4.45 adult one-way, $8.90 daily return)
+      // 5 days per week: 5 * $8.90 = $44.50 uncapped
+      // With 6 days: 6 * $8.90 = $53.40 -> capped at $50.00
+      const result = calculateCommuteArbitrage({
+        originSuburbId: 'devonport',
+        destinationSuburbId: 'cbd',
+        daysPerWeek: 6,
+        vehicleType: 'petrol91',
+        transitMode: 'FERRY',
+        parkingDailyRate: 0,
+        parkingDaysPerWeek: 0,
+        concession: 'adult',
+        includeMaintenanceWear: false,
+        carpoolPassengers: 1,
+      });
+
+      assert.strictEqual(result.transit.uncappedWeeklyFare, 53.40);
+      assert.strictEqual(result.transit.isHopCapApplied, true);
+      assert.strictEqual(result.transit.hopCappedWeeklyFare, AT_HOP_7_DAY_CAP);
+      assert.strictEqual(result.transit.weeklyTotal, 50.00);
+      assert.strictEqual(result.transit.primaryMode, 'Ferry');
+    });
+
+    it('US-20: Waiheke route bypasses the $50 cap and applies Fullers rates exceeding the cap', () => {
+      // Waiheke to CBD: Fullers360 commercial rate ($32.00 adult one-way, $64.00 daily return)
+      // 3 days per week: 3 * $64.00 = $192.00/wk (bypasses $50 cap)
+      const result = calculateCommuteArbitrage({
+        originSuburbId: 'waiheke',
+        destinationSuburbId: 'cbd',
+        daysPerWeek: 3,
+        vehicleType: 'petrol91',
+        transitMode: 'FERRY',
+        isWaihekeRoute: true,
+        parkingDailyRate: 0,
+        parkingDaysPerWeek: 0,
+        concession: 'adult',
+        includeMaintenanceWear: false,
+        carpoolPassengers: 1,
+      });
+
+      assert.strictEqual(result.transit.singleTripStandardFare, 32.00);
+      assert.strictEqual(result.transit.dailyFare, 64.00);
+      assert.strictEqual(result.transit.uncappedWeeklyFare, 192.00);
+      assert.strictEqual(result.transit.isHopCapApplied, false);
+      assert.strictEqual(result.transit.weeklyTotal, 192.00);
+      assert.ok(result.transit.weeklyTotal > AT_HOP_7_DAY_CAP, 'Waiheke weekly fare must exceed $50 cap');
+      assert.strictEqual(result.transit.primaryMode, 'Ferry');
+    });
   });
 
   describe('Statutory NZTA Road User Charges (RUC)', () => {
