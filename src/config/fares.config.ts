@@ -1,5 +1,96 @@
-import { ConcessionType, VehicleConfig, VehicleType } from '@/types';
+import {
+  ConcessionType,
+  FareConcession,
+  ParkingTier,
+  VehicleConfig,
+  VehiclePowertrain,
+  VehicleType,
+} from '@/types';
 
+/**
+ * Statutory New Zealand Road User Charges (RUC) Rates
+ * Under the Road User Charges Act 2012 and the Road User Charges (Light Electric RUC) Amendment Regulations 2024.
+ * Effective 1 April 2024: Light Electric Vehicles (BEVs) and Plug-in Hybrids (PHEVs) entered the RUC system.
+ */
+export interface StatutoryRucRate {
+  powertrain: VehiclePowertrain;
+  ratePer1000Km: number; // NZD per 1,000 km
+  ratePerKm: number; // NZD per km
+  adminTransactionFee: number; // Online purchasing fee per distance licence
+  legislation: string;
+  description: string;
+}
+
+export const STATUTORY_NZTA_RUC_RATES: Record<VehiclePowertrain, StatutoryRucRate> = {
+  PETROL_91: {
+    powertrain: 'PETROL_91',
+    ratePer1000Km: 0.0,
+    ratePerKm: 0.0,
+    adminTransactionFee: 0.0,
+    legislation: 'Land Transport Management Act 2003 (Excise Duty at Pump)',
+    description: 'Road funding collected via Fuel Excise Duty (FED) embedded in retail pump price.',
+  },
+  PETROL_95: {
+    powertrain: 'PETROL_95',
+    ratePer1000Km: 0.0,
+    ratePerKm: 0.0,
+    adminTransactionFee: 0.0,
+    legislation: 'Land Transport Management Act 2003 (Excise Duty at Pump)',
+    description: 'Road funding collected via Fuel Excise Duty (FED) embedded in retail pump price.',
+  },
+  DIESEL: {
+    powertrain: 'DIESEL',
+    ratePer1000Km: 76.0,
+    ratePerKm: 0.076,
+    adminTransactionFee: 12.44,
+    legislation: 'Road User Charges Act 2012 (Vehicle Type 1 / Diesel Light Vehicle)',
+    description: 'Statutory RUC of $76 per 1,000 km for diesel powered light passenger vehicles.',
+  },
+  BEV: {
+    powertrain: 'BEV',
+    ratePer1000Km: 76.0,
+    ratePerKm: 0.076,
+    adminTransactionFee: 12.44,
+    legislation: 'Road User Charges (Light Electric RUC) Amendment 2024',
+    description: 'Light Electric Vehicle RUC: $76 per 1,000 km effective 1 April 2024.',
+  },
+  PHEV: {
+    powertrain: 'PHEV',
+    ratePer1000Km: 38.0,
+    ratePerKm: 0.038,
+    adminTransactionFee: 12.44,
+    legislation: 'Road User Charges (PHEV Reduced Rate) Amendment 2024',
+    description: 'Reduced RUC of $38 per 1,000 km acknowledging petrol excise duty paid in parallel.',
+  },
+};
+
+export const NZTA_RUC_RATES: Record<VehicleType, { ratePerKm: number; description: string }> = {
+  petrol91: {
+    ratePerKm: STATUTORY_NZTA_RUC_RATES.PETROL_91.ratePerKm,
+    description: STATUTORY_NZTA_RUC_RATES.PETROL_91.description,
+  },
+  petrol95: {
+    ratePerKm: STATUTORY_NZTA_RUC_RATES.PETROL_95.ratePerKm,
+    description: STATUTORY_NZTA_RUC_RATES.PETROL_95.description,
+  },
+  diesel: {
+    ratePerKm: STATUTORY_NZTA_RUC_RATES.DIESEL.ratePerKm,
+    description: STATUTORY_NZTA_RUC_RATES.DIESEL.description,
+  },
+  bev: {
+    ratePerKm: STATUTORY_NZTA_RUC_RATES.BEV.ratePerKm,
+    description: STATUTORY_NZTA_RUC_RATES.BEV.description,
+  },
+  phev: {
+    ratePerKm: STATUTORY_NZTA_RUC_RATES.PHEV.ratePerKm,
+    description: STATUTORY_NZTA_RUC_RATES.PHEV.description,
+  },
+};
+
+/**
+ * Auckland Transport (AT HOP) Zonal Fare Tables
+ * Official zonal fare structure across bus, train, and inner harbour ferries.
+ */
 export const AT_HOP_ZONE_FARES: Record<number, number> = {
   1: 2.60,
   2: 4.45,
@@ -8,118 +99,166 @@ export const AT_HOP_ZONE_FARES: Record<number, number> = {
   5: 9.40,
 };
 
-export const AT_HOP_7_DAY_CAP = 50.00; // AT 7-Day Fare Cap introduced for buses, trains, and inner ferries
+export const AT_HOP_ZONE_FARES_BY_CONCESSION: Record<FareConcession, Record<number, number>> = {
+  ADULT: {
+    1: 2.60,
+    2: 4.45,
+    3: 6.00,
+    4: 7.70,
+    5: 9.40,
+  },
+  TERTIARY: {
+    1: 2.08,
+    2: 3.56,
+    3: 4.80,
+    4: 6.16,
+    5: 7.52,
+  },
+  CHILD: {
+    1: 1.30,
+    2: 2.23,
+    3: 3.00,
+    4: 3.85,
+    5: 4.70,
+  },
+};
 
-export const CONCESSION_MULTIPLIERS: Record<ConcessionType, { multiplier: number; label: string; description: string }> = {
+/**
+ * Auckland Transport 7-Day Fare Cap
+ * Passengers never pay more than $50 for all bus, train, and inner ferry travel over any 7-day rolling window.
+ */
+export const AT_HOP_7_DAY_CAP = 50.00;
+
+export const CONCESSION_MULTIPLIERS: Record<
+  ConcessionType,
+  { multiplier: number; label: string; description: string; statutoryCategory: FareConcession }
+> = {
   adult: {
     multiplier: 1.0,
     label: 'Standard Adult (AT HOP)',
     description: 'Standard AT HOP card fare',
+    statutoryCategory: 'ADULT',
   },
   tertiary: {
     multiplier: 0.8,
     label: 'Tertiary Student (20% off)',
     description: 'Enrolled students at approved NZ tertiary institutions',
+    statutoryCategory: 'TERTIARY',
   },
   community_connect: {
     multiplier: 0.5,
     label: 'Community Connect (50% off)',
     description: 'Community Services Card holders',
+    statutoryCategory: 'CHILD',
   },
   youth: {
     multiplier: 0.5,
     label: 'Youth 13–24 (50% off)',
     description: 'Youth discount on AT HOP',
+    statutoryCategory: 'CHILD',
   },
   supergold: {
     multiplier: 0.5, // Averaging off-peak free vs peak travel
     label: 'SuperGold Cardholder',
     description: 'Free off-peak (after 9am & weekends), standard during morning peak',
+    statutoryCategory: 'ADULT',
   },
 };
 
-export const NZTA_RUC_RATES: Record<VehicleType, { ratePerKm: number; description: string }> = {
-  petrol91: {
-    ratePerKm: 0.00,
-    description: 'Excise duty collected at pump; no road user charges.',
+/**
+ * Commercial Parking Medians in Auckland
+ * Surveyed medians across Auckland Transport parking facilities and private commercial operators (Wilson, Secure).
+ */
+export const PARKING_TIER_RATES: Record<
+  ParkingTier,
+  { rate: number; label: string; description: string }
+> = {
+  CBD_EARLY_BIRD: {
+    rate: 18.00,
+    label: 'CBD Early Bird',
+    description: 'Entry before 9:00 AM at Downtown / Civic / Fanshawe car parks.',
   },
-  petrol95: {
-    ratePerKm: 0.00,
-    description: 'Excise duty collected at pump; no road user charges.',
+  CBD_CASUAL: {
+    rate: 26.00,
+    label: 'CBD Casual All-Day',
+    description: 'Casual daily maximum rate at commercial parking buildings.',
   },
-  diesel: {
-    ratePerKm: 0.076,
-    description: 'NZTA standard diesel RUC: $76 per 1,000 km ($0.076/km).',
+  SUBURBAN_HUB: {
+    rate: 6.00,
+    label: 'Suburban Transit Hub',
+    description: 'Fringe or park-and-ride facility (e.g. Newmarket, Takapuna, Henderson).',
   },
-  bev: {
-    ratePerKm: 0.076,
-    description: 'NZTA Light EV RUC: $76 per 1,000 km ($0.076/km) effective April 2024.',
-  },
-  phev: {
-    ratePerKm: 0.038,
-    description: 'NZTA PHEV RUC: $38 per 1,000 km ($0.038/km) effective April 2024.',
+  FREE: {
+    rate: 0.00,
+    label: 'Free / Subsidized',
+    description: 'Dedicated workplace parking or street parking without charge.',
   },
 };
+
+export const DEFAULT_PARKING_PRESETS = [
+  { name: 'Auckland CBD Early Bird (Downtown / Civic)', rate: PARKING_TIER_RATES.CBD_EARLY_BIRD.rate, tier: 'CBD_EARLY_BIRD' as ParkingTier },
+  { name: 'Commercial Parking Casual (Wilson / Secure)', rate: PARKING_TIER_RATES.CBD_CASUAL.rate, tier: 'CBD_CASUAL' as ParkingTier },
+  { name: 'Fringe / Suburban Hub (Newmarket, Takapuna)', rate: PARKING_TIER_RATES.SUBURBAN_HUB.rate, tier: 'SUBURBAN_HUB' as ParkingTier },
+  { name: 'Free / Subsidized Workplace Parking', rate: PARKING_TIER_RATES.FREE.rate, tier: 'FREE' as ParkingTier },
+];
 
 export const VEHICLE_PRESETS: Record<VehicleType, VehicleConfig> = {
   petrol91: {
     id: 'petrol91',
+    powertrain: 'PETROL_91',
     name: 'Petrol 91 (e.g. Swift, Corolla, Demio)',
     category: 'Combustion',
     defaultConsumption: 7.2,
     unit: 'L/100km',
     defaultFuelPrice: 2.72,
-    rucRatePerKm: 0.00,
+    rucRatePerKm: STATUTORY_NZTA_RUC_RATES.PETROL_91.ratePerKm,
     description: 'Popular compact/hatchback with standard 91 unleaded fuel',
   },
   petrol95: {
     id: 'petrol95',
+    powertrain: 'PETROL_95',
     name: 'Petrol 95/98 (e.g. Golf, Outback, SUV)',
     category: 'Combustion',
     defaultConsumption: 8.8,
     unit: 'L/100km',
     defaultFuelPrice: 2.94,
-    rucRatePerKm: 0.00,
+    rucRatePerKm: STATUTORY_NZTA_RUC_RATES.PETROL_95.ratePerKm,
     description: 'Medium to large petrol cars & performance vehicles',
   },
   diesel: {
     id: 'diesel',
+    powertrain: 'DIESEL',
     name: 'Diesel (e.g. Hilux, Ranger, CX-5)',
     category: 'Combustion',
     defaultConsumption: 8.4,
     unit: 'L/100km',
     defaultFuelPrice: 2.05,
-    rucRatePerKm: 0.076,
+    rucRatePerKm: STATUTORY_NZTA_RUC_RATES.DIESEL.ratePerKm,
     description: 'Diesel vehicle with pump fuel + $76/1,000km NZTA RUC',
   },
   bev: {
     id: 'bev',
+    powertrain: 'BEV',
     name: 'Pure Electric EV (e.g. Model 3, Atto 3, Leaf)',
     category: 'Electric',
     defaultConsumption: 16.5,
     unit: 'kWh/100km',
     defaultFuelPrice: 0.28,
-    rucRatePerKm: 0.076,
+    rucRatePerKm: STATUTORY_NZTA_RUC_RATES.BEV.ratePerKm,
     description: 'Battery Electric Vehicle + home charging + $76/1,000km NZTA RUC',
   },
   phev: {
     id: 'phev',
+    powertrain: 'PHEV',
     name: 'Plug-in Hybrid (e.g. Outlander, Prius Prime)',
     category: 'Hybrid',
     defaultConsumption: 3.8, // Combined blended equivalent
     unit: 'L/100km',
     defaultFuelPrice: 2.72,
-    rucRatePerKm: 0.038,
+    rucRatePerKm: STATUTORY_NZTA_RUC_RATES.PHEV.ratePerKm,
     description: 'Plug-in hybrid operating on blended mode + $38/1,000km NZTA RUC',
   },
 };
-
-export const DEFAULT_PARKING_PRESETS = [
-  { name: 'Auckland CBD Early Bird (Downtown / Civic)', rate: 18.00 },
-  { name: 'Commercial Parking Casual (Wilson / Secure)', rate: 26.00 },
-  { name: 'Fringe / City Fringe (Ponsonby, Grafton, Newmarket)', rate: 12.00 },
-  { name: 'Free / Subsidized Workplace Parking', rate: 0.00 },
-];
 
 export const NZ_AA_MAINTENANCE_PER_KM = 0.18; // Amortized tires, brake pads, servicing, WOF, depreciation
 

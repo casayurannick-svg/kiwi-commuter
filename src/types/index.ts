@@ -1,9 +1,27 @@
+// Statutory & Domain Core Enums/Unions
+export type VehiclePowertrain = 'PETROL_91' | 'PETROL_95' | 'DIESEL' | 'PHEV' | 'BEV';
+
+export type FareConcession = 'ADULT' | 'CHILD' | 'TERTIARY';
+
+export type ParkingTier = 'CBD_EARLY_BIRD' | 'CBD_CASUAL' | 'SUBURBAN_HUB' | 'FREE';
+
+export interface SuburbCentroid {
+  id: string;
+  name: string;
+  region: 'Auckland Central' | 'North Shore' | 'West Auckland' | 'East Auckland' | 'South Auckland';
+  coordinates: [number, number]; // [lng, lat]
+  defaultZonesToCBD: number;
+  approxDistanceKmToCBD: number;
+}
+
+// Backward compatibility & application types
 export type VehicleType = 'petrol91' | 'petrol95' | 'diesel' | 'bev' | 'phev';
 
 export type ConcessionType = 'adult' | 'tertiary' | 'community_connect' | 'youth' | 'supergold';
 
 export interface VehicleConfig {
   id: VehicleType;
+  powertrain: VehiclePowertrain;
   name: string;
   category: 'Combustion' | 'Electric' | 'Hybrid';
   defaultConsumption: number; // L/100km or kWh/100km
@@ -13,12 +31,8 @@ export interface VehicleConfig {
   description: string;
 }
 
-export interface Suburb {
-  id: string;
-  name: string;
+export interface Suburb extends SuburbCentroid {
   zone: 1 | 2 | 3 | 4 | 5;
-  region: 'Central' | 'North Shore' | 'West' | 'South' | 'East' | 'Fringe';
-  coordinates: [number, number]; // [longitude, latitude]
   drivingDistanceToCbdKm: number;
   drivingTimePeakMins: number;
   drivingTimeOffPeakMins: number;
