@@ -13,23 +13,12 @@ import { CommuteInput } from '@/types';
 import {
   Bus,
   Check,
-  Compass,
   Share2,
   ShieldCheck,
   Zap,
 } from 'lucide-react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-
-const QUICK_COMMUTE_PRESETS = [
-  { name: 'Epsom ➔ CBD', origin: 'epsom', dest: 'cbd', days: 3 },
-  { name: 'Albany ➔ CBD (NX1)', origin: 'albany', dest: 'cbd', days: 5 },
-  { name: 'Henderson ➔ CBD (Train)', origin: 'henderson', dest: 'cbd', days: 5 },
-  { name: 'Takapuna ➔ CBD (Busway)', origin: 'takapuna', dest: 'cbd', days: 5 },
-  { name: 'Manukau ➔ CBD (Train)', origin: 'manukau', dest: 'cbd', days: 5 },
-  { name: 'Devonport ➔ CBD (Ferry)', origin: 'devonport', dest: 'cbd', days: 5 },
-  { name: 'Hobsonville ➔ CBD (WX1)', origin: 'hobsonville', dest: 'cbd', days: 5 },
-];
 
 interface DashboardClientProps {
   initialFuelPrices?: FuelBenchmarkDto;
@@ -80,16 +69,6 @@ export default function DashboardClient({ initialFuelPrices }: DashboardClientPr
   );
 
   const arbitrage = useMemo(() => calculateCommuteArbitrage(commuteInput), [commuteInput]);
-
-  const applyPreset = (originId: string, destId: string, days: number) => {
-    setCommuteInput((prev) => ({
-      ...prev,
-      originSuburbId: originId,
-      destinationSuburbId: destId,
-      daysPerWeek: days,
-      parkingDaysPerWeek: days,
-    }));
-  };
 
   const handleShareLink = async () => {
     const url = typeof window !== 'undefined' ? window.location.href : '';
@@ -180,35 +159,6 @@ export default function DashboardClient({ initialFuelPrices }: DashboardClientPr
           </div>
         </div>
       </header>
-
-      {/* Quick Corridor Selection Strip */}
-      <section className="bg-slate-900/40 border-b border-slate-800/80 px-4 sm:px-6 py-2 overflow-x-auto">
-        <div className="max-w-7xl mx-auto flex items-center gap-2 text-xs">
-          <span className="text-slate-400 shrink-0 font-medium flex items-center gap-1 text-[11px]">
-            <Compass className="w-3 h-3 text-teal-400" />
-            Corridors:
-          </span>
-          <div className="flex items-center gap-1.5 overflow-x-auto py-0.5 no-scrollbar">
-            {QUICK_COMMUTE_PRESETS.map((p) => {
-              const isActive =
-                commuteInput.originSuburbId === p.origin && commuteInput.destinationSuburbId === p.dest;
-              return (
-                <button
-                  key={p.name}
-                  onClick={() => applyPreset(p.origin, p.dest, p.days)}
-                  className={`min-h-[36px] px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition border ${
-                    isActive
-                      ? 'bg-emerald-500 text-slate-950 border-emerald-400 shadow-sm font-bold'
-                      : 'bg-slate-900/80 text-slate-300 border-slate-800 hover:border-slate-700 hover:text-white'
-                  }`}
-                >
-                  {p.name}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      </section>
 
       {/* Main Workspace Body (Mobile First Responsive Stack & Desktop 2-Column Grid) */}
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 py-4 sm:py-6">

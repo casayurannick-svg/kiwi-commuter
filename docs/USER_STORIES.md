@@ -20,6 +20,7 @@
 | **US-14** | Plain-Language Financial Verdicts | **DONE** | [`src/components/ComparisonCard.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/ComparisonCard.tsx) | Direct conversational savings verdicts ("You save $X/mo...", "MONTHLY VERDICT" badge). |
 | **US-15** | Privacy-Friendly Traffic & Web Analytics Integration | **DONE** | [`src/app/layout.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/app/layout.tsx), [`package.json`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/package.json) | `@vercel/analytics` installed and `<Analytics />` component embedded in RootLayout. |
 | **US-16** | Plain-Language Time Valuation Balance Sheet ("Mini-Receipt") | **DONE** | [`src/components/ComparisonCard.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/ComparisonCard.tsx), [`src/components/__tests__/ComparisonCard.test.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/__tests__/ComparisonCard.test.tsx) | Recessed card balance sheet breaking down Cash Saved, Time Cost/Gained, and Your True Benefit. |
+| **US-17** | Remove Corridors Preset Menu | **DONE** | [`src/components/DashboardClient.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/DashboardClient.tsx) | Completely removed horizontal scrolling Corridors preset buttons, data structure, and handlers to reduce UI distraction. |
 
 ---
 
@@ -233,6 +234,14 @@
   - **When** viewing the comparison card,
   - **Then** the Time Valuation mini-receipt container is completely omitted from rendering.
   - **And** component unit tests in [`src/components/__tests__/ComparisonCard.test.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/__tests__/ComparisonCard.test.tsx) verify rendering of Cash Saved, Time Cost, and True Benefit with rate > 0, as well as absence when rate = 0.
+
+---
+
+### US-17: Remove Corridors Preset Menu
+* **As a** user interacting with the calculator,  
+* **I want** a streamlined, distraction-free interface without pre-filled corridor buttons,  
+* **So that** I am immediately focused on entering my exact custom origin and destination.  
+* *Acceptance Criteria:* The horizontal scrolling "Corridors" button list is completely removed from the UI. Associated preset data structures and state handlers are deleted.
 
 ## Backlog Stories (PENDING)
 
