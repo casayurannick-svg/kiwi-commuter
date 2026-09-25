@@ -1,6 +1,25 @@
 # Agile User Stories & Acceptance Criteria
 
-## Shipped Stories
+## Executive Story Status Matrix
+
+| Story ID | Title | Status | Evidence / File Path |
+| :--- | :--- | :---: | :--- |
+| **US-01** | Point-to-Point Cost Arbitrage Calculation | **DONE** | [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts), [`src/components/CommuteForm.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/CommuteForm.tsx) |
+| **US-02** | Statutory RUC & Energy Modeling | **DONE** | [`src/config/fares.config.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/config/fares.config.ts), [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts) |
+| **US-03** | Auckland Transport 7-Day Fare Cap Rules | **DONE** | [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts), [`src/components/ComparisonCard.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/ComparisonCard.tsx) |
+| **US-04** | Automated Market Fuel Price Synchronization | **DONE** | [`scripts/fetch-mbie-fuel.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/scripts/fetch-mbie-fuel.ts), [`src/lib/supabase.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/supabase.ts) |
+| **US-05** | Mobile-First Responsive UI & Interactive Map | **DONE** | [`src/components/RouteMap.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/RouteMap.tsx), [`src/components/DashboardClient.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/DashboardClient.tsx) |
+| **US-06** | URL Search Param State Persistence & Sharing | **DONE** | [`src/lib/urlParams.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/urlParams.ts), [`src/components/DashboardClient.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/DashboardClient.tsx) |
+| **US-07** | Carpool & Multi-Passenger Split Engine | **DONE** | [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts), [`src/components/CommuteForm.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/CommuteForm.tsx) |
+| **US-08** | Greater Wellington / Metlink Expansion | **PENDING** | Backlog (Multi-region transit integration planned) |
+| **US-09** | EV Public Charging vs. Home Off-Peak Rate Arbitrage | **DONE** | [`src/config/fares.config.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/config/fares.config.ts), [`src/components/CommuteForm.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/CommuteForm.tsx) |
+| **US-10** | AT Concession Profiles (Tertiary, Youth, Community Connect) | **DONE** | [`src/config/fares.config.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/config/fares.config.ts), [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts) |
+| **US-11** | E-Bike / Micro-Mobility Active Mode | **PENDING** | Backlog (Active mobility & capital payback calculator planned) |
+| **US-12** | Park & Ride Multimodal Hybrid Route | **PENDING** | Backlog (Multi-leg driving + rail transit transfer planned) |
+
+---
+
+## Shipped Stories (DONE)
 
 ### US-01: Point-to-Point Cost Arbitrage Calculation
 **As a** hybrid office commuter,  
@@ -85,6 +104,19 @@
 
 ---
 
+### US-07: Carpool & Multi-Passenger Split Engine
+**As a** driver who commutes with coworkers or family,  
+**I want to** divide parking, RUC, maintenance, and fuel costs by passenger count (1–4),  
+**So that** I can see the multi-passenger tipping point against individual public transit fares.
+
+* **Acceptance Criteria:**
+  - **Given** a solo driver changes the carpool passenger count to 2, 3, or 4 passengers,
+  - **When** computing daily, weekly, monthly, and annual driving costs,
+  - **Then** fuel/energy, RUC, parking, and maintenance are divided equally by the passenger count.
+  - **And** the net arbitrage comparison reflects individual per-passenger vehicle costs against single-passenger transit fares.
+
+---
+
 ### US-09: EV Public Charging vs. Home Off-Peak Rate Arbitrage
 **As an** EV or Plug-in Hybrid commuter without access to off-peak home charging (e.g., apartment dweller or street parker),  
 **I want to** toggle between home charging and public DC fast-charging rates (e.g., ChargeNet, Tesla Supercharger, We.EV),  
@@ -107,16 +139,51 @@
 
 ---
 
-## Planned Backlog Stories
+### US-10: Auckland Transport Concession Profiles (Tertiary, Youth, Community Connect)
+**As a** tertiary student, youth, or Community Services Card holder,  
+**I want to** select my eligible fare concession category,  
+**So that** my transit fares reflect statutory discounts against driving.
 
-### US-07: Carpool Passenger Split Engine
-**As a** driver who commutes with coworkers or family,  
-**I want to** divide parking, RUC, and fuel costs by passenger count (1–4),  
-**So that** I can see the multi-passenger tipping point against individual public transit fares.
+* **Acceptance Criteria:**
+  - **Given** concession selector in Custom Rates,
+  - **When** selecting **Tertiary Student**, apply a 20% discount against standard adult fares ($2.08 / $3.56 / $4.80 / $6.16 / $7.52 across zones 1–5).
+  - **When** selecting **Community Connect** or **Youth 13–24**, apply a 50% statutory discount ($1.30 / $2.23 / $3.00 / $3.85 / $4.70 across zones 1–5).
+  - **When** selecting **SuperGold**, calculate free off-peak travel.
+  - **And** weekly total continues to respect the statutory `$50.00` 7-day fare cap.
 
 ---
+
+## Backlog Stories (PENDING)
 
 ### US-08: Greater Wellington / Metlink Expansion
 **As a** Wellington commuter,  
 **I want to** compare driving into Wellington CBD against Metlink rail and bus zones,  
 **So that** the dashboard serves multi-region New Zealand commuters.
+
+* **Planned Criteria:**
+  - Regional toggle between Greater Auckland (AT) and Greater Wellington (Metlink).
+  - Metlink 14-zone fare structure across Kapiti Coast, Hutt Valley, Johnsonville, and Wairarapa corridors.
+  - Snapper card fare schedules and 30-day passes.
+
+---
+
+### US-11: E-Bike / Micro-Mobility Active Mode
+**As an** active commuter considering an e-bike,  
+**I want to** compare the total cost of ownership of an electric bicycle against both driving and public transit,  
+**So that** I can calculate the break-even payback period of purchasing an e-bike.
+
+* **Planned Criteria:**
+  - Powertrain option for E-Bike (~$0.02/km charging + $0.05/km amortized tire/chain maintenance).
+  - Capital expenditure amortization calculator ($1,500–$4,000 upfront purchase price).
+  - Payback period visualizer (months until transit/fuel savings pay off the bicycle).
+
+---
+
+### US-12: Park & Ride Multimodal Hybrid Route
+**As a** suburban commuter living beyond walking distance to rapid transit,  
+**I want to** calculate a multimodal route (driving to a Park & Ride station, then taking a bus/train to CBD),  
+**So that** I can see the financial arbitrage of hybrid commuting vs driving the entire distance into the CBD.
+
+* **Planned Criteria:**
+  - Multimodal corridor options (e.g. driving Albany to Albany Station, taking NX1 bus to CBD).
+  - Split driving cost (short suburban leg + free/paid park-and-ride facility) + single-seat transit fare.
