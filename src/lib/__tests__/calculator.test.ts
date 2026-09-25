@@ -277,7 +277,7 @@ describe('src/lib/calculator.ts - calculateCommuteArbitrage', () => {
     });
   });
 
-  describe('Time Metrics & Opportunity Cost (US-13)', () => {
+  describe('US-13: Monetized Travel Time & Opportunity Cost', () => {
     it('computes timeMetrics with zero hourlyTimeValue by default', () => {
       const result = calculateCommuteArbitrage({
         originSuburbId: 'albany',
@@ -297,6 +297,59 @@ describe('src/lib/calculator.ts - calculateCommuteArbitrage', () => {
       assert.strictEqual(typeof result.timeMetrics.monthlyTimeDeltaHours, 'number');
       assert.strictEqual(result.timeMetrics.monetizedMonthlyTimeCost, 0);
       assert.strictEqual(result.timeMetrics.generalizedMonthlySavings, result.monthlySavings);
+    });
+
+    it('returns 0 for monetized time cost when hourlyTimeValue = 0', () => {
+      const result = calculateCommuteArbitrage({
+        originSuburbId: 'albany',
+        destinationSuburbId: 'cbd',
+        daysPerWeek: 4,
+        vehicleType: 'petrol91',
+        parkingDailyRate: 18.0,
+        parkingDaysPerWeek: 4,
+        concession: 'adult',
+        includeMaintenanceWear: true,
+        carpoolPassengers: 1,
+        hourlyTimeValue: 0,
+      });
+
+      assert.ok(result.timeMetrics, 'timeMetrics object must be present');
+      assert.strictEqual(result.timeMetrics.monetizedMonthlyTimeCost, 0);
+    });
+
+    it('evaluates a 15-minute one-way drive time advantage at 4 days/week with a $20/hr time value', () => {
+      const result = calculateCommuteArbitrage({
+        originSuburbId: 'albany',
+        destinationSuburbId: 'cbd',
+        daysPerWeek: 4,
+        vehicleType: 'petrol91',
+        parkingDailyRate: 18.0,
+        parkingDaysPerWeek: 4,
+        concession: 'adult',
+        includeMaintenanceWear: true,
+        carpoolPassengers: 1,
+        hourlyTimeValue: 20,
+        drivingTimeMins: 20,
+        transitTimeMins: 35, // 15-minute one-way drive time advantage (transit takes 15 min longer)
+      });
+
+      assert.ok(result.timeMetrics);
+      assert.strictEqual(result.timeMetrics.oneWayDriveMinutes, 20);
+      assert.strictEqual(result.timeMetrics.oneWayTransitMinutes, 35);
+
+      // Assert monthly hours saved is roughly 8.66 (((35 - 20) * 2 * 4 * 4.33) / 60 = 8.66)
+      assert.strictEqual(result.timeMetrics.monthlyTimeDeltaHours, 8.66);
+      assert.ok(
+        Math.abs(result.timeMetrics.monthlyTimeDeltaHours - 8.66) < 0.05,
+        `Expected monthly hours saved roughly 8.66, got ${result.timeMetrics.monthlyTimeDeltaHours}`
+      );
+
+      // Assert monetized time cost is roughly $173.20 (8.66 * 20 = 173.20)
+      assert.strictEqual(result.timeMetrics.monetizedMonthlyTimeCost, 173.2);
+      assert.ok(
+        Math.abs(result.timeMetrics.monetizedMonthlyTimeCost - 173.2) < 0.1,
+        `Expected monetized time cost roughly $173.20, got ${result.timeMetrics.monetizedMonthlyTimeCost}`
+      );
     });
 
     it('computes monetizedMonthlyTimeCost and generalizedMonthlySavings with hourlyTimeValue', () => {

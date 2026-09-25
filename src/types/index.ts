@@ -63,6 +63,8 @@ export interface CommuteInput {
   customFuelPricePerL?: number; // Alias for ICE fuel price
   evChargingMode?: EvChargingMode; // Preset: home_offpeak, home_flat, public_dc, custom
   hourlyTimeValue?: number; // Value of commuter time in NZD/hour (default 0)
+  drivingTimeMins?: number; // Optional one-way driving time in minutes override
+  transitTimeMins?: number; // Optional one-way transit time in minutes override
 }
 
 export type EvChargingMode = 'home_offpeak' | 'home_flat' | 'public_dc' | 'custom';

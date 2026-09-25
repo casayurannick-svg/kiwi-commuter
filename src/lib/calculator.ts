@@ -268,8 +268,10 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
   }
 
   // Time metrics and opportunity cost calculations (US-13)
-  const oneWayDriveMinutes = route.drivingTimePeakMins;
-  const oneWayTransitMinutes = route.transitTimeMins;
+  const oneWayDriveMinutes =
+    typeof input.drivingTimeMins === 'number' ? input.drivingTimeMins : route.drivingTimePeakMins;
+  const oneWayTransitMinutes =
+    typeof input.transitTimeMins === 'number' ? input.transitTimeMins : route.transitTimeMins;
   // ((transit - drive) * 2 * daysPerWeek * 4.33) / 60
   const monthlyTimeDeltaHours = round2(
     ((oneWayTransitMinutes - oneWayDriveMinutes) * 2 * input.daysPerWeek * 4.33) / 60
@@ -300,8 +302,8 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
     arbitrageVerdict,
     arbitrageTagline,
     distanceKm: distanceOneWayKm,
-    drivingTimeMins: route.drivingTimePeakMins,
-    transitTimeMins: route.transitTimeMins,
+    drivingTimeMins: oneWayDriveMinutes,
+    transitTimeMins: oneWayTransitMinutes,
     timeMetrics,
   };
 }
