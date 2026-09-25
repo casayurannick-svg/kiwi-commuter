@@ -389,3 +389,65 @@ describe('Step 5: Next.js API Layer & Interactive Frontend Dashboard UI', () => 
   });
 });
 
+describe('Step 6: Mapbox Route Visualizer & Production Polish', () => {
+  it('verifies fetchDrivingRoute computes valid route geometry between Auckland suburbs', async () => {
+    const { fetchDrivingRoute } = await import('../src/lib/mapbox');
+
+    // Albany to Britomart CBD
+    const albanyCoords: [number, number] = [174.7003, -36.7303];
+    const cbdCoords: [number, number] = [174.767, -36.844];
+
+    const result = await fetchDrivingRoute(albanyCoords, cbdCoords);
+    assert.ok(result, 'Result should not be null');
+    assert.strictEqual(typeof result.distanceKm, 'number');
+    assert.ok(result.distanceKm > 10, 'Albany to CBD should be > 10 km');
+    assert.strictEqual(typeof result.durationMinutes, 'number');
+    assert.ok(result.durationMinutes > 10, 'Duration should be > 10 minutes');
+
+    assert.ok(Array.isArray(result.coordinates), 'Coordinates must be an array');
+    assert.ok(result.coordinates.length >= 2, 'Must have at least start and end waypoints');
+
+    for (const pt of result.coordinates) {
+      assert.strictEqual(pt.length, 2, 'Coordinate must be [lng, lat]');
+      assert.ok(pt[0] > 174.0 && pt[0] < 175.5, `Lng ${pt[0]} in Auckland range`);
+      assert.ok(pt[1] < -36.0 && pt[1] > -37.5, `Lat ${pt[1]} in Auckland range`);
+    }
+  });
+
+  it('verifies fetchDrivingRoute returns null on invalid or malformed coordinates', async () => {
+    const { fetchDrivingRoute } = await import('../src/lib/mapbox');
+
+    const bad1 = await fetchDrivingRoute([NaN, -36.8] as [number, number], [174.7, -36.8]);
+    assert.strictEqual(bad1, null);
+
+    const bad2 = await fetchDrivingRoute([174.7, -36.8], [undefined as unknown as number, -36.8]);
+    assert.strictEqual(bad2, null);
+  });
+
+  it('verifies getDirectionsRoute formats GeoJSON Feature correctly', async () => {
+    const { getDirectionsRoute } = await import('../src/lib/mapbox');
+    const { getSuburbById } = await import('../src/config/suburbs');
+
+    const epsom = getSuburbById('epsom');
+    const cbd = getSuburbById('cbd');
+
+    const geojson = await getDirectionsRoute(epsom, cbd);
+    assert.strictEqual(geojson.type, 'Feature');
+    assert.strictEqual(geojson.geometry.type, 'LineString');
+    assert.ok(geojson.geometry.coordinates.length >= 2);
+    assert.ok(geojson.properties.distanceKm > 0);
+    assert.ok(geojson.properties.durationMins > 0);
+  });
+
+  it('verifies HTML layout metadata defines OpenGraph and Viewport configuration', () => {
+    const layoutPath = path.resolve(process.cwd(), 'src/app/layout.tsx');
+    const content = fs.readFileSync(layoutPath, 'utf-8');
+
+    assert.ok(content.includes('viewport'), 'Must export viewport');
+    assert.ok(content.includes('openGraph'), 'Must define openGraph');
+    assert.ok(content.includes('twitter'), 'Must define twitter metadata');
+    assert.ok(content.includes('Kiwi Commuter Cost & Arbitrage Dashboard'));
+  });
+});
+
+

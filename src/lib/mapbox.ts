@@ -3,44 +3,41 @@ import { estimateRouteMetrics } from '@/config/suburbs';
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '';
 
-export async function getDirectionsRoute(
-  origin: Suburb,
-  destination: Suburb
-): Promise<RouteGeometry> {
-  const [startLng, startLat] = origin.coordinates;
-  const [endLng, endLat] = destination.coordinates;
+export interface RouteGeometryResponse {
+  coordinates: [number, number][]; // LineString coords [lng, lat]
+  distanceKm: number;
+  durationMinutes: number;
+}
 
-  const fallbackMetrics = estimateRouteMetrics(origin, destination);
+/**
+ * Calculates straight line distance in km using Haversine formula
+ */
+function calculateHaversineDistanceKm(
+  [lon1, lat1]: [number, number],
+  [lon2, lat2]: [number, number]
+): number {
+  const R = 6371; // Earth radius in km
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
 
-  if (MAPBOX_TOKEN && MAPBOX_TOKEN.startsWith('pk.')) {
-    try {
-      const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${startLng},${startLat};${endLng},${endLat}?geometries=geojson&overview=full&access_token=${MAPBOX_TOKEN}`;
-      const res = await fetch(url, { next: { revalidate: 3600 } });
-      if (res.ok) {
-        const data = await res.json();
-        const route = data.routes?.[0];
-        if (route && route.geometry?.coordinates) {
-          return {
-            type: 'Feature',
-            geometry: {
-              type: 'LineString',
-              coordinates: route.geometry.coordinates,
-            },
-            properties: {
-              distanceKm: Math.round((route.distance / 1000) * 10) / 10,
-              durationMins: Math.round(route.duration / 60),
-            },
-          };
-        }
-      }
-    } catch (e) {
-      console.warn('Mapbox Directions API failed, using synthetic fallback:', e);
-    }
-  }
-
-  // Generate a realistic arc / path interpolation between coordinates
+/**
+ * Generates synthetic road-deflected waypoints representing Auckland arterial and motorway corridors
+ */
+function generateSyntheticAucklandRoute(
+  [startLng, startLat]: [number, number],
+  [endLng, endLat]: [number, number]
+): [number, number][] {
   const waypoints: [number, number][] = [];
-  const steps = 18;
+  const steps = 20;
   const dx = endLng - startLng;
   const dy = endLat - startLat;
 
@@ -53,6 +50,93 @@ export async function getDirectionsRoute(
     waypoints.push([Number(lng.toFixed(5)), Number(lat.toFixed(5))]);
   }
 
+  return waypoints;
+}
+
+/**
+ * Fetches driving route geometry from Mapbox Directions API, with seamless Auckland corridor synthetic fallback
+ */
+export async function fetchDrivingRoute(
+  origin: [number, number],
+  destination: [number, number]
+): Promise<RouteGeometryResponse | null> {
+  if (
+    !Array.isArray(origin) ||
+    !Array.isArray(destination) ||
+    origin.length !== 2 ||
+    destination.length !== 2
+  ) {
+    return null;
+  }
+
+  const [startLng, startLat] = origin;
+  const [endLng, endLat] = destination;
+
+  if (isNaN(startLng) || isNaN(startLat) || isNaN(endLng) || isNaN(endLat)) {
+    return null;
+  }
+
+  // Attempt Mapbox Directions API if public token is configured
+  if (MAPBOX_TOKEN && MAPBOX_TOKEN.startsWith('pk.')) {
+    try {
+      const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${startLng},${startLat};${endLng},${endLat}?geometries=geojson&overview=full&access_token=${MAPBOX_TOKEN}`;
+      const res = await fetch(url, { next: { revalidate: 3600 } });
+      if (res.ok) {
+        const data = await res.json();
+        const route = data.routes?.[0];
+        if (route && Array.isArray(route.geometry?.coordinates) && route.geometry.coordinates.length > 0) {
+          return {
+            coordinates: route.geometry.coordinates,
+            distanceKm: Math.round((route.distance / 1000) * 10) / 10,
+            durationMinutes: Math.round(route.duration / 60),
+          };
+        }
+      }
+    } catch (e) {
+      console.warn('Mapbox Directions API failed, using synthetic fallback:', e);
+    }
+  }
+
+  // Realistic Auckland road network fallback calculation
+  const straightLine = calculateHaversineDistanceKm(origin, destination);
+  // Auckland urban routing factor ~1.28x straight line distance
+  const distanceKm = Math.round(Math.max(2.0, straightLine * 1.28) * 10) / 10;
+  // Average peak urban driving speed ~35 km/h
+  const durationMinutes = Math.max(5, Math.round((distanceKm / 35) * 60));
+  const coordinates = generateSyntheticAucklandRoute(origin, destination);
+
+  return {
+    coordinates,
+    distanceKm,
+    durationMinutes,
+  };
+}
+
+/**
+ * Backward compatibility wrapper returning GeoJSON Feature for suburbs
+ */
+export async function getDirectionsRoute(
+  origin: Suburb,
+  destination: Suburb
+): Promise<RouteGeometry> {
+  const fallbackMetrics = estimateRouteMetrics(origin, destination);
+  const route = await fetchDrivingRoute(origin.coordinates, destination.coordinates);
+
+  if (route) {
+    return {
+      type: 'Feature',
+      geometry: {
+        type: 'LineString',
+        coordinates: route.coordinates,
+      },
+      properties: {
+        distanceKm: route.distanceKm,
+        durationMins: route.durationMinutes,
+      },
+    };
+  }
+
+  const waypoints = generateSyntheticAucklandRoute(origin.coordinates, destination.coordinates);
   return {
     type: 'Feature',
     geometry: {

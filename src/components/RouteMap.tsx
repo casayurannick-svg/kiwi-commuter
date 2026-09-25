@@ -1,7 +1,14 @@
 'use client';
 
+import { fetchDrivingRoute } from '@/lib/mapbox';
 import { Suburb } from '@/types';
-import { Compass, MapPin, Navigation } from 'lucide-react';
+import {
+  Bus,
+  Compass,
+  Layers,
+  Navigation,
+  Train,
+} from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
 
 interface RouteMapProps {
@@ -22,11 +29,35 @@ export default function RouteMap({
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const [mapboxError, setMapboxError] = useState(false);
   const [activeLayer, setActiveLayer] = useState<'driving' | 'transit'>('driving');
+  const [routeCoordinates, setRouteCoordinates] = useState<[number, number][]>([
+    origin.coordinates,
+    destination.coordinates,
+  ]);
 
   const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '';
 
+  // Fetch detailed route geometry from Mapbox or local Auckland corridor generator
   useEffect(() => {
-    // Check if valid token is provided
+    let isCancelled = false;
+    const loadGeometry = async () => {
+      try {
+        const routeData = await fetchDrivingRoute(origin.coordinates, destination.coordinates);
+        if (!isCancelled && routeData && routeData.coordinates.length > 0) {
+          setRouteCoordinates(routeData.coordinates);
+        }
+      } catch (e) {
+        console.warn('Failed to fetch detailed route coordinates:', e);
+      }
+    };
+
+    loadGeometry();
+    return () => {
+      isCancelled = true;
+    };
+  }, [origin.coordinates, destination.coordinates]);
+
+  // Mapbox GL initialization & dynamic updates
+  useEffect(() => {
     if (!token || !token.startsWith('pk.')) {
       setMapboxError(true);
       return;
@@ -38,71 +69,95 @@ export default function RouteMap({
       try {
         const mapboxglModule = await import('mapbox-gl');
         const mapboxgl = mapboxglModule.default;
-        // Mapbox accessToken
         (mapboxgl as unknown as { accessToken: string }).accessToken = token;
 
         if (!mapContainerRef.current) return;
 
         const bounds: [number, number, number, number] = [
-          Math.min(origin.coordinates[0], destination.coordinates[0]) - 0.05,
-          Math.min(origin.coordinates[1], destination.coordinates[1]) - 0.05,
-          Math.max(origin.coordinates[0], destination.coordinates[0]) + 0.05,
-          Math.max(origin.coordinates[1], destination.coordinates[1]) + 0.05,
+          Math.min(origin.coordinates[0], destination.coordinates[0]) - 0.04,
+          Math.min(origin.coordinates[1], destination.coordinates[1]) - 0.04,
+          Math.max(origin.coordinates[0], destination.coordinates[0]) + 0.04,
+          Math.max(origin.coordinates[1], destination.coordinates[1]) + 0.04,
         ];
 
         const map = new mapboxgl.Map({
           container: mapContainerRef.current,
           style: 'mapbox://styles/mapbox/dark-v11',
           bounds: bounds,
-          fitBoundsOptions: { padding: 50 },
+          fitBoundsOptions: { padding: 45 },
         });
 
         mapInstance = map;
 
         map.on('load', () => {
-          // Add Origin Marker
+          // Origin Marker (Emerald Green)
           new mapboxgl.Marker({ color: '#10b981' })
             .setLngLat(origin.coordinates)
-            .setPopup(new mapboxgl.Popup().setHTML(`<b>Origin: ${origin.name}</b><br>Zone ${origin.zone}`))
+            .setPopup(
+              new mapboxgl.Popup({ offset: 25 }).setHTML(
+                `<div style="color: #0f172a; padding: 4px;">
+                  <strong style="font-size: 13px;">Origin: ${origin.name}</strong><br/>
+                  <span style="font-size: 11px; color: #475569;">Zone ${origin.zone} • ${origin.region}</span><br/>
+                  <span style="font-size: 11px; color: #059669;">PT: ${origin.primaryTransitMode}</span>
+                </div>`
+              )
+            )
             .addTo(map);
 
-          // Add Destination Marker
+          // Destination Marker (Sky Blue)
           new mapboxgl.Marker({ color: '#38bdf8' })
             .setLngLat(destination.coordinates)
-            .setPopup(new mapboxgl.Popup().setHTML(`<b>Destination: ${destination.name}</b><br>Zone ${destination.zone}`))
+            .setPopup(
+              new mapboxgl.Popup({ offset: 25 }).setHTML(
+                `<div style="color: #0f172a; padding: 4px;">
+                  <strong style="font-size: 13px;">Destination: ${destination.name}</strong><br/>
+                  <span style="font-size: 11px; color: #475569;">Zone ${destination.zone} • ${destination.region}</span>
+                </div>`
+              )
+            )
             .addTo(map);
 
-          // Add Route line
-          const coordinates = [origin.coordinates, destination.coordinates];
-          map.addSource('route', {
+          // Route Source & Layer
+          map.addSource('commute-route', {
             type: 'geojson',
             data: {
               type: 'Feature',
               properties: {},
               geometry: {
                 type: 'LineString',
-                coordinates: coordinates,
+                coordinates: routeCoordinates,
               },
             },
           });
 
+          // Glow outline
+          map.addLayer({
+            id: 'route-glow',
+            type: 'line',
+            source: 'commute-route',
+            layout: { 'line-join': 'round', 'line-cap': 'round' },
+            paint: {
+              'line-color': activeLayer === 'driving' ? '#0284c7' : '#059669',
+              'line-width': 8,
+              'line-opacity': 0.35,
+            },
+          });
+
+          // Primary Route Line
           map.addLayer({
             id: 'route-line',
             type: 'line',
-            source: 'route',
-            layout: {
-              'line-join': 'round',
-              'line-cap': 'round',
-            },
+            source: 'commute-route',
+            layout: { 'line-join': 'round', 'line-cap': 'round' },
             paint: {
-              'line-color': '#0ea5e9',
-              'line-width': 4,
-              'line-dasharray': [1, 1],
+              'line-color': activeLayer === 'driving' ? '#38bdf8' : '#10b981',
+              'line-width': activeLayer === 'driving' ? 4 : 4.5,
+              'line-dasharray': activeLayer === 'transit' ? [2, 1.5] : [1, 0],
             },
           });
         });
 
-        map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+        map.addControl(new mapboxgl.NavigationControl({ showCompass: true }), 'top-right');
       } catch (err: unknown) {
         console.warn('Mapbox initialization failed:', err);
         setMapboxError(true);
@@ -114,9 +169,9 @@ export default function RouteMap({
     return () => {
       if (mapInstance) mapInstance.remove();
     };
-  }, [origin, destination, token]);
+  }, [origin, destination, token, routeCoordinates, activeLayer]);
 
-  // SVG-based interactive fallback representing Auckland geography
+  // SVG-based interactive Auckland Geographic Visualizer
   const minLng = 174.55;
   const maxLng = 174.98;
   const minLat = -37.15;
@@ -126,8 +181,8 @@ export default function RouteMap({
     const x = ((lngLat[0] - minLng) / (maxLng - minLng)) * 100;
     const y = ((maxLat - lngLat[1]) / (maxLat - minLat)) * 100;
     return {
-      x: Math.max(10, Math.min(90, x)),
-      y: Math.max(10, Math.min(90, y)),
+      x: Math.max(8, Math.min(92, x)),
+      y: Math.max(8, Math.min(92, y)),
     };
   };
 
@@ -138,11 +193,16 @@ export default function RouteMap({
   const midY = (oProj.y + dProj.y) / 2 + (oProj.x > dProj.x ? -6 : 6);
   const pathD = `M ${oProj.x} ${oProj.y} Q ${midX} ${midY} ${dProj.x} ${dProj.y}`;
 
+  // Key transit lines for Auckland Isthmus reference
+  const northernBuswayD = 'M 49 14 Q 51 28 53 38 Q 54 44 55 49';
+  const southernLineD = 'M 55 49 Q 59 62 65 74 Q 69 82 74 90';
+  const westernLineD = 'M 55 49 Q 47 52 38 56 Q 30 58 25 54';
+
   return (
     <div className="glass-panel rounded-2xl overflow-hidden flex flex-col h-[380px] sm:h-[440px] relative border border-slate-700/60 shadow-xl">
       {/* Header bar overlay */}
       <div className="absolute top-3 left-3 right-3 z-10 flex flex-wrap items-center justify-between gap-2 pointer-events-none">
-        <div className="flex items-center gap-2 bg-slate-900/85 backdrop-blur-md px-3 py-1.5 rounded-lg border border-slate-700/80 shadow pointer-events-auto">
+        <div className="flex items-center gap-2 bg-slate-900/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-700/80 shadow pointer-events-auto">
           <Navigation className="w-4 h-4 text-sky-400 animate-pulse" />
           <span className="text-xs font-semibold text-slate-200">
             {origin.name} → {destination.name}
@@ -152,26 +212,29 @@ export default function RouteMap({
           </span>
         </div>
 
-        <div className="flex items-center gap-1 bg-slate-900/85 backdrop-blur-md p-1 rounded-lg border border-slate-700/80 shadow pointer-events-auto">
+        {/* Driving vs Transit View Toggle */}
+        <div className="flex items-center gap-1 bg-slate-900/90 backdrop-blur-md p-1 rounded-xl border border-slate-700/80 shadow pointer-events-auto">
           <button
             onClick={() => setActiveLayer('driving')}
-            className={`text-xs px-2.5 py-1 rounded font-medium transition ${
+            className={`text-xs px-2.5 py-1 rounded-lg font-medium transition flex items-center gap-1.5 ${
               activeLayer === 'driving'
                 ? 'bg-sky-500 text-white shadow-sm'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            🚗 Drive ({drivingTimeMins}m)
+            <span>🚗 Drive</span>
+            <span className="font-mono text-[11px] opacity-90">({drivingTimeMins}m)</span>
           </button>
           <button
             onClick={() => setActiveLayer('transit')}
-            className={`text-xs px-2.5 py-1 rounded font-medium transition ${
+            className={`text-xs px-2.5 py-1 rounded-lg font-medium transition flex items-center gap-1.5 ${
               activeLayer === 'transit'
                 ? 'bg-emerald-500 text-white shadow-sm'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            🚆 Transit ({transitTimeMins}m)
+            <span>🚆 Transit</span>
+            <span className="font-mono text-[11px] opacity-90">({transitTimeMins}m)</span>
           </button>
         </div>
       </div>
@@ -181,12 +244,14 @@ export default function RouteMap({
         <div ref={mapContainerRef} className="w-full h-full" />
       ) : (
         /* Auckland Vector Corridor Visualizer */
-        <div className="w-full h-full relative bg-gradient-to-b from-[#0b1329] via-[#0f172a] to-[#1e293b] flex items-center justify-center p-4 select-none">
+        <div className="w-full h-full relative bg-gradient-to-b from-[#090f1d] via-[#0f172a] to-[#1e293b] flex items-center justify-center p-4 select-none">
+          {/* Subtle grid pattern */}
           <div className="absolute inset-0 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:20px_20px] opacity-40" />
 
+          {/* Border grid context */}
           <div className="absolute inset-x-8 top-12 bottom-12 border border-slate-800/80 rounded-xl pointer-events-none opacity-40">
             <span className="absolute top-2 right-3 text-[10px] uppercase font-mono tracking-widest text-slate-500">
-              Auckland Isthmus & Hauraki Gulf
+              Auckland Isthmus & Transit Corridors
             </span>
             <span className="absolute bottom-2 left-3 text-[10px] font-mono text-slate-600">
               174.76° E / 36.85° S (NZDT)
@@ -210,27 +275,47 @@ export default function RouteMap({
               </filter>
             </defs>
 
+            {/* Auckland Transit Backbone Overlay Lines (Northern Busway, Western, Southern) */}
             <path
-              d="M 50 15 Q 52 35 55 52 Q 62 70 70 88"
+              d={northernBuswayD}
               fill="none"
               stroke="#334155"
               strokeWidth="0.8"
-              strokeDasharray="2,2"
-              opacity="0.6"
+              strokeDasharray="1.5,1.5"
+              opacity="0.5"
+            />
+            <path
+              d={southernLineD}
+              fill="none"
+              stroke="#334155"
+              strokeWidth="0.8"
+              strokeDasharray="1.5,1.5"
+              opacity="0.5"
+            />
+            <path
+              d={westernLineD}
+              fill="none"
+              stroke="#334155"
+              strokeWidth="0.8"
+              strokeDasharray="1.5,1.5"
+              opacity="0.5"
             />
 
+            {/* Active Corridor Route Path */}
             <path
               d={pathD}
               fill="none"
               stroke={activeLayer === 'driving' ? 'url(#routeGradientDriving)' : 'url(#routeGradientTransit)'}
-              strokeWidth="2.2"
+              strokeWidth={activeLayer === 'driving' ? '2.4' : '2.6'}
               strokeDasharray={activeLayer === 'transit' ? '3,1.5' : undefined}
               filter="url(#glow)"
               className="transition-all duration-500"
             />
 
-            <circle cx={midX} cy={midY} r="1.5" fill="#f8fafc" opacity="0.8" />
+            {/* Midpoint Corridor Indicator */}
+            <circle cx={midX} cy={midY} r="1.4" fill="#f8fafc" opacity="0.8" />
 
+            {/* Origin Node Pin */}
             <g transform={`translate(${oProj.x}, ${oProj.y})`}>
               <circle r="4" fill="#10b981" opacity="0.25" className="animate-ping" />
               <circle r="2.8" fill="#10b981" stroke="#ffffff" strokeWidth="0.8" />
@@ -244,6 +329,7 @@ export default function RouteMap({
               </text>
             </g>
 
+            {/* Destination Node Pin */}
             <g transform={`translate(${dProj.x}, ${dProj.y})`}>
               <circle r="4" fill="#38bdf8" opacity="0.25" className="animate-ping" />
               <circle r="2.8" fill="#38bdf8" stroke="#ffffff" strokeWidth="0.8" />
@@ -261,18 +347,29 @@ export default function RouteMap({
       )}
 
       {/* Footer Info Strip */}
-      <div className="absolute bottom-3 left-3 right-3 z-10 flex items-center justify-between bg-slate-900/90 backdrop-blur-md px-3 py-2 rounded-xl border border-slate-700/80 text-xs">
+      <div className="absolute bottom-3 left-3 right-3 z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-slate-900/90 backdrop-blur-md px-3 py-2 rounded-xl border border-slate-700/80 text-xs">
         <div className="flex items-center gap-2">
-          <MapPin className="w-3.5 h-3.5 text-emerald-400" />
-          <span className="text-slate-300 font-medium">
-            Primary PT: <span className="text-emerald-400 font-semibold">{origin.primaryTransitMode}</span>
+          {origin.primaryTransitMode === 'Train' ? (
+            <Train className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+          ) : (
+            <Bus className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+          )}
+          <span className="text-slate-300 font-medium truncate">
+            Transit: <strong className="text-emerald-400">{origin.primaryTransitMode}</strong>
+            <span className="text-slate-500 font-normal"> ({origin.transitRouteNotes})</span>
           </span>
-          <span className="text-slate-500 hidden sm:inline">• {origin.transitRouteNotes}</span>
         </div>
 
-        <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
-          <Compass className="w-3 h-3 text-slate-400" />
-          <span>Auckland AT HOP Zone Matrix</span>
+        <div className="flex items-center gap-2 text-[11px] text-slate-400 shrink-0">
+          <span className="flex items-center gap-1 text-slate-400">
+            <Layers className="w-3 h-3 text-sky-400" />
+            Layer: <span className="font-semibold text-white capitalize">{activeLayer}</span>
+          </span>
+          <span>•</span>
+          <span className="flex items-center gap-1">
+            <Compass className="w-3 h-3 text-teal-400" />
+            Zone {origin.zone} ➔ {destination.zone}
+          </span>
         </div>
       </div>
     </div>
