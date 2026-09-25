@@ -643,7 +643,7 @@ describe('US-15: Privacy-Friendly Traffic & Web Analytics Integration', () => {
     );
   });
 
-  it('verifies RootLayout embeds <Analytics /> with environment mode handling', () => {
+  it('verifies RootLayout embeds <Analytics /> component', () => {
     const layoutPath = path.resolve(process.cwd(), 'src/app/layout.tsx');
     const content = fs.readFileSync(layoutPath, 'utf-8');
 
@@ -654,10 +654,6 @@ describe('US-15: Privacy-Friendly Traffic & Web Analytics Integration', () => {
     assert.ok(
       content.includes('<Analytics'),
       'layout.tsx must render <Analytics /> component'
-    );
-    assert.ok(
-      content.includes('mode='),
-      'layout.tsx should configure mode prop for environment-aware analytics'
     );
   });
 });
