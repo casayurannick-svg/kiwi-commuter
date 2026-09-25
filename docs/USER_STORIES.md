@@ -21,6 +21,7 @@
 | **US-15** | Privacy-Friendly Traffic & Web Analytics Integration | **DONE** | [`src/app/layout.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/app/layout.tsx), [`package.json`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/package.json) | `@vercel/analytics` installed and `<Analytics />` component embedded in RootLayout. |
 | **US-16** | Plain-Language Time Valuation Balance Sheet ("Mini-Receipt") | **DONE** | [`src/components/ComparisonCard.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/ComparisonCard.tsx), [`src/components/__tests__/ComparisonCard.test.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/__tests__/ComparisonCard.test.tsx) | Recessed card balance sheet breaking down Cash Saved, Time Cost/Gained, and Your True Benefit. |
 | **US-17** | Remove Corridors Preset Menu | **DONE** | [`src/components/DashboardClient.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/DashboardClient.tsx) | Completely removed horizontal scrolling Corridors preset buttons, data structure, and handlers to reduce UI distraction. |
+| **US-18** | Remove Header Metadata and Status Badges | **DONE** | [`src/components/CommuteForm.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/CommuteForm.tsx), [`src/components/DashboardClient.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/DashboardClient.tsx), [`tests/calculator.test.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/tests/calculator.test.ts) | Removed "Real-time delta" text, "Auckland Transport & MBIE Weekly Sync" footer text, and policy badges ("2026 RUC Active", "AT $50 Cap") to declutter the UI. |
 
 ---
 
@@ -243,6 +244,22 @@
 * **I want** a streamlined, distraction-free interface without pre-filled corridor buttons,  
 * **So that** I am immediately focused on entering my exact custom origin and destination.  
 * *Acceptance Criteria:* The horizontal scrolling "Corridors" button list is completely removed from the UI. Associated preset data structures and state handlers are deleted.
+
+---
+
+### US-18: Remove Header Metadata and Status Badges
+**As a** user interacting with the calculator,  
+**I want** a clean interface without redundant backend sync statuses or active policy badges,  
+**So that** I am not distracted from the primary financial verdict.  
+
+* **Acceptance Criteria:**
+  - The "Real-time delta" text element in `src/components/CommuteForm.tsx` is completely removed.
+  - The "Auckland Transport & MBIE Weekly Sync" text node in the `src/components/DashboardClient.tsx` footer is completely removed.
+  - The "2026 RUC Active" and "AT $50 Cap" pill badges in the `src/components/DashboardClient.tsx` header are deleted from the UI.
+  - Unused icon imports (`Zap`, `ShieldCheck`) in `DashboardClient.tsx` are cleaned up.
+  - Unit tests in `tests/calculator.test.ts` verify the absence of these elements from the components.
+
+---
 
 ## Backlog Stories (PENDING)
 

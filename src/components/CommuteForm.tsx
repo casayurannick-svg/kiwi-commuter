@@ -135,7 +135,6 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
           </span>
           Commute Parameters
         </h2>
-        <span className="text-[11px] text-slate-400 font-mono">Real-time delta</span>
       </div>
 
       {/* Origin & Destination */}

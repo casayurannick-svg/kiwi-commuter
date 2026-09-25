@@ -14,8 +14,6 @@ import {
   Bus,
   Check,
   Share2,
-  ShieldCheck,
-  Zap,
 } from 'lucide-react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
@@ -148,14 +146,6 @@ export default function DashboardClient({ initialFuelPrices }: DashboardClientPr
                 </>
               )}
             </button>
-            <span className="text-[11px] bg-slate-900 border border-slate-800 text-slate-300 px-2 py-1 rounded-lg hidden md:flex items-center gap-1 font-medium">
-              <Zap className="w-3 h-3 text-amber-400" />
-              2026 RUC Active
-            </span>
-            <span className="text-[11px] bg-slate-900 border border-slate-800 text-slate-300 px-2 py-1 rounded-lg hidden sm:flex items-center gap-1 font-medium">
-              <ShieldCheck className="w-3 h-3 text-emerald-400" />
-              AT $50 Cap
-            </span>
           </div>
         </div>
       </header>
@@ -226,10 +216,6 @@ export default function DashboardClient({ initialFuelPrices }: DashboardClientPr
             >
               MBIE Data
             </a>
-          </div>
-
-          <div className="text-[11px] text-slate-500 font-mono">
-            Auckland Transport & MBIE Weekly Sync
           </div>
         </div>
       </footer>

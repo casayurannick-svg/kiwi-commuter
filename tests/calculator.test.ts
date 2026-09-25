@@ -733,7 +733,23 @@ describe('US-13: Monetized Travel Time & Opportunity Cost', () => {
   });
 });
 
+describe('US-18: Remove Header Metadata and Status Badges', () => {
+  it('verifies removal of Real-time delta text from CommuteForm', () => {
+    const formPath = path.resolve(process.cwd(), 'src/components/CommuteForm.tsx');
+    const content = fs.readFileSync(formPath, 'utf-8');
 
+    assert.ok(!content.includes('Real-time delta'), 'Must completely remove "Real-time delta" text');
+  });
 
+  it('verifies removal of policy pill badges and sync text from DashboardClient', () => {
+    const clientPath = path.resolve(process.cwd(), 'src/components/DashboardClient.tsx');
+    const content = fs.readFileSync(clientPath, 'utf-8');
 
-
+    assert.ok(!content.includes('2026 RUC Active'), 'Must completely remove "2026 RUC Active" badge');
+    assert.ok(!content.includes('AT $50 Cap'), 'Must completely remove "AT $50 Cap" badge');
+    assert.ok(
+      !content.includes('Auckland Transport & MBIE Weekly Sync'),
+      'Must completely remove "Auckland Transport & MBIE Weekly Sync" text'
+    );
+  });
+});
