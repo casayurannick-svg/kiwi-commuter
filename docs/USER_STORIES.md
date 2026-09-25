@@ -16,7 +16,7 @@
 | **US-10** | AT Concession Profiles (Tertiary, Youth, Community Connect) | **DONE** | [`src/config/fares.config.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/config/fares.config.ts), [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts) | Full concession schedule: Tertiary (20% off), Youth/Community (50% off), SuperGold. |
 | **US-11** | Active Commute & Micro-Mobility Mode | **PENDING** | Backlog (`src/types/index.ts`) | E-Bike / active commute mode with capex payback timeline not yet implemented. |
 | **US-12** | Park & Ride Multimodal Hybrid Route | **PENDING** | Backlog (`src/config/suburbs.ts`) | Station parking + rail transfer multi-leg route calculations not yet modeled. |
-| **US-13** | Monetized Travel Time & Opportunity Cost | **PARTIAL** | [`src/types/index.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/types/index.ts), [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts) | Math engine & types support `hourlyTimeValue` and `timeMetrics`; UI slider preset integration pending. |
+| **US-13** | Monetized Travel Time & Opportunity Cost | **PARTIAL** | [`src/types/index.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/types/index.ts), [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts), [`src/components/CommuteForm.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/CommuteForm.tsx) | Math engine, URL sync, and CommuteForm segmented control implemented; ComparisonCard display pending. |
 | **US-14** | Plain-Language Financial Verdicts | **DONE** | [`src/components/ComparisonCard.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/ComparisonCard.tsx) | Direct conversational savings verdicts ("You save $X/mo...", "MONTHLY VERDICT" badge). |
 | **US-15** | Privacy-Friendly Traffic & Web Analytics Integration | **DONE** | [`src/app/layout.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/app/layout.tsx), [`package.json`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/package.json) | `@vercel/analytics` installed and `<Analytics />` component embedded in RootLayout. |
 
@@ -201,9 +201,10 @@
   - Monthly reclaimed transit time is calculated in `src/lib/calculator.ts` (`hoursReclaimedMonthly = round1(transitHoursMonthly * 0.75)`) and displayed as a metric in `ComparisonCard.tsx`.
   - Type definitions in `src/types/index.ts` include `hourlyTimeValue?: number` on `CommuteInput` and `timeMetrics: TimeMetrics` on `CommuteComparisonResult`.
   - Pure calculation engine (`src/lib/calculator.ts`) calculates `oneWayDriveMinutes`, `oneWayTransitMinutes`, `monthlyTimeDeltaHours`, `monetizedMonthlyTimeCost`, and `generalizedMonthlySavings`.
+  - Segmented control added to `CommuteForm.tsx` Custom Rates panel with `Off ($0)`, `$20/hr`, `$50/hr`, and `Custom` (step 5 $/hr input) with >= 44px touch targets.
+  - URL serialization and parsing support for `timeVal` search parameter in `src/lib/urlParams.ts`.
 * **Gaps Remaining for Full Completion:**
-  - UI slider/presets for hourly travel time valuation ($0, $25, $50/hr) on `CommuteForm.tsx`.
-  - Visual display of Generalized Cost and time-adjusted verdict in `ComparisonCard.tsx`.
+  - Visual display of Generalized Cost breakdown and time-adjusted financial verdict in `ComparisonCard.tsx`.
 
 ---
 

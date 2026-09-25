@@ -75,6 +75,10 @@ export function serializeCommuteToParams(input: CommuteInput): URLSearchParams {
     params.set('wear', '0');
   }
 
+  if (input.hourlyTimeValue && input.hourlyTimeValue > 0) {
+    params.set('timeVal', input.hourlyTimeValue.toString());
+  }
+
   return params;
 }
 
@@ -109,6 +113,7 @@ export function parseCommuteFromParams(
   const fuelRateVal = params.has('fuelRate') ? Number(params.get('fuelRate')) : undefined;
   const concVal = params.get('conc') as ConcessionType | undefined;
   const carpoolVal = params.has('carpool') ? Number(params.get('carpool')) : undefined;
+  const timeVal = params.has('timeVal') ? Number(params.get('timeVal')) : undefined;
   const wearVal = params.has('wear')
     ? params.get('wear') === '1' || params.get('wear') === 'true'
     : undefined;
@@ -172,6 +177,7 @@ export function parseCommuteFromParams(
     customFuelPricePerL:
       fuelRateVal !== undefined && !isNaN(fuelRateVal) ? fuelRateVal : fallback.customFuelPricePerL,
     evChargingMode,
+    hourlyTimeValue: timeVal !== undefined && !isNaN(timeVal) && timeVal >= 0 ? timeVal : fallback.hourlyTimeValue,
   };
 }
 

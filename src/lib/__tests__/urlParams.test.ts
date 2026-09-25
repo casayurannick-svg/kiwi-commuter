@@ -114,4 +114,17 @@ describe('src/lib/urlParams.ts - URL Search Param Synchronization', () => {
     assert.strictEqual(parsed.evChargingMode, 'public_dc');
     assert.strictEqual(parsed.fuelPriceOverride, 0.85);
   });
+
+  it('serializes and parses hourlyTimeValue (timeVal) correctly', () => {
+    const inputWithTimeVal: CommuteInput = {
+      ...defaultFallback,
+      hourlyTimeValue: 50,
+    };
+
+    const params = serializeCommuteToParams(inputWithTimeVal);
+    assert.strictEqual(params.get('timeVal'), '50');
+
+    const parsed = parseCommuteFromParams(params, defaultFallback);
+    assert.strictEqual(parsed.hourlyTimeValue, 50);
+  });
 });

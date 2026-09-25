@@ -6,6 +6,7 @@ import { CommuteInput, ConcessionType, EvChargingMode, ParkingTier, VehiclePower
 import {
   Car,
   ChevronDown,
+  Clock,
   CreditCard,
   MapPin,
   Settings2,
@@ -37,12 +38,22 @@ const PARKING_SEGMENTS: { tier: ParkingTier | 'CUSTOM'; label: string; rate: num
   { tier: 'CUSTOM', label: 'Custom', rate: 18.0 },
 ];
 
+type TimeValuePreset = 'off' | '20' | '50' | 'custom';
+
 export default function CommuteForm({ input, onChange, onInputChange }: CommuteFormProps) {
   const [isCustomRatesOpen, setIsCustomRatesOpen] = useState(true);
   const [selectedParkingTier, setSelectedParkingTier] = useState<ParkingTier | 'CUSTOM'>(() => {
     if (input.parkingTier) return input.parkingTier;
     const match = PARKING_SEGMENTS.find((p) => p.rate === input.parkingDailyRate);
     return match ? match.tier : 'CUSTOM';
+  });
+
+  const [timeValueMode, setTimeValueMode] = useState<TimeValuePreset>(() => {
+    const val = input.hourlyTimeValue ?? 0;
+    if (val === 0) return 'off';
+    if (val === 20) return '20';
+    if (val === 50) return '50';
+    return 'custom';
   });
 
   const notifyChange = (updated: CommuteInput) => {
@@ -95,6 +106,18 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
       };
       notifyChange(updated);
     }
+  };
+
+  const handleTimeValueSelect = (mode: TimeValuePreset) => {
+    setTimeValueMode(mode);
+    if (mode === 'off') {
+      handleFieldChange('hourlyTimeValue', 0);
+    } else if (mode === '20') {
+      handleFieldChange('hourlyTimeValue', 20);
+    } else if (mode === '50') {
+      handleFieldChange('hourlyTimeValue', 50);
+    }
+    // If 'custom', retain current or default to 30
   };
 
   return (
@@ -467,6 +490,64 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
                   </span>
                 </label>
               </div>
+            </div>
+
+            {/* Value of Your Time Segmented Control (US-13) */}
+            <div className="space-y-1.5 pt-2 border-t border-slate-800/80">
+              <div className="flex items-center justify-between">
+                <label className="text-[11px] font-semibold text-slate-300 flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-sky-400" />
+                  Value of Your Time
+                </label>
+                <span className="text-[11px] font-bold text-sky-400 font-mono">
+                  {(input.hourlyTimeValue ?? 0) > 0 ? `$${input.hourlyTimeValue}/hr` : 'Off ($0/hr)'}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                {(
+                  [
+                    { mode: 'off', label: 'Off ($0)' },
+                    { mode: '20', label: '$20/hr' },
+                    { mode: '50', label: '$50/hr' },
+                    { mode: 'custom', label: 'Custom' },
+                  ] as const
+                ).map((item) => {
+                  const isSelected = timeValueMode === item.mode;
+                  return (
+                    <button
+                      key={item.mode}
+                      type="button"
+                      onClick={() => handleTimeValueSelect(item.mode)}
+                      className={`min-h-[44px] px-3 py-1.5 rounded-xl text-center border transition flex items-center justify-center font-medium ${
+                        isSelected
+                          ? 'bg-sky-950/60 border-sky-500 text-sky-300 font-bold shadow-sm ring-1 ring-sky-500/40'
+                          : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-300'
+                      }`}
+                    >
+                      <span className="text-xs truncate">{item.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {timeValueMode === 'custom' && (
+                <div className="pt-1.5 flex items-center gap-2">
+                  <span className="text-xs text-slate-400">Custom Hourly Value:</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="5"
+                    value={input.hourlyTimeValue ?? 0}
+                    onChange={(e) => {
+                      const val = e.target.value === '' ? 0 : Math.max(0, parseFloat(e.target.value) || 0);
+                      handleFieldChange('hourlyTimeValue', val);
+                    }}
+                    className="w-24 min-h-[44px] bg-slate-900 border border-slate-700 rounded-xl px-3 py-1 text-sm text-slate-100 font-mono"
+                  />
+                  <span className="text-xs text-slate-400">$/hr</span>
+                </div>
+              )}
             </div>
 
             {/* RUC notice */}

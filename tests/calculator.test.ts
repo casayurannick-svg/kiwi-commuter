@@ -687,6 +687,22 @@ describe('US-14: Plain-Language Financial Verdicts', () => {
   });
 });
 
+describe('US-13: Monetized Travel Time & Opportunity Cost', () => {
+  it('verifies CommuteForm source includes Value of Your Time segmented control and inline custom input', () => {
+    const formPath = path.resolve(process.cwd(), 'src/components/CommuteForm.tsx');
+    const content = fs.readFileSync(formPath, 'utf-8');
+
+    assert.ok(content.includes('Value of Your Time'), 'Must render "Value of Your Time" label');
+    assert.ok(content.includes("label: 'Off ($0)'"), 'Must render Off ($0) option');
+    assert.ok(content.includes("label: '$20/hr'"), 'Must render $20/hr option');
+    assert.ok(content.includes("label: '$50/hr'"), 'Must render $50/hr option');
+    assert.ok(content.includes("label: 'Custom'"), 'Must render Custom option');
+    assert.ok(content.includes('min-h-[44px]'), 'Buttons and inputs must satisfy 44px min height for touch targets');
+    assert.ok(content.includes('step="5"'), 'Custom number input must use step 5');
+    assert.ok(content.includes('$/hr'), 'Must display $/hr unit suffix');
+  });
+});
+
 
 
 
