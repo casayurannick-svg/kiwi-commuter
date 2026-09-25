@@ -38,7 +38,7 @@ const PARKING_SEGMENTS: { tier: ParkingTier | 'CUSTOM'; label: string; rate: num
 ];
 
 export default function CommuteForm({ input, onChange, onInputChange }: CommuteFormProps) {
-  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [isCustomRatesOpen, setIsCustomRatesOpen] = useState(true);
   const [selectedParkingTier, setSelectedParkingTier] = useState<ParkingTier | 'CUSTOM'>(() => {
     if (input.parkingTier) return input.parkingTier;
     const match = PARKING_SEGMENTS.find((p) => p.rate === input.parkingDailyRate);
@@ -249,23 +249,23 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
         )}
       </div>
 
-      {/* Collapsed Disclosure: Custom Rates ▾ */}
+      {/* Disclosure: Custom Rates ▾ */}
       <div className="pt-1 border-t border-slate-800">
         <button
           type="button"
-          onClick={() => setShowAdvanced(!showAdvanced)}
+          onClick={() => setIsCustomRatesOpen(!isCustomRatesOpen)}
           className="w-full min-h-[44px] flex items-center justify-between text-xs font-semibold text-slate-400 hover:text-slate-200 transition"
         >
           <span className="flex items-center gap-1.5">
             <Settings2 className="w-3.5 h-3.5 text-teal-400" />
-            Custom Rates {showAdvanced ? '▴' : '▾'}
+            Custom Rates {isCustomRatesOpen ? '▴' : '▾'}
           </span>
           <span className="text-[11px] text-slate-500 font-mono">
             {input.vehicleType === 'bev' ? 'Power & Concession' : 'Fuel & Carpool'}
           </span>
         </button>
 
-        {showAdvanced && (
+        {isCustomRatesOpen && (
           <div className="mt-2 pt-3 border-t border-slate-800/80 space-y-3 bg-slate-950/50 p-3.5 rounded-xl text-xs">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {/* Power / Fuel Override */}

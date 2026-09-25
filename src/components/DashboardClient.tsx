@@ -128,36 +128,34 @@ export default function DashboardClient({ initialFuelPrices }: DashboardClientPr
 
       {/* Main Workspace Body (Mobile First Responsive Stack & Desktop 2-Column Grid) */}
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 py-4 sm:py-6">
-        <div className="flex flex-col lg:grid lg:grid-cols-12 gap-4 sm:gap-5 items-start">
-          {/* 1. Commute Form (order-1 on mobile, left col 1..5 on desktop) */}
-          <div className="w-full order-1 lg:order-none lg:col-span-5 lg:col-start-1 lg:row-start-1">
-            <CommuteForm input={commuteInput} onChange={setCommuteInput} onInputChange={setCommuteInput} />
+        <div className="flex flex-col gap-4 lg:grid lg:grid-cols-12 lg:gap-5 items-start">
+          {/* Left Column (Desktop cols 1..5: CommuteForm + FuelRadarWidget) */}
+          <div className="contents lg:flex lg:flex-col lg:col-span-5 lg:gap-4 w-full">
+            <div className="order-1 w-full">
+              <CommuteForm input={commuteInput} onChange={setCommuteInput} onInputChange={setCommuteInput} />
+            </div>
+            <div className="order-5 w-full">
+              <FuelRadarWidget initialFuelData={initialFuelPrices} />
+            </div>
           </div>
 
-          {/* 2. Result Comparison Card (order-2 on mobile, right col 6..12 on desktop) */}
-          <div className="w-full order-2 lg:order-none lg:col-span-7 lg:col-start-6 lg:row-start-1">
-            <ComparisonCard arbitrage={arbitrage} input={commuteInput} />
-          </div>
-
-          {/* 3. Interactive Route Map (order-3 on mobile, right col row 2 on desktop) */}
-          <div className="w-full order-3 lg:order-none lg:col-span-7 lg:col-start-6 lg:row-start-2">
-            <RouteMap
-              origin={origin}
-              destination={destination}
-              distanceKm={arbitrage.distanceKm}
-              drivingTimeMins={arbitrage.drivingTimeMins}
-              transitTimeMins={arbitrage.transitTimeMins}
-            />
-          </div>
-
-          {/* 4. Cost Breakdown Chart (order-4 on mobile, right col row 3 on desktop) */}
-          <div className="w-full order-4 lg:order-none lg:col-span-7 lg:col-start-6 lg:row-start-3">
-            <MonthlySavingsChart arbitrage={arbitrage} />
-          </div>
-
-          {/* 5. Fuel Radar Widget (order-5 on mobile, left col row 2 on desktop) */}
-          <div className="w-full order-5 lg:order-none lg:col-span-5 lg:col-start-1 lg:row-start-2">
-            <FuelRadarWidget initialFuelData={initialFuelPrices} />
+          {/* Right Column (Desktop cols 6..12: ComparisonCard + RouteMap + MonthlySavingsChart) */}
+          <div className="contents lg:flex lg:flex-col lg:col-span-7 lg:gap-4 w-full">
+            <div className="order-2 w-full">
+              <ComparisonCard arbitrage={arbitrage} input={commuteInput} />
+            </div>
+            <div className="order-3 w-full">
+              <RouteMap
+                origin={origin}
+                destination={destination}
+                distanceKm={arbitrage.distanceKm}
+                drivingTimeMins={arbitrage.drivingTimeMins}
+                transitTimeMins={arbitrage.transitTimeMins}
+              />
+            </div>
+            <div className="order-4 w-full">
+              <MonthlySavingsChart arbitrage={arbitrage} />
+            </div>
           </div>
         </div>
       </main>

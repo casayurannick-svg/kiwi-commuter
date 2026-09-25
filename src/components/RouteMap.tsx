@@ -201,7 +201,7 @@ export default function RouteMap({
   const westernLineD = 'M 55 49 Q 47 52 38 56 Q 30 58 25 54';
 
   return (
-    <div className="glass-panel rounded-2xl overflow-hidden flex flex-col h-56 sm:h-64 md:h-[380px] lg:h-[400px] relative border border-slate-800 shadow-xl">
+    <div className="glass-panel rounded-2xl overflow-hidden flex flex-col h-56 sm:h-64 md:h-[300px] lg:h-[320px] relative border border-slate-800 shadow-xl">
       {/* Header bar overlay */}
       <div className="absolute top-3 left-3 right-3 z-10 flex flex-wrap items-center justify-between gap-2 pointer-events-none">
         <div className="flex items-center gap-2 bg-slate-900/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-700/80 shadow pointer-events-auto">
@@ -260,7 +260,7 @@ export default function RouteMap({
             </span>
           </div>
 
-          <svg className="w-full h-full max-w-lg max-h-[360px] relative z-1" viewBox="0 0 100 100">
+          <svg className="w-full h-full max-w-lg max-h-[290px] relative z-1" viewBox="0 0 100 100">
             <defs>
               <linearGradient id="routeGradientDriving" x1="0%" y1="0%" x2="100%" y2="100%">
                 <stop offset="0%" stopColor="#10b981" />
