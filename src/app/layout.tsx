@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import localFont from 'next/font/local';
+import { Analytics } from '@vercel/analytics/react';
 import './globals.css';
 
 const geistSans = localFont({
@@ -64,6 +65,7 @@ export default function RootLayout({
     <html lang="en" className="dark">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[#090d16] text-slate-100`}>
         {children}
+        <Analytics mode={process.env.NODE_ENV === 'development' ? 'development' : 'production'} />
       </body>
     </html>
   );

@@ -16,6 +16,7 @@
 | **US-10** | AT Concession Profiles (Tertiary, Youth, Community Connect) | **DONE** | [`src/config/fares.config.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/config/fares.config.ts), [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts) |
 | **US-11** | E-Bike / Micro-Mobility Active Mode | **PENDING** | Backlog (Active mobility & capital payback calculator planned) |
 | **US-12** | Park & Ride Multimodal Hybrid Route | **PENDING** | Backlog (Multi-leg driving + rail transit transfer planned) |
+| **US-15** | Privacy-Friendly Traffic & Web Analytics Integration | **DONE** | [`src/app/layout.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/app/layout.tsx), [`package.json`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/package.json) |
 
 ---
 
@@ -150,6 +151,22 @@
   - **When** selecting **Community Connect** or **Youth 13–24**, apply a 50% statutory discount ($1.30 / $2.23 / $3.00 / $3.85 / $4.70 across zones 1–5).
   - **When** selecting **SuperGold**, calculate free off-peak travel.
   - **And** weekly total continues to respect the statutory `$50.00` 7-day fare cap.
+
+---
+
+### US-15: Privacy-Friendly Traffic & Web Analytics Integration
+**As a** product owner and maintainer,  
+**I want to** monitor live aggregate visitor volume, referrer sources, and device breakdowns via Vercel Web Analytics,  
+**So that** I can assess application adoption, understand which channels drive traffic (e.g. Reddit, direct shares), and verify real-world usage while staying 100% within free-tier limits.
+
+* **Acceptance Criteria:**
+  - **Given** the application root layout ([`src/app/layout.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/app/layout.tsx)),
+  - **When** a user navigates to the web app,
+  - **Then** the official `@vercel/analytics` package script is loaded asynchronously without blocking first contentful paint (FCP).
+  - **And** aggregate page views, referrer domains (e.g., direct, reddit.com, t.co), geographic regions (New Zealand cities), and device operating systems (iOS, Android, macOS, Windows) are recorded in the Vercel project dashboard.
+  - **And** no personally identifiable information (PII) or user session cookies are stored or transmitted.
+  - **When** running locally in development mode (`NODE_ENV === 'development'`),
+    - Analytics calls are suppressed or flagged in debug mode to prevent polluting production metrics.
 
 ---
 

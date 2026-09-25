@@ -633,5 +633,35 @@ describe('US-09: EV Public Charging vs. Home Off-Peak Rate Arbitrage', () => {
   });
 });
 
+describe('US-15: Privacy-Friendly Traffic & Web Analytics Integration', () => {
+  it('verifies @vercel/analytics is declared in package.json dependencies', () => {
+    const pkgPath = path.resolve(process.cwd(), 'package.json');
+    const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
+    assert.ok(
+      pkg.dependencies && pkg.dependencies['@vercel/analytics'],
+      'package.json must contain @vercel/analytics dependency'
+    );
+  });
+
+  it('verifies RootLayout embeds <Analytics /> with environment mode handling', () => {
+    const layoutPath = path.resolve(process.cwd(), 'src/app/layout.tsx');
+    const content = fs.readFileSync(layoutPath, 'utf-8');
+
+    assert.ok(
+      content.includes("from '@vercel/analytics/react'"),
+      'layout.tsx must import Analytics from @vercel/analytics/react'
+    );
+    assert.ok(
+      content.includes('<Analytics'),
+      'layout.tsx must render <Analytics /> component'
+    );
+    assert.ok(
+      content.includes('mode='),
+      'layout.tsx should configure mode prop for environment-aware analytics'
+    );
+  });
+});
+
+
 
 
