@@ -301,10 +301,11 @@ describe('src/lib/calculator.ts - calculateCommuteArbitrage', () => {
 
     it('computes monetizedMonthlyTimeCost and generalizedMonthlySavings with hourlyTimeValue', () => {
       const hourlyValue = 35; // $35/hour
+      const daysPerWeek = 5;
       const result = calculateCommuteArbitrage({
         originSuburbId: 'albany',
         destinationSuburbId: 'cbd',
-        daysPerWeek: 5,
+        daysPerWeek,
         vehicleType: 'petrol91',
         parkingDailyRate: 18.0,
         parkingDaysPerWeek: 5,
@@ -315,12 +316,16 @@ describe('src/lib/calculator.ts - calculateCommuteArbitrage', () => {
       });
 
       assert.ok(result.timeMetrics);
-      const expectedMonetized = Math.round(result.timeMetrics.monthlyTimeDeltaHours * hourlyValue * 100) / 100;
-      assert.strictEqual(result.timeMetrics.monetizedMonthlyTimeCost, expectedMonetized);
-      assert.strictEqual(
-        result.timeMetrics.generalizedMonthlySavings,
-        Math.round((result.monthlySavings + expectedMonetized) * 100) / 100
-      );
+      const { oneWayDriveMinutes, oneWayTransitMinutes, monthlyTimeDeltaHours, monetizedMonthlyTimeCost, generalizedMonthlySavings } = result.timeMetrics;
+      
+      const expectedTimeDeltaHours = Math.round((((oneWayTransitMinutes - oneWayDriveMinutes) * 2 * daysPerWeek * 4.33) / 60) * 100) / 100;
+      assert.strictEqual(monthlyTimeDeltaHours, expectedTimeDeltaHours);
+
+      const expectedMonetized = Math.round(monthlyTimeDeltaHours * hourlyValue * 100) / 100;
+      assert.strictEqual(monetizedMonthlyTimeCost, expectedMonetized);
+
+      const expectedGeneralizedSavings = Math.round((result.monthlySavings - monetizedMonthlyTimeCost) * 100) / 100;
+      assert.strictEqual(generalizedMonthlySavings, expectedGeneralizedSavings);
     });
   });
 });

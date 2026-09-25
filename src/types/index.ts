@@ -70,9 +70,9 @@ export type EvChargingMode = 'home_offpeak' | 'home_flat' | 'public_dc' | 'custo
 export interface TimeMetrics {
   oneWayDriveMinutes: number;
   oneWayTransitMinutes: number;
-  monthlyTimeDeltaHours: number; // Positive = driving takes more hours/mo; Negative = transit takes more hours/mo
-  monetizedMonthlyTimeCost: number; // monthlyTimeDeltaHours * hourlyTimeValue
-  generalizedMonthlySavings: number; // financial monthlySavings + monetizedMonthlyTimeCost
+  monthlyTimeDeltaHours: number; // ((transit - drive) * 2 * daysPerWeek * 4.33) / 60
+  monetizedMonthlyTimeCost: number; // monthlyTimeDeltaHours * (hourlyTimeValue ?? 0)
+  generalizedMonthlySavings: number; // monthlySavings - monetizedMonthlyTimeCost
 }
 
 export interface DrivingCostBreakdown {

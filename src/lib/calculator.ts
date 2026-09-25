@@ -267,16 +267,17 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
     })}/month cheaper than transit for your current setup.`;
   }
 
-  // Time metrics and opportunity cost calculations
+  // Time metrics and opportunity cost calculations (US-13)
   const oneWayDriveMinutes = route.drivingTimePeakMins;
   const oneWayTransitMinutes = route.transitTimeMins;
-  const drivingHoursMonthly = (oneWayDriveMinutes * 2 * totalCommuteDaysMonthly) / 60;
-  // Positive = driving takes more hours/mo; Negative = transit takes more hours/mo
-  const monthlyTimeDeltaHours = round1(drivingHoursMonthly - transitHoursMonthly);
+  // ((transit - drive) * 2 * daysPerWeek * 4.33) / 60
+  const monthlyTimeDeltaHours = round2(
+    ((oneWayTransitMinutes - oneWayDriveMinutes) * 2 * input.daysPerWeek * 4.33) / 60
+  );
 
   const hourlyTimeValue = input.hourlyTimeValue ?? 0;
   const monetizedMonthlyTimeCost = round2(monthlyTimeDeltaHours * hourlyTimeValue);
-  const generalizedMonthlySavings = round2(monthlySavings + monetizedMonthlyTimeCost);
+  const generalizedMonthlySavings = round2(monthlySavings - monetizedMonthlyTimeCost);
 
   const timeMetrics: TimeMetrics = {
     oneWayDriveMinutes,
