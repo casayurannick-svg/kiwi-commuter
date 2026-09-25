@@ -61,7 +61,10 @@ export interface CommuteInput {
   customParkingDaily?: number; // Alias for parkingDailyRate
   homeKWhRate?: number; // Alias for BEV electricity rate
   customFuelPricePerL?: number; // Alias for ICE fuel price
+  evChargingMode?: EvChargingMode; // Preset: home_offpeak, home_flat, public_dc, custom
 }
+
+export type EvChargingMode = 'home_offpeak' | 'home_flat' | 'public_dc' | 'custom';
 
 export interface DrivingCostBreakdown {
   distanceOneWayKm: number;

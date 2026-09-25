@@ -93,4 +93,25 @@ describe('src/lib/urlParams.ts - URL Search Param Synchronization', () => {
     assert.ok(qs.includes('from=epsom'));
     assert.ok(qs.includes('to=cbd'));
   });
+
+  it('serializes and parses evChargeMode correctly for EV and PHEV', () => {
+    const bevWithPublicCharging: CommuteInput = {
+      ...defaultFallback,
+      vehicleType: 'bev',
+      powertrain: 'BEV',
+      evChargingMode: 'public_dc',
+      fuelPriceOverride: 0.85,
+    };
+
+    const params = serializeCommuteToParams(bevWithPublicCharging);
+    assert.strictEqual(params.get('power'), 'BEV');
+    assert.strictEqual(params.get('evChargeMode'), 'public_dc');
+    assert.strictEqual(params.get('kwhRate'), '0.85');
+
+    const parsed = parseCommuteFromParams(params, defaultFallback);
+    assert.strictEqual(parsed.vehicleType, 'bev');
+    assert.strictEqual(parsed.powertrain, 'BEV');
+    assert.strictEqual(parsed.evChargingMode, 'public_dc');
+    assert.strictEqual(parsed.fuelPriceOverride, 0.85);
+  });
 });

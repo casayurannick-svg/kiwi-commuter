@@ -1,6 +1,8 @@
+import { EV_CHARGING_PRESETS } from '@/config/fares.config';
 import {
   CommuteInput,
   ConcessionType,
+  EvChargingMode,
   ParkingTier,
   VehiclePowertrain,
   VehicleType,
@@ -46,12 +48,19 @@ export function serializeCommuteToParams(input: CommuteInput): URLSearchParams {
   const customPark = input.customParkingDaily ?? input.parkingDailyRate;
   if (customPark !== undefined) params.set('customPark', customPark.toString());
 
+  if (
+    input.evChargingMode &&
+    (power === 'BEV' || power === 'PHEV' || input.vehicleType === 'bev' || input.vehicleType === 'phev')
+  ) {
+    params.set('evChargeMode', input.evChargingMode);
+  }
+
   const kwhRate =
-    input.homeKWhRate ?? (power === 'BEV' ? input.fuelPriceOverride : undefined);
+    input.homeKWhRate ?? (power === 'BEV' || power === 'PHEV' ? input.fuelPriceOverride : undefined);
   if (kwhRate !== undefined) params.set('kwhRate', kwhRate.toString());
 
   const fuelRate =
-    input.customFuelPricePerL ?? (power !== 'BEV' ? input.fuelPriceOverride : undefined);
+    input.customFuelPricePerL ?? (power !== 'BEV' && power !== 'PHEV' ? input.fuelPriceOverride : undefined);
   if (fuelRate !== undefined) params.set('fuelRate', fuelRate.toString());
 
   if (input.concession && input.concession !== 'adult') {
@@ -104,10 +113,33 @@ export function parseCommuteFromParams(
     ? params.get('wear') === '1' || params.get('wear') === 'true'
     : undefined;
 
+  const rawEvChargeMode = params.get('evChargeMode');
+  let evChargingMode: EvChargingMode | undefined = fallback.evChargingMode;
+  if (
+    rawEvChargeMode === 'home_offpeak' ||
+    rawEvChargeMode === 'home_flat' ||
+    rawEvChargeMode === 'public_dc' ||
+    rawEvChargeMode === 'custom'
+  ) {
+    evChargingMode = rawEvChargeMode;
+  } else if ((resolvedVehicleType === 'bev' || resolvedVehicleType === 'phev') && !evChargingMode) {
+    evChargingMode = 'home_offpeak';
+  }
+
+  const defaultKwhRate =
+    evChargingMode && evChargingMode !== 'custom'
+      ? EV_CHARGING_PRESETS[evChargingMode]?.rate
+      : undefined;
+
   const fuelPriceOverride =
     resolvedVehicleType === 'bev'
-      ? (kwhRateVal ?? fallback.fuelPriceOverride)
+      ? (kwhRateVal ?? defaultKwhRate ?? fallback.fuelPriceOverride)
       : (fuelRateVal ?? fallback.fuelPriceOverride);
+
+  const homeKWhRate =
+    kwhRateVal !== undefined && !isNaN(kwhRateVal)
+      ? kwhRateVal
+      : (defaultKwhRate ?? fallback.homeKWhRate);
 
   const daysPerWeek = params.has('days') ? Number(params.get('days')) : fallback.daysPerWeek;
 
@@ -136,9 +168,10 @@ export function parseCommuteFromParams(
         ? carpoolVal
         : fallback.carpoolPassengers,
     fuelPriceOverride,
-    homeKWhRate: kwhRateVal !== undefined && !isNaN(kwhRateVal) ? kwhRateVal : fallback.homeKWhRate,
+    homeKWhRate,
     customFuelPricePerL:
       fuelRateVal !== undefined && !isNaN(fuelRateVal) ? fuelRateVal : fallback.customFuelPricePerL,
+    evChargingMode,
   };
 }
 

@@ -85,6 +85,28 @@
 
 ---
 
+### US-09: EV Public Charging vs. Home Off-Peak Rate Arbitrage
+**As an** EV or Plug-in Hybrid commuter without access to off-peak home charging (e.g., apartment dweller or street parker),  
+**I want to** toggle between home charging and public DC fast-charging rates (e.g., ChargeNet, Tesla Supercharger, We.EV),  
+**So that** I can evaluate whether driving an EV remains cheaper than public transit when relying on public charging infrastructure.
+
+* **Acceptance Criteria:**
+  - **Given** the user selects `BEV` or `PHEV` as their vehicle powertrain,
+  - **When** viewing the charging configuration in the expanded parameters,
+  - **Then** display a Charging Source toggle with four presets:
+    1. **Home Off-Peak** (Default: `$0.18/kWh`)
+    2. **Home Standard / Flat** (`$0.30/kWh`)
+    3. **Public DC Fast / ChargeNet** (`$0.85/kWh`)
+    4. **Custom** (User-specified numeric input in $/kWh)
+  - **When** switching between presets:
+    - Daily energy cost updates dynamically in real-time.
+    - Statutory RUC remains invariant ($0.076/km for BEV, $0.038/km for PHEV).
+    - PHEV calculates first 35 km electric on the selected rate, and remainder on petrol backup (default $2.72/L, 6.0 L/100km).
+    - BEV calculates all roundtrip distance on the selected rate (default 16.5 kWh/100km or custom efficiency).
+    - URL search parameters serialize and parse `evChargeMode` (`home_offpeak`, `home_flat`, `public_dc`, `custom`).
+
+---
+
 ## Planned Backlog Stories
 
 ### US-07: Carpool Passenger Split Engine

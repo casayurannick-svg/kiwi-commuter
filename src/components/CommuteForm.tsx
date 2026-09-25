@@ -1,8 +1,8 @@
 'use client';
 
-import { VEHICLE_PRESETS } from '@/config/fares.config';
+import { EV_CHARGING_PRESETS, VEHICLE_PRESETS } from '@/config/fares.config';
 import { AUCKLAND_SUBURBS } from '@/config/suburbs';
-import { CommuteInput, ConcessionType, ParkingTier, VehiclePowertrain, VehicleType } from '@/types';
+import { CommuteInput, ConcessionType, EvChargingMode, ParkingTier, VehiclePowertrain, VehicleType } from '@/types';
 import {
   Car,
   ChevronDown,
@@ -61,12 +61,26 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
   };
 
   const handlePowertrainSelect = (opt: typeof POWERTRAIN_OPTIONS[0]) => {
+    const isEvOrPhev = opt.id === 'bev' || opt.id === 'phev';
     const updated: CommuteInput = {
       ...input,
       vehicleType: opt.id,
       powertrain: opt.powertrain,
       consumptionOverride: opt.defaultConsumption,
-      fuelPriceOverride: opt.id === 'bev' ? 0.18 : undefined, // default $0.18/kWh off-peak home EV
+      fuelPriceOverride: isEvOrPhev ? (input.fuelPriceOverride ?? 0.18) : undefined,
+      homeKWhRate: isEvOrPhev ? (input.homeKWhRate ?? 0.18) : undefined,
+      evChargingMode: isEvOrPhev ? (input.evChargingMode ?? 'home_offpeak') : undefined,
+    };
+    notifyChange(updated);
+  };
+
+  const handleChargingPresetSelect = (mode: EvChargingMode) => {
+    const rate = EV_CHARGING_PRESETS[mode].rate;
+    const updated: CommuteInput = {
+      ...input,
+      evChargingMode: mode,
+      fuelPriceOverride: mode === 'custom' ? (input.fuelPriceOverride ?? 0.18) : rate,
+      homeKWhRate: mode === 'custom' ? (input.homeKWhRate ?? 0.18) : rate,
     };
     notifyChange(updated);
   };
@@ -261,34 +275,145 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
             Custom Rates {isCustomRatesOpen ? '▴' : '▾'}
           </span>
           <span className="text-[11px] text-slate-500 font-mono">
-            {input.vehicleType === 'bev' ? 'Power & Concession' : 'Fuel & Carpool'}
+            {input.vehicleType === 'bev' || input.vehicleType === 'phev'
+              ? 'Charging & Concession'
+              : 'Fuel & Carpool'}
           </span>
         </button>
 
         {isCustomRatesOpen && (
           <div className="mt-2 pt-3 border-t border-slate-800/80 space-y-3 bg-slate-950/50 p-3.5 rounded-xl text-xs">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {/* Power / Fuel Override */}
-              <div className="space-y-1">
-                <label className="text-[11px] text-slate-400">
-                  {input.vehicleType === 'bev' ? 'Home Power Rate ($/kWh)' : 'Fuel Price ($/L)'}
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={
-                    input.fuelPriceOverride ??
-                    (input.vehicleType === 'bev' ? 0.18 : currentVehicle.defaultFuelPrice)
-                  }
-                  onChange={(e) =>
-                    handleFieldChange(
-                      'fuelPriceOverride',
-                      e.target.value ? parseFloat(e.target.value) : undefined
-                    )
-                  }
-                  className="w-full min-h-[44px] bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-sm text-slate-200"
-                />
+            {/* EV / PHEV Charging Source Selector */}
+            {(input.vehicleType === 'bev' || input.vehicleType === 'phev') && (
+              <div className="space-y-1.5 pb-2.5 border-b border-slate-800/80">
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] font-semibold text-slate-300 flex items-center gap-1.5">
+                    <Zap className="w-3.5 h-3.5 text-amber-400" />
+                    Charging Source
+                  </label>
+                  <span className="text-[11px] font-bold text-emerald-400 font-mono">
+                    ${(input.fuelPriceOverride ?? (EV_CHARGING_PRESETS[input.evChargingMode || 'home_offpeak']?.rate ?? 0.18)).toFixed(2)}/kWh
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                  {(
+                    [
+                      { mode: 'home_offpeak', label: 'Home Off-Peak', sub: '$0.18' },
+                      { mode: 'home_flat', label: 'Home Flat', sub: '$0.30' },
+                      { mode: 'public_dc', label: 'Public DC Fast', sub: '$0.85' },
+                      { mode: 'custom', label: 'Custom', sub: 'Manual' },
+                    ] as const
+                  ).map((item) => {
+                    const isSelected = (input.evChargingMode || 'home_offpeak') === item.mode;
+                    return (
+                      <button
+                        key={item.mode}
+                        type="button"
+                        onClick={() => handleChargingPresetSelect(item.mode)}
+                        className={`min-h-[44px] px-2 py-1 rounded-xl text-center border transition flex flex-col items-center justify-center ${
+                          isSelected
+                            ? 'bg-amber-950/60 border-amber-500 text-amber-300 font-bold shadow-sm ring-1 ring-amber-500/40'
+                            : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-300'
+                        }`}
+                      >
+                        <span className="text-xs truncate">{item.label}</span>
+                        <span className="text-[10px] text-slate-500 font-mono">{item.sub}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {(input.evChargingMode || 'home_offpeak') === 'custom' && (
+                  <div className="pt-1.5 flex items-center gap-2">
+                    <span className="text-xs text-slate-400">Custom Rate:</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0.01"
+                      max="2.50"
+                      value={input.fuelPriceOverride ?? 0.18}
+                      onChange={(e) => {
+                        const val = e.target.value ? parseFloat(e.target.value) : 0.18;
+                        const updated = {
+                          ...input,
+                          evChargingMode: 'custom' as const,
+                          fuelPriceOverride: val,
+                          homeKWhRate: val,
+                        };
+                        notifyChange(updated);
+                      }}
+                      className="w-24 min-h-[44px] bg-slate-900 border border-slate-700 rounded-xl px-3 py-1 text-sm text-slate-100 font-mono"
+                    />
+                    <span className="text-xs text-slate-400">$/kWh</span>
+                  </div>
+                )}
+
+                {input.vehicleType === 'phev' && (
+                  <p className="text-[10px] text-slate-400 italic mt-0.5">
+                    PHEV calculates first 35 km on electric ({input.consumptionOverride ?? 16.5} kWh/100km) and remainder on petrol backup ($2.72/L, 6.0 L/100km).
+                  </p>
+                )}
               </div>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Power / Fuel / Consumption Override */}
+              {input.vehicleType !== 'bev' && input.vehicleType !== 'phev' ? (
+                <div className="space-y-1">
+                  <label className="text-[11px] text-slate-400">
+                    Fuel Price ($/L)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={input.fuelPriceOverride ?? currentVehicle.defaultFuelPrice}
+                    onChange={(e) =>
+                      handleFieldChange(
+                        'fuelPriceOverride',
+                        e.target.value ? parseFloat(e.target.value) : undefined
+                      )
+                    }
+                    className="w-full min-h-[44px] bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-sm text-slate-200"
+                  />
+                </div>
+              ) : input.vehicleType === 'phev' ? (
+                <div className="space-y-1">
+                  <label className="text-[11px] text-slate-400">
+                    Petrol Backup ($/L)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={input.customFuelPricePerL ?? 2.72}
+                    onChange={(e) =>
+                      handleFieldChange(
+                        'customFuelPricePerL',
+                        e.target.value ? parseFloat(e.target.value) : undefined
+                      )
+                    }
+                    className="w-full min-h-[44px] bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-sm text-slate-200 font-mono"
+                  />
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  <label className="text-[11px] text-slate-400">
+                    Efficiency (kWh/100km)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={input.consumptionOverride ?? 16.5}
+                    onChange={(e) =>
+                      handleFieldChange(
+                        'consumptionOverride',
+                        e.target.value ? parseFloat(e.target.value) : undefined
+                      )
+                    }
+                    className="w-full min-h-[44px] bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-sm text-slate-200 font-mono"
+                  />
+                </div>
+              )}
 
               {/* Concession */}
               <div className="space-y-1">

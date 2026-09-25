@@ -4,6 +4,7 @@ import {
   AT_HOP_ZONE_FARES_BY_CONCESSION,
   CO2_FACTORS,
   CONCESSION_MULTIPLIERS,
+  EV_CHARGING_PRESETS,
   NZ_AA_MAINTENANCE_PER_KM,
   NZTA_RUC_RATES,
   PARKING_TIER_RATES,
@@ -53,7 +54,6 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
 
   const vehicle = VEHICLE_PRESETS[effectiveVehicleType] || VEHICLE_PRESETS.petrol91;
   const consumption = input.consumptionOverride ?? vehicle.defaultConsumption;
-  const fuelPrice = input.fuelPriceOverride ?? vehicle.defaultFuelPrice;
 
   // Statutory RUC rate ($/km)
   const rucRate =
@@ -76,9 +76,53 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
     }
   }
 
+  // Helper to resolve EV / PHEV electricity rate ($/kWh)
+  const resolveEvKwhRate = (): number => {
+    if (input.evChargingMode && input.evChargingMode !== 'custom') {
+      return EV_CHARGING_PRESETS[input.evChargingMode]?.rate ?? 0.18;
+    }
+    return input.homeKWhRate ?? input.fuelPriceOverride ?? 0.18;
+  };
+
   // --- Driving Costs ---
-  const consumptionRoundTrip = (consumption / 100) * distanceRoundTripKm;
-  const dailyFuelCost = round2((consumptionRoundTrip * fuelPrice) / passengers);
+  let dailyFuelCost = 0;
+  let monthlyCo2KgDriving = 0;
+
+  if (effectiveVehicleType === 'bev') {
+    const evRate = resolveEvKwhRate();
+    const consumptionRoundTrip = (consumption / 100) * distanceRoundTripKm;
+    dailyFuelCost = round2((consumptionRoundTrip * evRate) / passengers);
+    const monthlyFuelUnits = consumptionRoundTrip * input.daysPerWeek * WEEKS_PER_MONTH;
+    monthlyCo2KgDriving = monthlyFuelUnits * CO2_FACTORS.nzElectricityPerKwh;
+  } else if (effectiveVehicleType === 'phev') {
+    // US-09: PHEV calculates first 35 km electric on the selected rate, and remainder on petrol (default $2.72/L, 6.0 L/100km).
+    const electricKm = Math.min(distanceRoundTripKm, 35);
+    const petrolKm = Math.max(0, distanceRoundTripKm - 35);
+    const evRate = resolveEvKwhRate();
+    const phevEvEfficiency = 16.5; // kWh/100km
+    const phevPetrolEfficiency = 6.0; // L/100km
+    const petrolPrice = input.customFuelPricePerL ?? 2.72;
+
+    const dailyElectricCost = ((electricKm * phevEvEfficiency) / 100) * evRate;
+    const dailyPetrolCost = ((petrolKm * phevPetrolEfficiency) / 100) * petrolPrice;
+    dailyFuelCost = round2((dailyElectricCost + dailyPetrolCost) / passengers);
+
+    const monthlyElectricKwh = ((electricKm * phevEvEfficiency) / 100) * input.daysPerWeek * WEEKS_PER_MONTH;
+    const monthlyPetrolL = ((petrolKm * phevPetrolEfficiency) / 100) * input.daysPerWeek * WEEKS_PER_MONTH;
+    monthlyCo2KgDriving =
+      monthlyElectricKwh * CO2_FACTORS.nzElectricityPerKwh +
+      monthlyPetrolL * CO2_FACTORS.petrolPerLitre;
+  } else {
+    const fuelPrice = input.customFuelPricePerL ?? input.fuelPriceOverride ?? vehicle.defaultFuelPrice;
+    const consumptionRoundTrip = (consumption / 100) * distanceRoundTripKm;
+    dailyFuelCost = round2((consumptionRoundTrip * fuelPrice) / passengers);
+
+    let co2FactorPerUnit = CO2_FACTORS.petrolPerLitre;
+    if (effectiveVehicleType === 'diesel') co2FactorPerUnit = CO2_FACTORS.dieselPerLitre;
+    const monthlyFuelUnits = consumptionRoundTrip * input.daysPerWeek * WEEKS_PER_MONTH;
+    monthlyCo2KgDriving = monthlyFuelUnits * co2FactorPerUnit;
+  }
+
   const dailyRucCost = round2((distanceRoundTripKm * rucRate) / passengers);
   const dailyMaintenanceCost = round2((distanceRoundTripKm * maintenanceRate) / passengers);
 
@@ -106,15 +150,6 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
   const monthlyTotalDriving = round2(weeklyTotalDriving * WEEKS_PER_MONTH);
 
   const annualTotalDriving = round2(monthlyTotalDriving * 12);
-
-  // Monthly CO2 for driving (kg)
-  let co2FactorPerUnit = CO2_FACTORS.petrolPerLitre;
-  if (effectiveVehicleType === 'diesel') co2FactorPerUnit = CO2_FACTORS.dieselPerLitre;
-  if (effectiveVehicleType === 'bev') co2FactorPerUnit = CO2_FACTORS.nzElectricityPerKwh;
-  if (effectiveVehicleType === 'phev') co2FactorPerUnit = CO2_FACTORS.petrolPerLitre * 0.5;
-
-  const monthlyFuelUnits = consumptionRoundTrip * input.daysPerWeek * WEEKS_PER_MONTH;
-  const monthlyCo2KgDriving = monthlyFuelUnits * co2FactorPerUnit;
 
   const drivingBreakdown: DrivingCostBreakdown = {
     distanceOneWayKm: round1(distanceOneWayKm),

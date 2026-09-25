@@ -1,11 +1,45 @@
 import {
   ConcessionType,
+  EvChargingMode,
   FareConcession,
   ParkingTier,
   VehicleConfig,
   VehiclePowertrain,
   VehicleType,
 } from '@/types';
+
+/**
+ * EV & PHEV Charging Presets (NZ Electricity & Public Fast Charging Benchmarks)
+ * - Home Off-Peak: Overnight EV plans (e.g., Genesis EV plan, Electric Kiwi Night Owl) ~$0.18/kWh
+ * - Home Flat: Standard flat-rate residential electricity ~$0.30/kWh
+ * - Public DC Fast: Commercial rapid chargers (ChargeNet, Tesla Supercharger, We.EV) ~$0.85/kWh
+ */
+export const EV_CHARGING_PRESETS: Record<
+  EvChargingMode,
+  { label: string; rate: number; description: string }
+> = {
+  home_offpeak: {
+    label: 'Home Off-Peak',
+    rate: 0.18,
+    description: 'Night tariff ($0.18/kWh)',
+  },
+  home_flat: {
+    label: 'Home Flat',
+    rate: 0.30,
+    description: 'Standard residential ($0.30/kWh)',
+  },
+  public_dc: {
+    label: 'Public DC Fast',
+    rate: 0.85,
+    description: 'ChargeNet / Supercharger ($0.85/kWh)',
+  },
+  custom: {
+    label: 'Custom',
+    rate: 0.18,
+    description: 'User-specified rate',
+  },
+};
+
 
 /**
  * Statutory New Zealand Road User Charges (RUC) Rates

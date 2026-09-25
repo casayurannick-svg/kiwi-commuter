@@ -176,9 +176,17 @@ $$\text{Annual Driving Distance } (D_{\text{yr}}) = D_{\text{wk}} \times 52$$
   $$C_{\text{fuel}} = \left(\frac{D_{\text{day}}}{100}\right) \times \text{Consumption (L/100km)} \times P_{\text{fuel}} (\$/\text{L})$$
 - **Battery Electric Vehicle (BEV):**
   $$C_{\text{energy}} = \left(\frac{D_{\text{day}}}{100}\right) \times \text{Efficiency (kWh/100km)} \times P_{\text{power}} (\$/\text{kWh})$$
-- **Plug-in Hybrid (PHEV):**
-  Assumes 65% electric drive share ($S_{\text{EV}} = 0.65$) and 35% ICE drive share ($S_{\text{ICE}} = 0.35$):
-  $$C_{\text{PHEV}} = (S_{\text{EV}} \cdot C_{\text{energy}}) + (S_{\text{ICE}} \cdot C_{\text{fuel}})$$
+- **Plug-in Hybrid (PHEV - Dual Energy Split):**
+  PHEV models an electric battery range of $35\text{ km}$:
+  $$D_{\text{electric}} = \min(D_{\text{day}}, 35\text{ km})$$
+  $$D_{\text{petrol}} = \max(0, D_{\text{day}} - 35\text{ km})$$
+  $$C_{\text{PHEV}} = \left(\frac{D_{\text{electric}} \times 16.5\text{ kWh/100km}}{100} \times P_{\text{power}}\right) + \left(\frac{D_{\text{petrol}} \times 6.0\text{ L/100km}}{100} \times P_{\text{petrol}}\right)$$
+
+- **EV Charging Presets ($P_{\text{power}}$):**
+  1. **Home Off-Peak:** $\$0.18 / \text{kWh}$ (Overnight residential EV plans e.g. Genesis/Electric Kiwi)
+  2. **Home Flat:** $\$0.30 / \text{kWh}$ (Standard residential flat tariff)
+  3. **Public DC Fast:** $\$0.85 / \text{kWh}$ (ChargeNet, Tesla Supercharger, We.EV rapid chargers)
+  4. **Custom:** User-specified rate in $\$ / \text{kWh}$
 
 #### 2. Road User Charges (NZTA RUC 2026 Mandate)
 - **Petrol Vehicles:** $\$0.000 / \text{km}$ (RUC collected via fuel excise duty).

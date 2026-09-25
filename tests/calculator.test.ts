@@ -6,6 +6,7 @@ import { calculateArbitrage, WEEKS_PER_MONTH } from '../src/lib/calculator';
 import {
   AT_HOP_7_DAY_CAP,
   AT_HOP_ZONE_FARES_BY_CONCESSION,
+  EV_CHARGING_PRESETS,
   NZTA_RUC_RATES,
   PARKING_TIER_RATES,
   STATUTORY_NZTA_RUC_RATES,
@@ -514,5 +515,123 @@ describe('US-06: URL Search Param State Synchronization & Share Link', () => {
     assert.ok(qs.startsWith('?from=takapuna'));
   });
 });
+
+describe('US-09: EV Public Charging vs. Home Off-Peak Rate Arbitrage', () => {
+  it('correctly models BEV daily energy cost difference between Home Off-Peak ($0.18) and Public DC Fast ($0.85)', () => {
+    // Albany to CBD: approxDistanceKmToCBD is 19.5km -> roundtrip is 39.0 km
+    // Efficiency: default 16.5 kWh/100km
+    // Home Off-Peak: 39.0 * (16.5 / 100) * 0.18 = 1.1583 -> $1.16
+    // Public DC Fast: 39.0 * (16.5 / 100) * 0.85 = 5.46975 -> $5.47
+    const homeCharging = calculateArbitrage({
+      originSuburbId: 'albany',
+      destinationSuburbId: 'cbd',
+      daysPerWeek: 5,
+      vehicleType: 'bev',
+      powertrain: 'BEV',
+      evChargingMode: 'home_offpeak',
+      parkingDailyRate: 0,
+      parkingDaysPerWeek: 0,
+      concession: 'adult',
+      includeMaintenanceWear: false,
+      carpoolPassengers: 1,
+    });
+
+    const publicCharging = calculateArbitrage({
+      originSuburbId: 'albany',
+      destinationSuburbId: 'cbd',
+      daysPerWeek: 5,
+      vehicleType: 'bev',
+      powertrain: 'BEV',
+      evChargingMode: 'public_dc',
+      parkingDailyRate: 0,
+      parkingDaysPerWeek: 0,
+      concession: 'adult',
+      includeMaintenanceWear: false,
+      carpoolPassengers: 1,
+    });
+
+    assert.strictEqual(homeCharging.driving.dailyFuelCost, 1.16);
+    assert.strictEqual(publicCharging.driving.dailyFuelCost, 5.47);
+
+    // Statutory RUC ($0.076/km) must remain completely invariant: 39.0 * 0.076 = 2.964 -> 2.96
+    assert.strictEqual(homeCharging.driving.dailyRucCost, 2.96);
+    assert.strictEqual(publicCharging.driving.dailyRucCost, 2.96);
+
+    // Public charging significantly increases monthly driving costs
+    assert.ok(publicCharging.driving.monthlyTotal > homeCharging.driving.monthlyTotal);
+    const monthlyDiff = publicCharging.driving.monthlyFuelCost - homeCharging.driving.monthlyFuelCost;
+    assert.ok(monthlyDiff > 80, 'Monthly difference between public DC and home charging should exceed $80/mo');
+  });
+
+  it('correctly calculates PHEV 35km electric range split and petrol backup fuel cost', () => {
+    // Albany to CBD: roundtrip is 39.0 km
+    // Electric portion: 35.0 km at 16.5 kWh/100km
+    // Petrol portion: 4.0 km at 6.0 L/100km with $2.72/L petrol
+    // Home Off-Peak ($0.18/kWh):
+    // Electric cost: (35.0 * 16.5 / 100) * 0.18 = 1.0395
+    // Petrol cost: (4.0 * 6.0 / 100) * 2.72 = 0.6528
+    // Daily fuel total: round2(1.0395 + 0.6528) = $1.69
+    const phevHome = calculateArbitrage({
+      originSuburbId: 'albany',
+      destinationSuburbId: 'cbd',
+      daysPerWeek: 5,
+      vehicleType: 'phev',
+      powertrain: 'PHEV',
+      evChargingMode: 'home_offpeak',
+      parkingDailyRate: 0,
+      parkingDaysPerWeek: 0,
+      concession: 'adult',
+      includeMaintenanceWear: false,
+      carpoolPassengers: 1,
+    });
+
+    // Public DC Fast ($0.85/kWh):
+    // Electric cost: (35.0 * 16.5 / 100) * 0.85 = 4.90875
+    // Petrol cost: (4.0 * 6.0 / 100) * 2.72 = 0.6528
+    // Daily fuel total: round2(4.90875 + 0.6528) = $5.56
+    const phevPublic = calculateArbitrage({
+      originSuburbId: 'albany',
+      destinationSuburbId: 'cbd',
+      daysPerWeek: 5,
+      vehicleType: 'phev',
+      powertrain: 'PHEV',
+      evChargingMode: 'public_dc',
+      parkingDailyRate: 0,
+      parkingDaysPerWeek: 0,
+      concession: 'adult',
+      includeMaintenanceWear: false,
+      carpoolPassengers: 1,
+    });
+
+    assert.strictEqual(phevHome.driving.dailyFuelCost, 1.69);
+    assert.strictEqual(phevPublic.driving.dailyFuelCost, 5.56);
+
+    // PHEV RUC is $0.038/km: 39.0 * 0.038 = 1.482 -> $1.48
+    assert.strictEqual(phevHome.driving.dailyRucCost, 1.48);
+    assert.strictEqual(phevPublic.driving.dailyRucCost, 1.48);
+  });
+
+  it('supports custom $/kWh charging rate input for EV and PHEV', () => {
+    const customRateResult = calculateArbitrage({
+      originSuburbId: 'takapuna', // 18.2 km roundtrip
+      destinationSuburbId: 'cbd',
+      daysPerWeek: 5,
+      vehicleType: 'bev',
+      powertrain: 'BEV',
+      evChargingMode: 'custom',
+      fuelPriceOverride: 0.45,
+      parkingDailyRate: 0,
+      parkingDaysPerWeek: 0,
+      concession: 'adult',
+      includeMaintenanceWear: false,
+      carpoolPassengers: 1,
+    });
+
+    // 18.2 * (16.5 / 100) * 0.45 = 1.35135 -> $1.35
+    assert.strictEqual(customRateResult.driving.dailyFuelCost, 1.35);
+    assert.strictEqual(customRateResult.driving.dailyRucCost, 1.38); // 18.2 * 0.076 = 1.3832 -> 1.38
+  });
+});
+
 
 
