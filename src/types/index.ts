@@ -31,7 +31,7 @@ export interface VehicleConfig {
   description: string;
 }
 
-export type TransitMode = 'BUS' | 'TRAIN' | 'BUSWAY' | 'FERRY' | 'Bus' | 'Train' | 'Northern Busway' | 'Ferry';
+export type TransitMode = 'BUS' | 'TRAIN' | 'BUSWAY' | 'FERRY' | 'EBIKE' | 'Bus' | 'Train' | 'Northern Busway' | 'Ferry' | 'E-Bike';
 
 export interface Suburb extends SuburbCentroid {
   zone: 1 | 2 | 3 | 4 | 5;
@@ -68,8 +68,10 @@ export interface CommuteInput {
   hourlyTimeValue?: number; // Value of commuter time in NZD/hour (default 0)
   drivingTimeMins?: number; // Optional one-way driving time in minutes override
   transitTimeMins?: number; // Optional one-way transit time in minutes override
-  transitMode?: TransitMode; // Selected transit mode e.g. 'FERRY' | 'BUS' | 'TRAIN'
+  transitMode?: TransitMode; // Selected transit mode e.g. 'FERRY' | 'BUS' | 'TRAIN' | 'EBIKE'
   isWaihekeRoute?: boolean; // True if commuting via Waiheke Ferry (exempt from $50 AT cap)
+  upfrontSetupCost?: number; // E-Bike upfront purchase cost (e.g. $2500)
+  ebikeCostPerKm?: number; // E-Bike energy + wear per km (default $0.0027/km)
 }
 
 export type EVChargingSource = 'HOME_OFFPEAK' | 'HOME_FLAT' | 'PUBLIC_DC' | 'CUSTOM';
@@ -140,6 +142,7 @@ export interface CommuteComparisonResult {
   drivingTimeMins: number;
   transitTimeMins: number;
   timeMetrics?: TimeMetrics;
+  paybackMonths?: number | null;
 }
 
 export type ArbitrageResult = CommuteComparisonResult;

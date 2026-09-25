@@ -58,11 +58,14 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
   const vehicle = VEHICLE_PRESETS[effectiveVehicleType] || VEHICLE_PRESETS.petrol91;
   const consumption = input.consumptionOverride ?? vehicle.defaultConsumption;
 
+  const isEbike = input.transitMode === 'EBIKE' || input.transitMode === 'E-Bike';
+
   // Statutory RUC rate ($/km)
-  const rucRate =
-    input.powertrain && STATUTORY_NZTA_RUC_RATES[input.powertrain]
-      ? STATUTORY_NZTA_RUC_RATES[input.powertrain].ratePerKm
-      : NZTA_RUC_RATES[effectiveVehicleType]?.ratePerKm ?? 0;
+  const rucRate = isEbike
+    ? 0
+    : input.powertrain && STATUTORY_NZTA_RUC_RATES[input.powertrain]
+    ? STATUTORY_NZTA_RUC_RATES[input.powertrain].ratePerKm
+    : NZTA_RUC_RATES[effectiveVehicleType]?.ratePerKm ?? 0;
 
   // Vehicle maintenance & wear ($/km)
   const maintenanceRate = input.includeMaintenanceWear
@@ -72,8 +75,12 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
   const passengers = Math.max(1, input.carpoolPassengers || 1);
 
   // Parking daily rate: support parkingTier preset or explicit parkingDailyRate
-  let effectiveParkingRate = typeof input.parkingDailyRate === 'number' ? input.parkingDailyRate : 0;
-  if (input.parkingTier && PARKING_TIER_RATES[input.parkingTier]) {
+  let effectiveParkingRate = isEbike
+    ? 0
+    : typeof input.parkingDailyRate === 'number'
+    ? input.parkingDailyRate
+    : 0;
+  if (!isEbike && input.parkingTier && PARKING_TIER_RATES[input.parkingTier]) {
     if (typeof input.parkingDailyRate !== 'number' || input.parkingDailyRate === 0) {
       effectiveParkingRate = PARKING_TIER_RATES[input.parkingTier].rate;
     }
@@ -187,11 +194,12 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
     monthlyCo2Kg: round1(monthlyCo2KgDriving),
   };
 
-  // --- Public Transport (AT HOP / Ferry) Costs ---
+  // --- Public Transport (AT HOP / Ferry / E-Bike) Costs ---
   const isFerry =
-    input.transitMode === 'FERRY' ||
-    input.transitMode === 'Ferry' ||
-    (!input.transitMode && origin.primaryTransitMode === 'Ferry');
+    !isEbike &&
+    (input.transitMode === 'FERRY' ||
+      input.transitMode === 'Ferry' ||
+      (!input.transitMode && origin.primaryTransitMode === 'Ferry'));
 
   const isWaiheke = Boolean(
     input.isWaihekeRoute ||
@@ -202,19 +210,35 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
 
   let singleTripStandardFare: number;
   let singleTripConcessionFare: number;
+  let dailyTransitFare: number;
+  let uncappedWeeklyFare: number;
   let isHopCapApplied = false;
   let hopCappedWeeklyFare: number;
   let weeklyTransitTotal: number;
   let monthlyTransitTotal: number;
 
-  if (isFerry && isWaiheke) {
+  if (isEbike) {
+    // US-11: E-Bike mode: calculate energy cost based on distance * ebikeCostPerKm
+    const ebikeCostPerKm = typeof input.ebikeCostPerKm === 'number' ? input.ebikeCostPerKm : 0.0027;
+    const dailyEbikeEnergyCost = round2(distanceRoundTripKm * ebikeCostPerKm);
+    singleTripStandardFare = round2(dailyEbikeEnergyCost / 2);
+    singleTripConcessionFare = singleTripStandardFare;
+
+    dailyTransitFare = dailyEbikeEnergyCost;
+    uncappedWeeklyFare = round2(dailyTransitFare * input.daysPerWeek);
+
+    isHopCapApplied = false;
+    hopCappedWeeklyFare = uncappedWeeklyFare;
+    weeklyTransitTotal = uncappedWeeklyFare;
+    monthlyTransitTotal = round2(weeklyTransitTotal * WEEKS_PER_MONTH);
+  } else if (isFerry && isWaiheke) {
     // US-20: Waiheke Ferry (Fullers360) bypasses the AT $50 weekly cap and applies Fullers commercial rates
     singleTripStandardFare = WAIHEKE_FERRY_FARES.singleTripStandard;
     const concessionRate = WAIHEKE_FERRY_FARES.concessionFares[input.concession] ?? singleTripStandardFare;
     singleTripConcessionFare = round2(concessionRate);
 
-    const dailyTransitFare = round2(singleTripConcessionFare * 2);
-    const uncappedWeeklyFare = round2(dailyTransitFare * input.daysPerWeek);
+    dailyTransitFare = round2(singleTripConcessionFare * 2);
+    uncappedWeeklyFare = round2(dailyTransitFare * input.daysPerWeek);
 
     // Fullers Waiheke Ferry is exempt from AT $50 7-day cap
     isHopCapApplied = false;
@@ -240,8 +264,8 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
       singleTripConcessionFare = round2(singleTripStandardFare * concessionInfo.multiplier);
     }
 
-    const dailyTransitFare = round2(singleTripConcessionFare * 2);
-    const uncappedWeeklyFare = round2(dailyTransitFare * input.daysPerWeek);
+    dailyTransitFare = round2(singleTripConcessionFare * 2);
+    uncappedWeeklyFare = round2(dailyTransitFare * input.daysPerWeek);
 
     // Apply AT HOP 7-Day $50 Cap
     isHopCapApplied = uncappedWeeklyFare > AT_HOP_7_DAY_CAP;
@@ -251,8 +275,6 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
     monthlyTransitTotal = round2(weeklyTransitTotal * WEEKS_PER_MONTH);
   }
 
-  const dailyTransitFare = round2(singleTripConcessionFare * 2);
-  const uncappedWeeklyFare = round2(dailyTransitFare * input.daysPerWeek);
   const annualTransitTotal = round2(monthlyTransitTotal * 12);
 
   // Monthly CO2 for transit (kg)
@@ -271,7 +293,7 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
     monthlyTotal: monthlyTransitTotal,
     annualTotal: annualTransitTotal,
     monthlyCo2Kg: round1(monthlyCo2KgTransit),
-    primaryMode: isFerry ? 'Ferry' : origin.primaryTransitMode,
+    primaryMode: isEbike ? 'E-Bike' : isFerry ? 'Ferry' : origin.primaryTransitMode,
     estimatedTransitTimeMins: route.transitTimeMins,
   };
 
@@ -300,10 +322,25 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
   const transitHoursMonthly = (route.transitTimeMins * 2 * totalCommuteDaysMonthly) / 60;
   const hoursReclaimedMonthly = round1(transitHoursMonthly * 0.75);
 
+  // US-11: E-Bike Payback Timeline calculation
+  let paybackMonths: number | null = null;
+  if (isEbike) {
+    const upfront = typeof input.upfrontSetupCost === 'number' ? input.upfrontSetupCost : 2500;
+    const monthlyCarSavings = monthlyTotalDriving - monthlyTransitTotal;
+    if (upfront > 0 && monthlyCarSavings > 0) {
+      paybackMonths = round1(upfront / monthlyCarSavings);
+    } else if (upfront === 0) {
+      paybackMonths = 0;
+    }
+  }
+
   let arbitrageVerdict: 'transit_wins' | 'driving_wins' | 'break_even' = 'break_even';
   let arbitrageTagline = 'Costs are virtually identical between driving and public transit.';
 
-  if (monthlySavings > 25) {
+  if (isEbike && paybackMonths !== null && paybackMonths > 0) {
+    arbitrageVerdict = 'transit_wins';
+    arbitrageTagline = `E-Bike pays for itself in ${paybackMonths} months ($${monthlySavings.toFixed(0)}/mo savings vs car)!`;
+  } else if (monthlySavings > 25) {
     arbitrageVerdict = 'transit_wins';
     arbitrageTagline = `Public Transport saves you $${monthlySavings.toLocaleString('en-NZ', {
       minimumFractionDigits: 0,
@@ -358,6 +395,7 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
     drivingTimeMins: oneWayDriveMinutes,
     transitTimeMins: oneWayTransitMinutes,
     timeMetrics,
+    paybackMonths,
   };
 }
 

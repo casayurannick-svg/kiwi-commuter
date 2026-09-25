@@ -141,4 +141,26 @@ describe('src/components/ComparisonCard.tsx - US-16 Mini-Receipt Time Valuation'
     assert.ok(html.includes('Time Gained'), 'Must render "Time Gained" label when winning mode is faster');
     assert.ok(html.includes('+$289'), 'Must render positive time bonus');
   });
+
+  it('renders E-Bike Breakeven Alert box when paybackMonths > 0 (US-11)', () => {
+    const input: CommuteInput = {
+      ...defaultInput,
+      transitMode: 'EBIKE',
+      upfrontSetupCost: 2000,
+    };
+    const arbitrage = createMockArbitrage({
+      paybackMonths: 7.5,
+      transit: {
+        ...createMockArbitrage().transit,
+        primaryMode: 'E-Bike',
+      },
+    });
+    const html = renderToStaticMarkup(React.createElement(ComparisonCard, { arbitrage, input }));
+
+    assert.ok(html.includes('E-Bike Breakeven Timeline'), 'Must render Breakeven Alert box title');
+    assert.ok(html.includes('7.5 months'), 'Must display payback duration');
+    assert.ok(html.includes('7.5 mo'), 'Must display badge with months');
+    assert.ok(html.includes('E-Bike'), 'Must display E-Bike in mode card');
+  });
 });
+

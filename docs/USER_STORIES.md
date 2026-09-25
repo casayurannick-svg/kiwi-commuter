@@ -14,7 +14,7 @@
 | **US-08** | Greater Wellington / Metlink Expansion | **PENDING** | Backlog (`src/config/suburbs.ts`) | Suburbs and fares currently scoped to Greater Auckland (AT HOP zones 1–5). |
 | **US-09** | EV Public Charging vs. Home Off-Peak Rate Arbitrage | **DONE** | [`src/types/index.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/types/index.ts), [`src/config/fares.config.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/config/fares.config.ts), [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts), [`src/components/CommuteForm.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/CommuteForm.tsx), [`src/lib/urlParams.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/urlParams.ts) | 4 presets: Home Off-Peak ($0.18), Flat ($0.30), Public DC ($0.85), Custom; decoupled invariant RUC; `chargeSource` URL param persistence. |
 | **US-10** | AT Concession Profiles (Tertiary, Youth, Community Connect) | **DONE** | [`src/config/fares.config.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/config/fares.config.ts), [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts) | Full concession schedule: Tertiary (20% off), Youth/Community (50% off), SuperGold. |
-| **US-11** | Active Commute & Micro-Mobility Mode | **PENDING** | Backlog (`src/types/index.ts`) | E-Bike / active commute mode with capex payback timeline not yet implemented. |
+| **US-11** | E-Bike Mode & Payback Timeline | **DONE** | [`src/types/index.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/types/index.ts), [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts), [`src/components/CommuteForm.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/CommuteForm.tsx), [`src/components/MiniReceipt.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/MiniReceipt.tsx) | 'EBIKE' in TransitMode, zeroed parking/RUC, distance * ebikeCostPerKm, Upfront Setup Cost, and MiniReceipt Breakeven Alert box. |
 | **US-12** | Park & Ride Multimodal Hybrid Route | **PENDING** | Backlog (`src/config/suburbs.ts`) | Station parking + rail transfer multi-leg route calculations not yet modeled. |
 | **US-13** | Monetized Travel Time & Opportunity Cost | **DONE** | [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts), [`src/components/CommuteForm.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/CommuteForm.tsx), [`src/components/ComparisonCard.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/ComparisonCard.tsx), [`src/lib/urlParams.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/urlParams.ts), [`src/lib/__tests__/calculator.test.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/__tests__/calculator.test.ts) | Fully implemented with UI controls (Off, $20/hr, $50/hr, Custom), URL state persistence (`timeRate`), ComparisonCard sublines/badges, and unit tests. |
 | **US-14** | Plain-Language Financial Verdicts | **DONE** | [`src/components/ComparisonCard.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/ComparisonCard.tsx) | Direct conversational savings verdicts ("You save $X/mo...", "MONTHLY VERDICT" badge). |
@@ -308,6 +308,20 @@
 
 ---
 
+### US-11: E-Bike Mode and Payback Timeline
+**As an** active commuter considering an electric bicycle,  
+**I want to** evaluate an E-Bike commute mode against my driving costs with upfront equipment investment,  
+**So that** I know the exact monthly savings and break-even payback period for purchasing an e-bike.  
+
+* **Acceptance Criteria:**
+  - Add `'EBIKE'` to `TransitMode` union and support `upfrontSetupCost` and `ebikeCostPerKm` (default $0.0027/km) in `CommuteInput`.
+  - In `src/components/CommuteForm.tsx`, add a `'🚲 E-Bike'` mode selector button. When active, hide car fields (Powertrain, RUC, Parking) and display "Upfront Setup Cost" and "Energy Cost/km" inputs.
+  - In `src/lib/calculator.ts`, zero out parking and RUC when mode is EBIKE, calculate energy cost based on `distance * ebikeCostPerKm`, and compute `paybackMonths` (`upfrontSetupCost / monthly car savings`).
+  - In `src/components/MiniReceipt.tsx`, render a styled Breakeven Alert box showing the payback timeline if `paybackMonths > 0`.
+  - Unit tests in `src/lib/__tests__/calculator.test.ts`, `src/components/__tests__/CommuteForm.test.tsx`, and `src/components/__tests__/ComparisonCard.test.tsx` verify calculations, UI state toggles, and alert box rendering.
+
+---
+
 ## Backlog Stories (PENDING)
 
 ### US-08: Greater Wellington / Metlink Expansion
@@ -322,18 +336,6 @@
 
 ---
 
-### US-11: Active Commute & Micro-Mobility Mode
-**As an** active commuter considering an e-bike,  
-**I want to** compare the total cost of ownership of an electric bicycle against both driving and public transit,  
-**So that** I can calculate the break-even payback period of purchasing an e-bike.
-
-* **Planned Criteria:**
-  - Powertrain option for E-Bike (~$0.02/km charging + $0.05/km amortized tire/chain maintenance).
-  - Capital expenditure amortization calculator ($1,500–$4,000 upfront purchase price).
-  - Payback period visualizer (months until transit/fuel savings pay off the bicycle).
-
----
-
 ### US-12: Park & Ride Multimodal Hybrid Route
 **As a** suburban commuter living beyond walking distance to rapid transit,  
 **I want to** calculate a multimodal route (driving to a Park & Ride station, then taking a bus/train to CBD),  
@@ -342,3 +344,4 @@
 * **Planned Criteria:**
   - Multimodal corridor options (e.g. driving Albany to Albany Station, taking NX1 bus to CBD).
   - Split driving cost (short suburban leg + free/paid park-and-ride facility) + single-seat transit fare.
+

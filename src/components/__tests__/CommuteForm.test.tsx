@@ -69,5 +69,33 @@ describe('src/components/CommuteForm.tsx - US-19 Wear & Tear Benchmark Tooltip',
       'Must contain exact Value of Your Time tooltip explanation'
     );
   });
+
+  it('renders E-Bike mode selector button and toggles to E-Bike inputs when active (US-11)', () => {
+    const htmlDefault = renderToStaticMarkup(
+      React.createElement(CommuteForm, { input: defaultInput })
+    );
+
+    // E-Bike button is rendered in transit mode selector
+    assert.ok(htmlDefault.includes('🚲 E-Bike'), 'Must render 🚲 E-Bike mode button');
+    assert.ok(htmlDefault.includes('Powertrain'), 'Must render Powertrain for car mode');
+    assert.ok(htmlDefault.includes('Daily Parking'), 'Must render Daily Parking for car mode');
+
+    // When transitMode is EBIKE, hide car fields and show E-Bike inputs
+    const ebikeInput: CommuteInput = {
+      ...defaultInput,
+      transitMode: 'EBIKE',
+      upfrontSetupCost: 2800,
+      ebikeCostPerKm: 0.003,
+    };
+    const htmlEbike = renderToStaticMarkup(
+      React.createElement(CommuteForm, { input: ebikeInput })
+    );
+
+    assert.ok(htmlEbike.includes('Upfront Setup Cost'), 'Must show Upfront Setup Cost input');
+    assert.ok(htmlEbike.includes('Energy Cost/km'), 'Must show Energy Cost/km input');
+    assert.ok(!htmlEbike.includes('Powertrain'), 'Must hide Powertrain when EBIKE is active');
+    assert.ok(!htmlEbike.includes('Daily Parking'), 'Must hide Daily Parking when EBIKE is active');
+  });
 });
+
 

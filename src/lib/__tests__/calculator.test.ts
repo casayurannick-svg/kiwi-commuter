@@ -2,6 +2,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert';
 import { calculateCommuteArbitrage, WEEKS_PER_MONTH } from '../calculator';
 import { AT_HOP_7_DAY_CAP, PARKING_TIER_RATES } from '../../config/fares.config';
+import { CommuteInput } from '@/types';
 
 describe('src/lib/calculator.ts - calculateCommuteArbitrage', () => {
   it('computes exact daily, weekly, monthly, and annual financial figures', () => {
@@ -470,6 +471,45 @@ describe('src/lib/calculator.ts - calculateCommuteArbitrage', () => {
 
       const expectedGeneralizedSavings = Math.round((result.monthlySavings - monetizedMonthlyTimeCost) * 100) / 100;
       assert.strictEqual(generalizedMonthlySavings, expectedGeneralizedSavings);
+    });
+  });
+
+  describe('US-11: E-Bike Mode and Payback Timeline', () => {
+    it('asserts that an EBIKE commute correctly zeros out parking/RUC and accurately calculates the payback period', () => {
+      const input: CommuteInput = {
+        originSuburbId: 'albany',
+        destinationSuburbId: 'cbd',
+        daysPerWeek: 5,
+        vehicleType: 'bev', // EV normally incurs RUC
+        parkingDailyRate: 20, // normally incurs parking
+        parkingDaysPerWeek: 5,
+        transitMode: 'EBIKE',
+        upfrontSetupCost: 2000,
+        ebikeCostPerKm: 0.0027,
+        includeMaintenanceWear: true,
+        carpoolPassengers: 1,
+        concession: 'adult',
+      };
+
+      const result = calculateCommuteArbitrage(input);
+
+      // Assert that parking and RUC are zeroed out
+      assert.strictEqual(result.driving.dailyParkingCost, 0, 'Parking cost must be zeroed out in EBIKE mode');
+      assert.strictEqual(result.driving.monthlyParkingCost, 0, 'Monthly parking must be zero in EBIKE mode');
+      assert.strictEqual(result.driving.dailyRucCost, 0, 'RUC cost must be zeroed out in EBIKE mode');
+      assert.strictEqual(result.driving.monthlyRucCost, 0, 'Monthly RUC must be zero in EBIKE mode');
+
+      // Assert energy cost based on distance * ebikeCostPerKm
+      const distanceRoundTripKm = result.driving.distanceRoundTripKm;
+      const expectedDailyEnergy = Math.round(distanceRoundTripKm * 0.0027 * 100) / 100;
+      assert.strictEqual(result.transit.dailyFare, expectedDailyEnergy, 'Daily transit fare should equal e-bike energy cost');
+      assert.strictEqual(result.transit.primaryMode, 'E-Bike', 'Transit primaryMode should be E-Bike');
+
+      // Assert paybackMonths calculation (upfrontSetupCost / monthly car savings)
+      const monthlyCarSavings = result.driving.monthlyTotal - result.transit.monthlyTotal;
+      const expectedPaybackMonths = Math.round((2000 / monthlyCarSavings) * 10) / 10;
+      assert.ok(result.paybackMonths !== null && result.paybackMonths !== undefined && result.paybackMonths > 0, 'paybackMonths must be computed and positive');
+      assert.strictEqual(result.paybackMonths, expectedPaybackMonths, 'paybackMonths must equal upfrontSetupCost / monthlyCarSavings');
     });
   });
 });

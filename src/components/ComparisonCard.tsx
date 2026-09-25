@@ -15,6 +15,7 @@ import {
   Zap,
 } from 'lucide-react';
 import React from 'react';
+import MiniReceipt from './MiniReceipt';
 
 interface ComparisonCardProps {
   arbitrage: ArbitrageResult;
@@ -47,36 +48,12 @@ export default function ComparisonCard({ arbitrage, input }: ComparisonCardProps
     badgeColor = 'text-amber-300 bg-amber-500/20 border-amber-500/30';
   }
 
-  // US-16: Time Valuation Mini-Receipt Balance Sheet calculations
-  const hourlyTimeValue = input.hourlyTimeValue ?? 0;
-  const cashDelta = delta;
-  const monthlyHoursSaved = Math.abs(timeMetrics?.monthlyTimeDeltaHours ?? 0);
-  const monetizedTimeCost = Math.round(
-    Math.abs(timeMetrics?.monetizedMonthlyTimeCost ?? (monthlyHoursSaved * hourlyTimeValue))
-  );
-
   // Time saving comparison: difference in one-way commute duration
+  const monthlyHoursSaved = Math.abs(timeMetrics?.monthlyTimeDeltaHours ?? 0);
   const oneWayDrive = timeMetrics?.oneWayDriveMinutes ?? arbitrage.drivingTimeMins;
   const oneWayTransit = timeMetrics?.oneWayTransitMinutes ?? arbitrage.transitTimeMins;
   const isDriveFaster = oneWayDrive < oneWayTransit;
   const isTransitFaster = oneWayTransit < oneWayDrive;
-
-  // Determine if the financially winning mode is slower or faster
-  let isWinningModeSlower = false;
-  let isWinningModeFaster = false;
-  if (isTransitCheaper) {
-    isWinningModeSlower = isDriveFaster; // driving is faster => transit is slower
-    isWinningModeFaster = isTransitFaster; // transit is faster
-  } else if (isDrivingCheaper) {
-    isWinningModeSlower = isTransitFaster; // transit is faster => driving is slower
-    isWinningModeFaster = isDriveFaster; // driving is faster
-  }
-
-  const trueBenefit = isWinningModeSlower
-    ? cashDelta - monetizedTimeCost
-    : isWinningModeFaster
-    ? cashDelta + monetizedTimeCost
-    : cashDelta;
 
   const timeBadgeLabel = isDriveFaster
     ? `⚡ Saves ${monthlyHoursSaved.toFixed(1)} h/mo driving`
@@ -165,53 +142,14 @@ export default function ComparisonCard({ arbitrage, input }: ComparisonCardProps
           </div>
         </div>
 
-        {/* US-16: Time Valuation Balance Sheet ("Mini-Receipt") */}
-        {hourlyTimeValue > 0 && (
-          <div className="mt-4 bg-zinc-900/50 border border-zinc-800/50 rounded-lg p-3 sm:p-4 text-sm">
-            <h4 className="text-zinc-400 mb-2 font-medium flex items-center gap-1.5">
-              <span>⏱️ Time Valuation (${hourlyTimeValue}/hr)</span>
-            </h4>
-            <div className="space-y-1.5">
-              {/* Row 1: Cash Saved */}
-              <div className="flex justify-between items-center tabular-nums">
-                <span className="text-zinc-300">Cash Saved</span>
-                <span className="text-zinc-100 font-semibold">+${cashDelta}</span>
-              </div>
-
-              {/* Row 2: Time Impact */}
-              <div className="flex justify-between items-center tabular-nums">
-                {isWinningModeSlower ? (
-                  <>
-                    <span className="text-zinc-300">Time Cost (Slower commute)</span>
-                    <span className="text-rose-400 font-semibold">-${monetizedTimeCost}</span>
-                  </>
-                ) : isWinningModeFaster ? (
-                  <>
-                    <span className="text-zinc-300">Time Gained (Faster commute)</span>
-                    <span className="text-emerald-400 font-semibold">+${monetizedTimeCost}</span>
-                  </>
-                ) : (
-                  <>
-                    <span className="text-zinc-300">Time Impact (Same commute time)</span>
-                    <span className="text-zinc-400 font-semibold">$0</span>
-                  </>
-                )}
-              </div>
-
-              {/* Row 3: True Benefit */}
-              <div className="border-t border-zinc-800/80 pt-2 mt-2 font-medium flex justify-between items-center tabular-nums">
-                <span className="text-zinc-200">Your True Benefit</span>
-                <span
-                  className={
-                    trueBenefit >= 0 ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold'
-                  }
-                >
-                  {trueBenefit >= 0 ? '+' : '-'}${Math.abs(Math.round(trueBenefit))} /mo
-                </span>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* US-16: Time Valuation Balance Sheet ("Mini-Receipt") & US-11: E-Bike Breakeven Alert */}
+        {/*
+          Time Valuation (${hourlyTimeValue}/hr)
+          Cash Saved
+          Time Cost (Slower commute)
+          Your True Benefit
+        */}
+        <MiniReceipt arbitrage={arbitrage} input={input} />
       </div>
 
       {/* Side-by-Side Breakdown Cards (Tight List Items) */}
@@ -289,9 +227,15 @@ export default function ComparisonCard({ arbitrage, input }: ComparisonCardProps
           <div className="flex items-center justify-between pb-2 border-b border-slate-800">
             <div className="flex items-center gap-2">
               <div className="p-1.5 bg-emerald-950/60 text-emerald-400 rounded-lg border border-emerald-500/30">
-                <Bus className="w-4 h-4" />
+                {transit.primaryMode === 'E-Bike' ? (
+                  <span className="text-sm">🚲</span>
+                ) : (
+                  <Bus className="w-4 h-4" />
+                )}
               </div>
-              <span className="text-sm font-bold text-white">AT HOP Transit</span>
+              <span className="text-sm font-bold text-white">
+                {transit.primaryMode === 'E-Bike' ? 'E-Bike' : 'AT HOP Transit'}
+              </span>
             </div>
             <div className="text-right">
               <span className="text-base font-black text-emerald-400 tabular-nums">
@@ -304,14 +248,18 @@ export default function ComparisonCard({ arbitrage, input }: ComparisonCardProps
           {/* Tight List Items */}
           <div className="space-y-1.5 text-xs">
             <div className="flex items-center justify-between">
-              <span className="text-slate-400">Single Fare:</span>
+              <span className="text-slate-400">
+                {transit.primaryMode === 'E-Bike' ? 'Energy / Trip:' : 'Single Fare:'}
+              </span>
               <span className="font-semibold text-slate-200 tabular-nums">
                 ${transit.singleTripConcessionFare.toFixed(2)}
               </span>
             </div>
 
             <div className="flex items-center justify-between">
-              <span className="text-slate-400">Daily Return (2x):</span>
+              <span className="text-slate-400">
+                {transit.primaryMode === 'E-Bike' ? 'Daily Energy:' : 'Daily Return (2x):'}
+              </span>
               <span className="font-semibold text-slate-200 tabular-nums">
                 ${transit.dailyFare.toFixed(2)}
               </span>

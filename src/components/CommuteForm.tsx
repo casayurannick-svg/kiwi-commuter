@@ -152,9 +152,11 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
 
   const handleTransitModeSelect = (mode: TransitMode) => {
     const isWaiheke =
-      input.originSuburbId === 'waiheke' ||
-      input.destinationSuburbId === 'waiheke' ||
-      (mode === 'FERRY' && input.isWaihekeRoute);
+      mode !== 'EBIKE' &&
+      mode !== 'E-Bike' &&
+      (input.originSuburbId === 'waiheke' ||
+        input.destinationSuburbId === 'waiheke' ||
+        (mode === 'FERRY' && input.isWaihekeRoute));
     const updated: CommuteInput = {
       ...input,
       transitMode: mode,
@@ -168,6 +170,8 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
     (input.originSuburbId === 'waiheke' || input.destinationSuburbId === 'waiheke'
       ? 'FERRY'
       : 'BUS');
+
+  const isEbikeActive = activeTransitMode === 'EBIKE' || activeTransitMode === 'E-Bike';
 
   return (
     <div className="glass-panel rounded-2xl p-4 sm:p-5 border border-slate-800 space-y-4">
@@ -228,43 +232,60 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
         </div>
       </div>
 
-      {/* Transit Mode Selector (US-20) */}
+      {/* Transit Mode Selector (US-20, US-11) */}
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
           <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
             <Bus className="w-3.5 h-3.5 text-emerald-400" />
             Transit Mode
           </label>
-          {input.isWaihekeRoute && (
+          {input.isWaihekeRoute && !isEbikeActive && (
             <span className="text-[10px] text-amber-400 font-mono">
               Waiheke Fullers (AT Cap Exempt)
             </span>
           )}
+          {isEbikeActive && (
+            <span className="text-[10px] text-emerald-400 font-mono">
+              Micro-Mobility
+            </span>
+          )}
         </div>
-        <div className="grid grid-cols-2 gap-1.5">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
           <button
             type="button"
             onClick={() => handleTransitModeSelect('BUS')}
-            className={`min-h-[44px] px-3 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 border ${
-              activeTransitMode !== 'FERRY' && activeTransitMode !== 'Ferry'
+            className={`min-h-[44px] px-2.5 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 border ${
+              !isEbikeActive && activeTransitMode !== 'FERRY' && activeTransitMode !== 'Ferry'
                 ? 'bg-emerald-500 text-slate-950 font-black shadow-md border-emerald-500'
                 : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
             }`}
           >
             <Bus className="w-4 h-4" />
-            Bus / Train (AT HOP $50 Cap)
+            <span className="truncate">Bus / Train (AT HOP $50 Cap)</span>
           </button>
           <button
             type="button"
             onClick={() => handleTransitModeSelect('FERRY')}
-            className={`min-h-[44px] px-3 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 border ${
+            className={`min-h-[44px] px-2.5 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 border ${
               activeTransitMode === 'FERRY' || activeTransitMode === 'Ferry'
                 ? 'bg-sky-500 text-slate-950 font-black shadow-md border-sky-500'
                 : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
             }`}
           >
             <Ship className="w-4 h-4" />
-            Ferry {input.isWaihekeRoute ? '(Waiheke Rates)' : '(AT HOP)'}
+            <span className="truncate">Ferry {input.isWaihekeRoute ? '(Waiheke Rates)' : '(AT HOP)'}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => handleTransitModeSelect('EBIKE')}
+            className={`min-h-[44px] px-2.5 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 border ${
+              isEbikeActive
+                ? 'bg-emerald-500 text-slate-950 font-black shadow-md border-emerald-500'
+                : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
+            }`}
+          >
+            <span>🚲</span>
+            <span className="truncate">🚲 E-Bike</span>
           </button>
         </div>
       </div>
@@ -302,78 +323,145 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
         </div>
       </div>
 
-      {/* Powertrain (Segmented Pills with 44px min-height) */}
-      <div className="space-y-1.5">
-        <label className="text-xs font-semibold text-slate-300">Powertrain</label>
-        <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
-          {POWERTRAIN_OPTIONS.map((opt) => {
-            const isSelected = input.vehicleType === opt.id || input.powertrain === opt.powertrain;
-            return (
-              <button
-                key={opt.id}
-                type="button"
-                onClick={() => handlePowertrainSelect(opt)}
-                className={`min-h-[44px] px-2 py-1.5 rounded-xl border text-center transition flex flex-col items-center justify-center ${
-                  isSelected
-                    ? 'bg-slate-800 border-emerald-500 text-white font-bold shadow ring-1 ring-emerald-500/40'
-                    : 'bg-slate-900/80 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'
-                }`}
-              >
-                <span className="text-xs truncate">{opt.label}</span>
-                <span className="text-[10px] text-slate-500 font-mono">
-                  {opt.id === 'bev' || opt.id === 'diesel' ? '+RUC' : opt.defaultConsumption}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Daily Parking */}
-      <div className="space-y-1.5">
-        <div className="flex items-center justify-between">
-          <label className="text-xs font-semibold text-slate-300">Daily Parking</label>
-          <span className="text-xs font-bold text-sky-400 tabular-nums">
-            ${input.parkingDailyRate.toFixed(0)}/day
-          </span>
-        </div>
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
-          {PARKING_SEGMENTS.map((seg) => {
-            const isSelected =
-              selectedParkingTier === seg.tier ||
-              (seg.tier !== 'CUSTOM' && input.parkingDailyRate === seg.rate);
-            return (
-              <button
-                key={seg.tier}
-                type="button"
-                onClick={() => handleParkingSelect(seg.tier, seg.rate)}
-                className={`min-h-[44px] p-2 rounded-xl text-center border transition flex items-center justify-center ${
-                  isSelected
-                    ? 'bg-sky-950/60 border-sky-500 text-sky-300 font-bold shadow-sm'
-                    : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-300'
-                }`}
-              >
-                <span className="text-xs truncate">{seg.label}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        {selectedParkingTier === 'CUSTOM' && (
-          <div className="pt-1 flex items-center gap-2">
-            <span className="text-xs text-slate-400">Rate:</span>
-            <input
-              type="number"
-              min="0"
-              max="150"
-              value={input.parkingDailyRate}
-              onChange={(e) => handleFieldChange('parkingDailyRate', parseFloat(e.target.value) || 0)}
-              className="w-24 min-h-[44px] bg-slate-900 border border-slate-700 rounded-xl px-3 py-1 text-sm text-slate-100"
-            />
-            <span className="text-xs text-slate-400">$/day</span>
+      {/* US-11: If EBIKE is active, hide car fields (Powertrain, RUC, Parking) and show E-Bike inputs */}
+      {isEbikeActive ? (
+        <div className="space-y-3 p-3.5 bg-slate-900/60 border border-emerald-500/30 rounded-xl">
+          <div className="flex items-center justify-between pb-1.5 border-b border-slate-800">
+            <span className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+              <span>🚲</span> E-Bike Hardware &amp; Cost Parameters
+            </span>
           </div>
-        )}
-      </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* Upfront Setup Cost */}
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-slate-300">
+                Upfront Setup Cost
+              </label>
+              <div className="relative">
+                <input
+                  type="number"
+                  min="0"
+                  step="50"
+                  value={input.upfrontSetupCost ?? 2500}
+                  onChange={(e) =>
+                    handleFieldChange(
+                      'upfrontSetupCost',
+                      e.target.value === '' ? 0 : parseFloat(e.target.value) || 0
+                    )
+                  }
+                  placeholder="2500"
+                  className="w-full min-h-[44px] bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-sm text-slate-100 font-mono focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                />
+              </div>
+              <span className="text-[10px] text-slate-400 block">
+                Purchase price of bike, lock, helmet &amp; gear
+              </span>
+            </div>
+
+            {/* Energy Cost/km */}
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-slate-300">
+                Energy Cost/km
+              </label>
+              <div className="relative">
+                <input
+                  type="number"
+                  min="0"
+                  step="0.0001"
+                  value={input.ebikeCostPerKm ?? 0.0027}
+                  onChange={(e) =>
+                    handleFieldChange(
+                      'ebikeCostPerKm',
+                      e.target.value === '' ? 0 : parseFloat(e.target.value) || 0
+                    )
+                  }
+                  placeholder="0.0027"
+                  className="w-full min-h-[44px] bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-sm text-slate-100 font-mono focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                />
+              </div>
+              <span className="text-[10px] text-slate-400 block">
+                Default: $0.0027/km battery charging
+              </span>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* Powertrain (Segmented Pills with 44px min-height) */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-slate-300">Powertrain</label>
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
+              {POWERTRAIN_OPTIONS.map((opt) => {
+                const isSelected = input.vehicleType === opt.id || input.powertrain === opt.powertrain;
+                return (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => handlePowertrainSelect(opt)}
+                    className={`min-h-[44px] px-2 py-1.5 rounded-xl border text-center transition flex flex-col items-center justify-center ${
+                      isSelected
+                        ? 'bg-slate-800 border-emerald-500 text-white font-bold shadow ring-1 ring-emerald-500/40'
+                        : 'bg-slate-900/80 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'
+                    }`}
+                  >
+                    <span className="text-xs truncate">{opt.label}</span>
+                    <span className="text-[10px] text-slate-500 font-mono">
+                      {opt.id === 'bev' || opt.id === 'diesel' ? '+RUC' : opt.defaultConsumption}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Daily Parking */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold text-slate-300">Daily Parking</label>
+              <span className="text-xs font-bold text-sky-400 tabular-nums">
+                ${input.parkingDailyRate.toFixed(0)}/day
+              </span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
+              {PARKING_SEGMENTS.map((seg) => {
+                const isSelected =
+                  selectedParkingTier === seg.tier ||
+                  (seg.tier !== 'CUSTOM' && input.parkingDailyRate === seg.rate);
+                return (
+                  <button
+                    key={seg.tier}
+                    type="button"
+                    onClick={() => handleParkingSelect(seg.tier, seg.rate)}
+                    className={`min-h-[44px] p-2 rounded-xl text-center border transition flex items-center justify-center ${
+                      isSelected
+                        ? 'bg-sky-950/60 border-sky-500 text-sky-300 font-bold shadow-sm'
+                        : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-300'
+                    }`}
+                  >
+                    <span className="text-xs truncate">{seg.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {selectedParkingTier === 'CUSTOM' && (
+              <div className="pt-1 flex items-center gap-2">
+                <span className="text-xs text-slate-400">Rate:</span>
+                <input
+                  type="number"
+                  min="0"
+                  max="150"
+                  value={input.parkingDailyRate}
+                  onChange={(e) => handleFieldChange('parkingDailyRate', parseFloat(e.target.value) || 0)}
+                  className="w-24 min-h-[44px] bg-slate-900 border border-slate-700 rounded-xl px-3 py-1 text-sm text-slate-100"
+                />
+                <span className="text-xs text-slate-400">$/day</span>
+              </div>
+            )}
+          </div>
+        </>
+      )}
 
       {/* Disclosure: Custom Rates ▾ */}
       <div className="pt-1 border-t border-slate-800">
@@ -674,7 +762,7 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
             </div>
 
             {/* RUC notice */}
-            {currentVehicle.rucRatePerKm > 0 && (
+            {!isEbikeActive && currentVehicle.rucRatePerKm > 0 && (
               <div className="text-[11px] text-amber-300/90 bg-amber-500/10 border border-amber-500/20 rounded-lg p-2 flex items-center gap-1.5">
                 <Zap className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                 <span>
