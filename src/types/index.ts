@@ -46,11 +46,14 @@ export interface CommuteInput {
   destinationSuburbId: string;
   daysPerWeek: number; // 1 to 7
   vehicleType: VehicleType;
+  powertrain?: VehiclePowertrain;
   consumptionOverride?: number; // custom L/100km or kWh/100km
   fuelPriceOverride?: number; // custom $/L or $/kWh
   parkingDailyRate: number; // NZD
   parkingDaysPerWeek: number; // days paying parking
+  parkingTier?: ParkingTier;
   concession: ConcessionType;
+  fareConcession?: FareConcession;
   includeMaintenanceWear: boolean;
   maintenanceCostPerKm?: number; // NZ AA average ~$0.18/km
   carpoolPassengers: number; // 1 = solo driver, 2 = split driving costs with 1 passenger
@@ -97,9 +100,11 @@ export interface TransitCostBreakdown {
   estimatedTransitTimeMins: number;
 }
 
-export interface ArbitrageResult {
+export interface CommuteComparisonResult {
   driving: DrivingCostBreakdown;
   transit: TransitCostBreakdown;
+  dailySavings: number;
+  weeklySavings: number;
   monthlySavings: number; // driving.monthlyTotal - transit.monthlyTotal
   annualSavings: number;
   breakEvenDaysPerWeek: number;
@@ -111,6 +116,8 @@ export interface ArbitrageResult {
   drivingTimeMins: number;
   transitTimeMins: number;
 }
+
+export type ArbitrageResult = CommuteComparisonResult;
 
 export interface FuelSnapshot {
   fuelType: 'unleaded91' | 'premium95' | 'diesel' | 'electricity';

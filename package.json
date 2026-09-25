@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "tsx --test tests/calculator.test.ts",
+    "test": "tsx --test src/lib/__tests__/calculator.test.ts tests/calculator.test.ts",
     "fetch:fuel": "tsx scripts/fetch-mbie-fuel.ts"
   },
   "dependencies": {
