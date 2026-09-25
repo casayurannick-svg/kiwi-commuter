@@ -702,13 +702,25 @@ describe('US-13: Monetized Travel Time & Opportunity Cost', () => {
     assert.ok(content.includes('$/hr'), 'Must display $/hr unit suffix');
   });
 
-  it('verifies ComparisonCard source includes time-factored secondary subline and time badge', () => {
+  it('verifies ComparisonCard source includes time valuation mini-receipt balance sheet (US-16) and time badge', () => {
     const cardPath = path.resolve(process.cwd(), 'src/components/ComparisonCard.tsx');
     const content = fs.readFileSync(cardPath, 'utf-8');
 
     assert.ok(
-      content.includes('Factoring your time ($${hourlyTimeValue}/hr): Net +$${absNet.toLocaleString('),
-      'Must render time-factored secondary subline when hourlyTimeValue > 0'
+      content.includes('Time Valuation (${hourlyTimeValue}/hr)'),
+      'Must render Time Valuation mini-receipt header when hourlyTimeValue > 0'
+    );
+    assert.ok(
+      content.includes('Cash Saved'),
+      'Must render Cash Saved row'
+    );
+    assert.ok(
+      content.includes('Time Cost (Slower commute)'),
+      'Must render Time Cost row for slower commute'
+    );
+    assert.ok(
+      content.includes('Your True Benefit'),
+      'Must render Your True Benefit row'
     );
     assert.ok(
       content.includes('⚡ Saves ${monthlyHoursSaved.toFixed(1)} h/mo driving'),

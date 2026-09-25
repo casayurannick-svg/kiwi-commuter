@@ -19,6 +19,7 @@
 | **US-13** | Monetized Travel Time & Opportunity Cost | **DONE** | [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts), [`src/components/CommuteForm.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/CommuteForm.tsx), [`src/components/ComparisonCard.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/ComparisonCard.tsx), [`src/lib/urlParams.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/urlParams.ts), [`src/lib/__tests__/calculator.test.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/__tests__/calculator.test.ts) | Fully implemented with UI controls (Off, $20/hr, $50/hr, Custom), URL state persistence (`timeRate`), ComparisonCard sublines/badges, and unit tests. |
 | **US-14** | Plain-Language Financial Verdicts | **DONE** | [`src/components/ComparisonCard.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/ComparisonCard.tsx) | Direct conversational savings verdicts ("You save $X/mo...", "MONTHLY VERDICT" badge). |
 | **US-15** | Privacy-Friendly Traffic & Web Analytics Integration | **DONE** | [`src/app/layout.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/app/layout.tsx), [`package.json`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/package.json) | `@vercel/analytics` installed and `<Analytics />` component embedded in RootLayout. |
+| **US-16** | Plain-Language Time Valuation Balance Sheet ("Mini-Receipt") | **DONE** | [`src/components/ComparisonCard.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/ComparisonCard.tsx), [`src/components/__tests__/ComparisonCard.test.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/__tests__/ComparisonCard.test.tsx) | Recessed card balance sheet breaking down Cash Saved, Time Cost/Gained, and Your True Benefit. |
 
 ---
 
@@ -209,6 +210,29 @@
   - **And** no personally identifiable information (PII) or user session cookies are stored or transmitted.
   - **When** running locally in development mode (`NODE_ENV === 'development'`),
     - Analytics calls are suppressed or flagged in debug mode to prevent polluting production metrics.
+
+---
+
+### US-16: Plain-Language Time Valuation Balance Sheet ("Mini-Receipt")
+**As a** busy commuter assigning a dollar value to my time,  
+**I want to** see an itemized balance sheet breaking down Cash Saved, Time Cost/Bonus, and True Net Benefit,  
+**So that** I understand exactly how travel time impacts my financial bottom line.
+
+* **Acceptance Criteria:**
+  - **Given** an active commute comparison with `hourlyTimeValue > 0`,
+  - **When** viewing [`src/components/ComparisonCard.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/ComparisonCard.tsx),
+  - **Then** render a recessed inset container (`bg-zinc-900/50 border border-zinc-800/50 rounded-lg p-3 sm:p-4 text-sm`) breaking down:
+    - **Header:** `⏱️ Time Valuation ($X/hr)`
+    - **Row 1 (Cash Saved):** `Cash Saved` | `+$X` using `tabular-nums`
+    - **Row 2 (Time Impact):**
+      - If the winning mode is slower: `Time Cost (Slower commute)` | `-$X` (rose styling)
+      - If the winning mode is faster: `Time Gained (Faster commute)` | `+$X` (emerald styling)
+      - If times are identical: `Time Impact (Same commute time)` | `$0`
+    - **Row 3 (True Benefit):** Top border (`border-t border-zinc-800/80 pt-2 mt-2 font-medium`) displaying `Your True Benefit` | `+$X /mo` (or `-$X /mo`)
+  - **Given** `hourlyTimeValue = 0` (or Off),
+  - **When** viewing the comparison card,
+  - **Then** the Time Valuation mini-receipt container is completely omitted from rendering.
+  - **And** component unit tests in [`src/components/__tests__/ComparisonCard.test.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/__tests__/ComparisonCard.test.tsx) verify rendering of Cash Saved, Time Cost, and True Benefit with rate > 0, as well as absence when rate = 0.
 
 ## Backlog Stories (PENDING)
 
