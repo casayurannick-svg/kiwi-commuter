@@ -34,7 +34,8 @@ export default function RouteMap({
     destination.coordinates,
   ]);
 
-  const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '';
+  const rawToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '';
+  const token = rawToken.trim().replace(/^["']|["']$/g, '').replace(/^ppk\./, 'pk.');
 
   // Fetch detailed route geometry from Mapbox or local Auckland corridor generator
   useEffect(() => {

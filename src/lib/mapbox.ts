@@ -1,7 +1,13 @@
 import { RouteGeometry, Suburb } from '@/types';
 import { estimateRouteMetrics } from '@/config/suburbs';
 
-const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '';
+export function normalizeMapboxToken(token: string): string {
+  const clean = (token || '').trim().replace(/^["']|["']$/g, '');
+  if (clean.startsWith('ppk.')) return clean.slice(1);
+  return clean;
+}
+
+const MAPBOX_TOKEN = normalizeMapboxToken(process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '');
 
 export interface RouteGeometryResponse {
   coordinates: [number, number][]; // LineString coords [lng, lat]
