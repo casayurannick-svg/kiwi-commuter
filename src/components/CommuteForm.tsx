@@ -1,8 +1,8 @@
 'use client';
 
-import { EV_CHARGING_PRESETS, VEHICLE_PRESETS } from '@/config/fares.config';
+import { NZ_EV_CHARGING_RATES, VEHICLE_PRESETS } from '@/config/fares.config';
 import { AUCKLAND_SUBURBS } from '@/config/suburbs';
-import { CommuteInput, ConcessionType, EvChargingMode, ParkingTier, VehiclePowertrain, VehicleType } from '@/types';
+import { CommuteInput, ConcessionType, EVChargingSource, EvChargingMode, ParkingTier, VehiclePowertrain, VehicleType } from '@/types';
 import {
   Car,
   ChevronDown,
@@ -80,18 +80,23 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
       consumptionOverride: opt.defaultConsumption,
       fuelPriceOverride: isEvOrPhev ? (input.fuelPriceOverride ?? 0.18) : undefined,
       homeKWhRate: isEvOrPhev ? (input.homeKWhRate ?? 0.18) : undefined,
+      evChargingSource: isEvOrPhev ? (input.evChargingSource ?? 'HOME_OFFPEAK') : undefined,
       evChargingMode: isEvOrPhev ? (input.evChargingMode ?? 'home_offpeak') : undefined,
     };
     notifyChange(updated);
   };
 
-  const handleChargingPresetSelect = (mode: EvChargingMode) => {
-    const rate = EV_CHARGING_PRESETS[mode].rate;
+  const handleChargingSourceSelect = (source: EVChargingSource) => {
+    const rate = source === 'CUSTOM'
+      ? (input.homeKWhRate ?? input.fuelPriceOverride ?? 0.18)
+      : NZ_EV_CHARGING_RATES[source];
+    const mode = source.toLowerCase() as EvChargingMode;
     const updated: CommuteInput = {
       ...input,
+      evChargingSource: source,
       evChargingMode: mode,
-      fuelPriceOverride: mode === 'custom' ? (input.fuelPriceOverride ?? 0.18) : rate,
-      homeKWhRate: mode === 'custom' ? (input.homeKWhRate ?? 0.18) : rate,
+      fuelPriceOverride: rate,
+      homeKWhRate: rate,
     };
     notifyChange(updated);
   };
@@ -306,34 +311,35 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
 
         {isCustomRatesOpen && (
           <div className="mt-2 pt-3 border-t border-slate-800/80 space-y-3 bg-slate-950/50 p-3.5 rounded-xl text-xs">
-            {/* EV / PHEV Charging Source Selector */}
+            {/* ⚡ EV Power Source Selector */}
             {(input.vehicleType === 'bev' || input.vehicleType === 'phev') && (
               <div className="space-y-1.5 pb-2.5 border-b border-slate-800/80">
                 <div className="flex items-center justify-between">
                   <label className="text-[11px] font-semibold text-slate-300 flex items-center gap-1.5">
                     <Zap className="w-3.5 h-3.5 text-amber-400" />
-                    Charging Source
+                    ⚡ EV Power Source
                   </label>
                   <span className="text-[11px] font-bold text-emerald-400 font-mono">
-                    ${(input.fuelPriceOverride ?? (EV_CHARGING_PRESETS[input.evChargingMode || 'home_offpeak']?.rate ?? 0.18)).toFixed(2)}/kWh
+                    ${(input.homeKWhRate ?? input.fuelPriceOverride ?? 0.18).toFixed(2)}/kWh
                   </span>
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
                   {(
                     [
-                      { mode: 'home_offpeak', label: 'Home Off-Peak', sub: '$0.18' },
-                      { mode: 'home_flat', label: 'Home Flat', sub: '$0.30' },
-                      { mode: 'public_dc', label: 'Public DC Fast', sub: '$0.85' },
-                      { mode: 'custom', label: 'Custom', sub: 'Manual' },
+                      { source: 'HOME_OFFPEAK', label: 'Off-Peak', sub: '$0.18' },
+                      { source: 'HOME_FLAT', label: 'Flat', sub: '$0.30' },
+                      { source: 'PUBLIC_DC', label: 'Public DC', sub: '$0.85' },
+                      { source: 'CUSTOM', label: 'Custom', sub: 'Manual' },
                     ] as const
                   ).map((item) => {
-                    const isSelected = (input.evChargingMode || 'home_offpeak') === item.mode;
+                    const currentSource = input.evChargingSource || (input.evChargingMode ? (input.evChargingMode.toUpperCase() as EVChargingSource) : 'HOME_OFFPEAK');
+                    const isSelected = currentSource === item.source;
                     return (
                       <button
-                        key={item.mode}
+                        key={item.source}
                         type="button"
-                        onClick={() => handleChargingPresetSelect(item.mode)}
+                        onClick={() => handleChargingSourceSelect(item.source)}
                         className={`min-h-[44px] px-2 py-1 rounded-xl text-center border transition flex flex-col items-center justify-center ${
                           isSelected
                             ? 'bg-amber-950/60 border-amber-500 text-amber-300 font-bold shadow-sm ring-1 ring-amber-500/40'
@@ -347,7 +353,7 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
                   })}
                 </div>
 
-                {(input.evChargingMode || 'home_offpeak') === 'custom' && (
+                {((input.evChargingSource || input.evChargingMode?.toUpperCase()) === 'CUSTOM') && (
                   <div className="pt-1.5 flex items-center gap-2">
                     <span className="text-xs text-slate-400">Custom Rate:</span>
                     <input
@@ -355,11 +361,12 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
                       step="0.01"
                       min="0.01"
                       max="2.50"
-                      value={input.fuelPriceOverride ?? 0.18}
+                      value={input.homeKWhRate ?? input.fuelPriceOverride ?? 0.18}
                       onChange={(e) => {
                         const val = e.target.value ? parseFloat(e.target.value) : 0.18;
                         const updated = {
                           ...input,
+                          evChargingSource: 'CUSTOM' as const,
                           evChargingMode: 'custom' as const,
                           fuelPriceOverride: val,
                           homeKWhRate: val,

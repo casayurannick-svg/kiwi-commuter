@@ -6,6 +6,7 @@ import {
   CONCESSION_MULTIPLIERS,
   EV_CHARGING_PRESETS,
   NZ_AA_MAINTENANCE_PER_KM,
+  NZ_EV_CHARGING_RATES,
   NZTA_RUC_RATES,
   PARKING_TIER_RATES,
   STATUTORY_NZTA_RUC_RATES,
@@ -79,6 +80,14 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
 
   // Helper to resolve EV / PHEV electricity rate ($/kWh)
   const resolveEvKwhRate = (): number => {
+    if (input.evChargingSource) {
+      if (input.evChargingSource === 'CUSTOM') {
+        return input.homeKWhRate ?? input.fuelPriceOverride ?? 0.18;
+      }
+      if (NZ_EV_CHARGING_RATES[input.evChargingSource] !== undefined) {
+        return NZ_EV_CHARGING_RATES[input.evChargingSource];
+      }
+    }
     if (input.evChargingMode && input.evChargingMode !== 'custom') {
       return EV_CHARGING_PRESETS[input.evChargingMode]?.rate ?? 0.18;
     }

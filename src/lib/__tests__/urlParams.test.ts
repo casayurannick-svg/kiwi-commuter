@@ -99,18 +99,21 @@ describe('src/lib/urlParams.ts - URL Search Param Synchronization', () => {
       ...defaultFallback,
       vehicleType: 'bev',
       powertrain: 'BEV',
+      evChargingSource: 'PUBLIC_DC',
       evChargingMode: 'public_dc',
       fuelPriceOverride: 0.85,
     };
 
     const params = serializeCommuteToParams(bevWithPublicCharging);
     assert.strictEqual(params.get('power'), 'BEV');
+    assert.strictEqual(params.get('chargeSource'), 'PUBLIC_DC');
     assert.strictEqual(params.get('evChargeMode'), 'public_dc');
     assert.strictEqual(params.get('kwhRate'), '0.85');
 
     const parsed = parseCommuteFromParams(params, defaultFallback);
     assert.strictEqual(parsed.vehicleType, 'bev');
     assert.strictEqual(parsed.powertrain, 'BEV');
+    assert.strictEqual(parsed.evChargingSource, 'PUBLIC_DC');
     assert.strictEqual(parsed.evChargingMode, 'public_dc');
     assert.strictEqual(parsed.fuelPriceOverride, 0.85);
   });

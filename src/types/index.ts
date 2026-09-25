@@ -61,12 +61,14 @@ export interface CommuteInput {
   customParkingDaily?: number; // Alias for parkingDailyRate
   homeKWhRate?: number; // Alias for BEV electricity rate
   customFuelPricePerL?: number; // Alias for ICE fuel price
+  evChargingSource?: EVChargingSource; // Preset: HOME_OFFPEAK, HOME_FLAT, PUBLIC_DC, CUSTOM
   evChargingMode?: EvChargingMode; // Preset: home_offpeak, home_flat, public_dc, custom
   hourlyTimeValue?: number; // Value of commuter time in NZD/hour (default 0)
   drivingTimeMins?: number; // Optional one-way driving time in minutes override
   transitTimeMins?: number; // Optional one-way transit time in minutes override
 }
 
+export type EVChargingSource = 'HOME_OFFPEAK' | 'HOME_FLAT' | 'PUBLIC_DC' | 'CUSTOM';
 export type EvChargingMode = 'home_offpeak' | 'home_flat' | 'public_dc' | 'custom';
 
 export interface TimeMetrics {

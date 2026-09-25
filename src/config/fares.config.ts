@@ -1,5 +1,6 @@
 import {
   ConcessionType,
+  EVChargingSource,
   EvChargingMode,
   FareConcession,
   ParkingTier,
@@ -7,6 +8,16 @@ import {
   VehiclePowertrain,
   VehicleType,
 } from '@/types';
+
+/**
+ * NZ EV Charging Benchmarks ($/kWh)
+ */
+export const NZ_EV_CHARGING_RATES: Record<EVChargingSource, number> = {
+  HOME_OFFPEAK: 0.18,
+  HOME_FLAT: 0.30,
+  PUBLIC_DC: 0.85,
+  CUSTOM: 0.18,
+};
 
 /**
  * EV & PHEV Charging Presets (NZ Electricity & Public Fast Charging Benchmarks)

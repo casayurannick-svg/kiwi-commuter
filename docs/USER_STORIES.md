@@ -12,7 +12,7 @@
 | **US-06** | URL Search Param State Persistence & Sharing | **DONE** | [`src/lib/urlParams.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/urlParams.ts), [`src/components/DashboardClient.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/DashboardClient.tsx) | Two-way URL synchronization, load hydration, one-click share link with toast. |
 | **US-07** | Carpool & Multi-Passenger Split Engine | **DONE** | [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts), [`src/components/CommuteForm.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/CommuteForm.tsx) | 1–4 passenger selector dividing fuel, RUC, parking, and maintenance expenses. |
 | **US-08** | Greater Wellington / Metlink Expansion | **PENDING** | Backlog (`src/config/suburbs.ts`) | Suburbs and fares currently scoped to Greater Auckland (AT HOP zones 1–5). |
-| **US-09** | EV Public Charging vs. Home Off-Peak Rate Arbitrage | **DONE** | [`src/config/fares.config.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/config/fares.config.ts), [`src/components/CommuteForm.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/CommuteForm.tsx) | 4 presets: Home Off-Peak ($0.18), Flat ($0.30), Public DC ($0.85), Custom; PHEV 35km split. |
+| **US-09** | EV Public Charging vs. Home Off-Peak Rate Arbitrage | **DONE** | [`src/types/index.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/types/index.ts), [`src/config/fares.config.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/config/fares.config.ts), [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts), [`src/components/CommuteForm.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/CommuteForm.tsx), [`src/lib/urlParams.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/urlParams.ts) | 4 presets: Home Off-Peak ($0.18), Flat ($0.30), Public DC ($0.85), Custom; decoupled invariant RUC; `chargeSource` URL param persistence. |
 | **US-10** | AT Concession Profiles (Tertiary, Youth, Community Connect) | **DONE** | [`src/config/fares.config.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/config/fares.config.ts), [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts) | Full concession schedule: Tertiary (20% off), Youth/Community (50% off), SuperGold. |
 | **US-11** | Active Commute & Micro-Mobility Mode | **PENDING** | Backlog (`src/types/index.ts`) | E-Bike / active commute mode with capex payback timeline not yet implemented. |
 | **US-12** | Park & Ride Multimodal Hybrid Route | **PENDING** | Backlog (`src/config/suburbs.ts`) | Station parking + rail transfer multi-leg route calculations not yet modeled. |
@@ -131,17 +131,18 @@
 * **Acceptance Criteria:**
   - **Given** the user selects `BEV` or `PHEV` as their vehicle powertrain,
   - **When** viewing the charging configuration in the expanded parameters,
-  - **Then** display a Charging Source toggle with four presets:
-    1. **Home Off-Peak** (Default: `$0.18/kWh`)
-    2. **Home Standard / Flat** (`$0.30/kWh`)
-    3. **Public DC Fast / ChargeNet** (`$0.85/kWh`)
-    4. **Custom** (User-specified numeric input in $/kWh)
+  - **Then** display an "⚡ EV Power Source" segmented control with four presets:
+    1. **Home Off-Peak** (Default: `$0.18/kWh` via `NZ_EV_CHARGING_RATES.HOME_OFFPEAK`)
+    2. **Home Standard / Flat** (`$0.30/kWh` via `NZ_EV_CHARGING_RATES.HOME_FLAT`)
+    3. **Public DC Fast / ChargeNet** (`$0.85/kWh` via `NZ_EV_CHARGING_RATES.PUBLIC_DC`)
+    4. **Custom** (User-specified numeric input in $/kWh via `homeKWhRate` or inline input)
   - **When** switching between presets:
     - Daily energy cost updates dynamically in real-time.
-    - Statutory RUC remains invariant ($0.076/km for BEV, $0.038/km for PHEV).
+    - Statutory RUC remains completely invariant and decoupled ($0.076/km for BEV, $0.038/km for PHEV).
     - PHEV calculates first 35 km electric on the selected rate, and remainder on petrol backup (default $2.72/L, 6.0 L/100km).
     - BEV calculates all roundtrip distance on the selected rate (default 16.5 kWh/100km or custom efficiency).
-    - URL search parameters serialize and parse `evChargeMode` (`home_offpeak`, `home_flat`, `public_dc`, `custom`).
+    - URL search parameters serialize and parse `chargeSource` (`HOME_OFFPEAK`, `HOME_FLAT`, `PUBLIC_DC`, `CUSTOM`) and `kwhRate` with backward compatibility for legacy `evChargeMode`.
+    - Unit tests in `calculator.test.ts` assert fuel costs scale correctly while RUC remains identical.
 
 ---
 

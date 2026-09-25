@@ -162,6 +162,47 @@ describe('src/lib/calculator.ts - calculateCommuteArbitrage', () => {
       assert.strictEqual(result.driving.dailyRucCost, 0.0);
       assert.strictEqual(result.driving.weeklyRucCost, 0.0);
     });
+
+    it('US-09: electric fuel cost scales correctly between HOME_OFFPEAK and PUBLIC_DC while RUC remains identical', () => {
+      const offpeakResult = calculateCommuteArbitrage({
+        originSuburbId: 'takapuna', // 9.1 km one-way, 18.2 km round trip
+        destinationSuburbId: 'cbd',
+        daysPerWeek: 5,
+        vehicleType: 'bev',
+        powertrain: 'BEV',
+        evChargingSource: 'HOME_OFFPEAK',
+        parkingDailyRate: 0,
+        parkingDaysPerWeek: 0,
+        concession: 'adult',
+        includeMaintenanceWear: false,
+        carpoolPassengers: 1,
+      });
+
+      const publicDcResult = calculateCommuteArbitrage({
+        originSuburbId: 'takapuna',
+        destinationSuburbId: 'cbd',
+        daysPerWeek: 5,
+        vehicleType: 'bev',
+        powertrain: 'BEV',
+        evChargingSource: 'PUBLIC_DC',
+        parkingDailyRate: 0,
+        parkingDaysPerWeek: 0,
+        concession: 'adult',
+        includeMaintenanceWear: false,
+        carpoolPassengers: 1,
+      });
+
+      // BEV default economy: 16.5 kWh/100km -> 18.2 km consumes 3.003 kWh
+      // HOME_OFFPEAK rate: $0.18/kWh -> 3.003 * 0.18 = $0.54054 -> $0.54
+      // PUBLIC_DC rate: $0.85/kWh -> 3.003 * 0.85 = $2.55255 -> $2.55
+      assert.strictEqual(offpeakResult.driving.dailyFuelCost, 0.54);
+      assert.strictEqual(publicDcResult.driving.dailyFuelCost, 2.55);
+
+      // Verify statutory RUC is identical ($0.076/km * 18.2 = $1.3832 -> $1.38) and decoupled from charging source
+      assert.strictEqual(offpeakResult.driving.dailyRucCost, 1.38);
+      assert.strictEqual(publicDcResult.driving.dailyRucCost, 1.38);
+      assert.strictEqual(offpeakResult.driving.dailyRucCost, publicDcResult.driving.dailyRucCost);
+    });
   });
 
   describe('Commercial Parking Tiers & Presets', () => {

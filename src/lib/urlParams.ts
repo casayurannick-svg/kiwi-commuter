@@ -1,7 +1,8 @@
-import { EV_CHARGING_PRESETS } from '@/config/fares.config';
+import { EV_CHARGING_PRESETS, NZ_EV_CHARGING_RATES } from '@/config/fares.config';
 import {
   CommuteInput,
   ConcessionType,
+  EVChargingSource,
   EvChargingMode,
   ParkingTier,
   VehiclePowertrain,
@@ -48,11 +49,15 @@ export function serializeCommuteToParams(input: CommuteInput): URLSearchParams {
   const customPark = input.customParkingDaily ?? input.parkingDailyRate;
   if (customPark !== undefined) params.set('customPark', customPark.toString());
 
+  const chargeSource =
+    input.evChargingSource ||
+    (input.evChargingMode ? (input.evChargingMode.toUpperCase() as EVChargingSource) : undefined);
   if (
-    input.evChargingMode &&
+    chargeSource &&
     (power === 'BEV' || power === 'PHEV' || input.vehicleType === 'bev' || input.vehicleType === 'phev')
   ) {
-    params.set('evChargeMode', input.evChargingMode);
+    params.set('chargeSource', chargeSource);
+    params.set('evChargeMode', chargeSource.toLowerCase());
   }
 
   const kwhRate =
@@ -122,21 +127,24 @@ export function parseCommuteFromParams(
     ? params.get('wear') === '1' || params.get('wear') === 'true'
     : undefined;
 
-  const rawEvChargeMode = params.get('evChargeMode');
+  const rawChargeSource = params.get('chargeSource') || params.get('evChargeMode');
+  let evChargingSource: EVChargingSource | undefined = fallback.evChargingSource;
   let evChargingMode: EvChargingMode | undefined = fallback.evChargingMode;
-  if (
-    rawEvChargeMode === 'home_offpeak' ||
-    rawEvChargeMode === 'home_flat' ||
-    rawEvChargeMode === 'public_dc' ||
-    rawEvChargeMode === 'custom'
-  ) {
-    evChargingMode = rawEvChargeMode;
-  } else if ((resolvedVehicleType === 'bev' || resolvedVehicleType === 'phev') && !evChargingMode) {
+  if (rawChargeSource) {
+    const upper = rawChargeSource.toUpperCase() as EVChargingSource;
+    if (upper === 'HOME_OFFPEAK' || upper === 'HOME_FLAT' || upper === 'PUBLIC_DC' || upper === 'CUSTOM') {
+      evChargingSource = upper;
+      evChargingMode = upper.toLowerCase() as EvChargingMode;
+    }
+  } else if ((resolvedVehicleType === 'bev' || resolvedVehicleType === 'phev') && !evChargingSource) {
+    evChargingSource = 'HOME_OFFPEAK';
     evChargingMode = 'home_offpeak';
   }
 
   const defaultKwhRate =
-    evChargingMode && evChargingMode !== 'custom'
+    evChargingSource && evChargingSource !== 'CUSTOM'
+      ? NZ_EV_CHARGING_RATES[evChargingSource]
+      : evChargingMode && evChargingMode !== 'custom'
       ? EV_CHARGING_PRESETS[evChargingMode]?.rate
       : undefined;
 
@@ -180,6 +188,7 @@ export function parseCommuteFromParams(
     homeKWhRate,
     customFuelPricePerL:
       fuelRateVal !== undefined && !isNaN(fuelRateVal) ? fuelRateVal : fallback.customFuelPricePerL,
+    evChargingSource,
     evChargingMode,
     hourlyTimeValue: timeVal !== undefined && !isNaN(timeVal) && timeVal >= 0 ? timeVal : fallback.hourlyTimeValue,
   };
