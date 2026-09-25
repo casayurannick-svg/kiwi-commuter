@@ -2,21 +2,23 @@
 
 ## Executive Story Status Matrix
 
-| Story ID | Title | Status | Evidence / File Path |
-| :--- | :--- | :---: | :--- |
-| **US-01** | Point-to-Point Cost Arbitrage Calculation | **DONE** | [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts), [`src/components/CommuteForm.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/CommuteForm.tsx) |
-| **US-02** | Statutory RUC & Energy Modeling | **DONE** | [`src/config/fares.config.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/config/fares.config.ts), [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts) |
-| **US-03** | Auckland Transport 7-Day Fare Cap Rules | **DONE** | [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts), [`src/components/ComparisonCard.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/ComparisonCard.tsx) |
-| **US-04** | Automated Market Fuel Price Synchronization | **DONE** | [`scripts/fetch-mbie-fuel.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/scripts/fetch-mbie-fuel.ts), [`src/lib/supabase.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/supabase.ts) |
-| **US-05** | Mobile-First Responsive UI & Interactive Map | **DONE** | [`src/components/RouteMap.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/RouteMap.tsx), [`src/components/DashboardClient.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/DashboardClient.tsx) |
-| **US-06** | URL Search Param State Persistence & Sharing | **DONE** | [`src/lib/urlParams.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/urlParams.ts), [`src/components/DashboardClient.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/DashboardClient.tsx) |
-| **US-07** | Carpool & Multi-Passenger Split Engine | **DONE** | [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts), [`src/components/CommuteForm.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/CommuteForm.tsx) |
-| **US-08** | Greater Wellington / Metlink Expansion | **PENDING** | Backlog (Multi-region transit integration planned) |
-| **US-09** | EV Public Charging vs. Home Off-Peak Rate Arbitrage | **DONE** | [`src/config/fares.config.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/config/fares.config.ts), [`src/components/CommuteForm.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/CommuteForm.tsx) |
-| **US-10** | AT Concession Profiles (Tertiary, Youth, Community Connect) | **DONE** | [`src/config/fares.config.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/config/fares.config.ts), [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts) |
-| **US-11** | E-Bike / Micro-Mobility Active Mode | **PENDING** | Backlog (Active mobility & capital payback calculator planned) |
-| **US-12** | Park & Ride Multimodal Hybrid Route | **PENDING** | Backlog (Multi-leg driving + rail transit transfer planned) |
-| **US-15** | Privacy-Friendly Traffic & Web Analytics Integration | **DONE** | [`src/app/layout.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/app/layout.tsx), [`package.json`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/package.json) |
+| Story ID | Title | Status | Evidence / File Path | Notes / Gaps |
+| :--- | :--- | :---: | :--- | :--- |
+| **US-01** | Point-to-Point Cost Arbitrage Calculation | **DONE** | [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts), [`src/components/CommuteForm.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/CommuteForm.tsx) | Complete daily, weekly, monthly, annual driving vs AT HOP zonal fare calculations. |
+| **US-02** | Statutory RUC & Energy Modeling | **DONE** | [`src/config/fares.config.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/config/fares.config.ts), [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts) | BEV ($0.076/km), PHEV ($0.038/km), Diesel ($0.076/km), Petrol ($0.00/km). |
+| **US-03** | Auckland Transport 7-Day Fare Cap Rules | **DONE** | [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts), [`src/components/ComparisonCard.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/ComparisonCard.tsx) | Enforces $50.00 weekly cap; displays indicator badges on results card and header. |
+| **US-04** | Automated Market Fuel Price Synchronization | **DONE** | [`scripts/fetch-mbie-fuel.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/scripts/fetch-mbie-fuel.ts), [`src/lib/supabase.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/supabase.ts) | Automated weekly MBIE CSV fetcher, Supabase upsert, edge-cached `/api/fuel`. |
+| **US-05** | Mobile-First Responsive UI & Layout Optimization | **DONE** | [`src/components/RouteMap.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/RouteMap.tsx), [`src/components/DashboardClient.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/DashboardClient.tsx) | Custom rates expanded by default, >= 44px touch targets, responsive two-column grid. |
+| **US-06** | URL Search Param State Persistence & Sharing | **DONE** | [`src/lib/urlParams.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/urlParams.ts), [`src/components/DashboardClient.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/DashboardClient.tsx) | Two-way URL synchronization, load hydration, one-click share link with toast. |
+| **US-07** | Carpool & Multi-Passenger Split Engine | **DONE** | [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts), [`src/components/CommuteForm.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/CommuteForm.tsx) | 1–4 passenger selector dividing fuel, RUC, parking, and maintenance expenses. |
+| **US-08** | Greater Wellington / Metlink Expansion | **PENDING** | Backlog (`src/config/suburbs.ts`) | Suburbs and fares currently scoped to Greater Auckland (AT HOP zones 1–5). |
+| **US-09** | EV Public Charging vs. Home Off-Peak Rate Arbitrage | **DONE** | [`src/config/fares.config.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/config/fares.config.ts), [`src/components/CommuteForm.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/CommuteForm.tsx) | 4 presets: Home Off-Peak ($0.18), Flat ($0.30), Public DC ($0.85), Custom; PHEV 35km split. |
+| **US-10** | AT Concession Profiles (Tertiary, Youth, Community Connect) | **DONE** | [`src/config/fares.config.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/config/fares.config.ts), [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts) | Full concession schedule: Tertiary (20% off), Youth/Community (50% off), SuperGold. |
+| **US-11** | Active Commute & Micro-Mobility Mode | **PENDING** | Backlog (`src/types/index.ts`) | E-Bike / active commute mode with capex payback timeline not yet implemented. |
+| **US-12** | Park & Ride Multimodal Hybrid Route | **PENDING** | Backlog (`src/config/suburbs.ts`) | Station parking + rail transfer multi-leg route calculations not yet modeled. |
+| **US-13** | Monetized Travel Time & Opportunity Cost | **PARTIAL** | [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts), [`src/components/ComparisonCard.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/ComparisonCard.tsx) | Monthly transit hours reclaimed is computed, but hourly wage presets are not yet wired. |
+| **US-14** | Plain-Language Financial Verdicts | **PARTIAL** | [`src/components/ComparisonCard.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/ComparisonCard.tsx) | Headlines display plain verdicts ("+$X/mo with AT Transit"), but badge says "Arbitrage". |
+| **US-15** | Privacy-Friendly Traffic & Web Analytics Integration | **DONE** | [`src/app/layout.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/app/layout.tsx), [`package.json`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/package.json) | `@vercel/analytics` installed and `<Analytics />` component embedded in RootLayout. |
 
 ---
 
@@ -75,13 +77,14 @@
 
 ---
 
-### US-05: Mobile-First Responsive UI & Interactive Map
+### US-05: Mobile-First Responsive UI & Layout Optimization
 **As a** mobile user on iOS Safari or Android Chrome,  
 **I want** an uncluttered, responsive interface with interactive route visualization,  
 **So that** I can easily toggle parameters and view the commute corridor on a map without UI lag.
 
 * **Acceptance Criteria:**
   - All touch targets (pills, segmented buttons) meet WCAG standards (>= 44px min height).
+  - Custom rates are expanded by default to eliminate vertical gaps.
   - Mapbox route renders interactive navigation lines between origin and destination centroids without gesture-trapping mobile scroll.
   - Inputs and metrics use tabular typography (`tabular-nums`) to prevent layout shifts.
 
@@ -170,6 +173,34 @@
 
 ---
 
+## In Progress / Partially Implemented Stories (PARTIAL)
+
+### US-13: Monetized Travel Time & Opportunity Cost
+**As a** busy professional,  
+**I want to** assign a monetary value to my travel time (e.g. $0, $25, $50/hr),  
+**So that** I can assess the Generalized Cost of driving in traffic vs reclaiming productivity hours on the train or busway.
+
+* **Current Implementation:**
+  - Monthly reclaimed transit time is calculated in `src/lib/calculator.ts` (`hoursReclaimedMonthly = round1(transitHoursMonthly * 0.75)`) and displayed as a metric in `ComparisonCard.tsx`.
+* **Gaps Remaining for Full Completion:**
+  - UI slider/presets for hourly travel time valuation ($0, $25, $50/hr).
+  - Generalized cost calculation factoring monetized time deltas into net arbitrage verdict.
+
+---
+
+### US-14: Plain-Language Financial Verdicts
+**As a** first-time visitor,  
+**I want** simple, jargon-free verdicts on which mode saves me money,  
+**So that** I understand the bottom line without analyzing finance or arbitrage terminology.
+
+* **Current Implementation:**
+  - Headline clearly states: `+$X/mo with AT Transit` or `+$X/mo Driving`.
+  - Math engine computes plain-English verdict taglines (`arbitrageTagline`).
+* **Gaps Remaining for Full Completion:**
+  - Secondary card badge currently says "Monthly Arbitrage" rather than plain-English "Savings Verdict".
+
+---
+
 ## Backlog Stories (PENDING)
 
 ### US-08: Greater Wellington / Metlink Expansion
@@ -184,7 +215,7 @@
 
 ---
 
-### US-11: E-Bike / Micro-Mobility Active Mode
+### US-11: Active Commute & Micro-Mobility Mode
 **As an** active commuter considering an e-bike,  
 **I want to** compare the total cost of ownership of an electric bicycle against both driving and public transit,  
 **So that** I can calculate the break-even payback period of purchasing an e-bike.
