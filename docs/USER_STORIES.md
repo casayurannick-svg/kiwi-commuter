@@ -67,14 +67,25 @@
 
 ---
 
-## Planned Backlog Stories
-
 ### US-06: URL Search Param State Persistence & Sharing
 **As a** commuter,  
 **I want to** share my exact commute comparison via a direct URL,  
 **So that** my colleagues can view the identical calculations without re-entering parameters.
 
+* **Acceptance Criteria:**
+  - **Given** any combination of origin, destination, days, powertrain, and parking rates,
+  - **When** the parameters update in `CommuteForm`,
+  - **Then** the URL search parameters synchronize automatically using `window.history.replaceState` without reloading the page.
+  - **Given** a user opening a shared URL with query parameters (`?from=albany&to=cbd&days=5&power=BEV`),
+  - **When** the application hydrates on load,
+  - **Then** `parseCommuteFromParams` extracts all parameters and sets initial state.
+  - **Given** the user clicks the "Share" button in the header,
+  - **When** triggered,
+  - **Then** the full URL is copied to the system clipboard and a confirmation toast is displayed.
+
 ---
+
+## Planned Backlog Stories
 
 ### US-07: Carpool Passenger Split Engine
 **As a** driver who commutes with coworkers or family,  

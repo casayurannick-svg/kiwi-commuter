@@ -86,7 +86,7 @@ flowchart TD
 ### 2.1 Next.js App Router (Frontend & API)
 - **Framework:** Next.js 14 (React 18, TypeScript strict mode).
 - **Styling & Layout:** Tailwind CSS with mobile-first safe-area bounds (`viewportFit: 'cover'`, `safe-pb`). On desktop, renders as two independent vertical flex columns (left: CommuteForm + FuelRadarWidget; right: ComparisonCard + RouteMap + MonthlySavingsChart) to eliminate cross-row vertical voids. On mobile, CSS `display: contents` allows seamless single-column flex ordering.
-- **State Management:** Reactive client-side state in [`src/components/DashboardClient.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/DashboardClient.tsx), debounced calculation requests, and local state caching.
+- **State Management & URL Synchronization:** Reactive client-side state in [`src/components/DashboardClient.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/DashboardClient.tsx) with bidirectional URL search parameter synchronization via [`src/lib/urlParams.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/urlParams.ts). Commute states hydrate on load from query strings, update via non-reloading `window.history.replaceState`, and support one-click share link clipboard copying with toast confirmation.
 - **Route Visualization:** [`src/components/RouteMap.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/RouteMap.tsx) interfacing with Mapbox GL JS with cooperative gestures enabled and compact above-the-fold sizing.
 
 ### 2.2 Mathematical Engine (`src/lib/calculator.ts`)

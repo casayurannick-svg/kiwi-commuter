@@ -450,4 +450,69 @@ describe('Step 6: Mapbox Route Visualizer & Production Polish', () => {
   });
 });
 
+describe('US-06: URL Search Param State Synchronization & Share Link', () => {
+  it('correctly round-trips CommuteInput to/from URL search params', async () => {
+    const { serializeCommuteToParams, parseCommuteFromParams, serializeCommuteToQueryString } = await import(
+      '../src/lib/urlParams'
+    );
+
+    const testInput: any = {
+      originSuburbId: 'takapuna',
+      destinationSuburbId: 'cbd',
+      daysPerWeek: 5,
+      vehicleType: 'bev',
+      powertrain: 'BEV',
+      consumptionOverride: 15.5,
+      parkingDailyRate: 35.0,
+      parkingDaysPerWeek: 5,
+      parkingTier: 'CBD_CASUAL',
+      concession: 'tertiary',
+      includeMaintenanceWear: false,
+      carpoolPassengers: 2,
+      fuelPriceOverride: 0.18,
+    };
+
+    const params = serializeCommuteToParams(testInput);
+    assert.strictEqual(params.get('from'), 'takapuna');
+    assert.strictEqual(params.get('to'), 'cbd');
+    assert.strictEqual(params.get('days'), '5');
+    assert.strictEqual(params.get('power'), 'BEV');
+    assert.strictEqual(params.get('econ'), '15.5');
+    assert.strictEqual(params.get('park'), 'CBD_CASUAL');
+    assert.strictEqual(params.get('customPark'), '35');
+    assert.strictEqual(params.get('kwhRate'), '0.18');
+    assert.strictEqual(params.get('conc'), 'tertiary');
+    assert.strictEqual(params.get('carpool'), '2');
+    assert.strictEqual(params.get('wear'), '0');
+
+    const parsed = parseCommuteFromParams(params, {
+      originSuburbId: 'epsom',
+      destinationSuburbId: 'cbd',
+      daysPerWeek: 3,
+      vehicleType: 'petrol91',
+      parkingDailyRate: 22.0,
+      parkingDaysPerWeek: 3,
+      concession: 'adult',
+      includeMaintenanceWear: true,
+      carpoolPassengers: 1,
+    } as any);
+
+    assert.strictEqual(parsed.originSuburbId, 'takapuna');
+    assert.strictEqual(parsed.destinationSuburbId, 'cbd');
+    assert.strictEqual(parsed.daysPerWeek, 5);
+    assert.strictEqual(parsed.powertrain, 'BEV');
+    assert.strictEqual(parsed.vehicleType, 'bev');
+    assert.strictEqual(parsed.consumptionOverride, 15.5);
+    assert.strictEqual(parsed.parkingTier, 'CBD_CASUAL');
+    assert.strictEqual(parsed.parkingDailyRate, 35);
+    assert.strictEqual(parsed.concession, 'tertiary');
+    assert.strictEqual(parsed.carpoolPassengers, 2);
+    assert.strictEqual(parsed.includeMaintenanceWear, false);
+    assert.strictEqual(parsed.fuelPriceOverride, 0.18);
+
+    const qs = serializeCommuteToQueryString(testInput);
+    assert.ok(qs.startsWith('?from=takapuna'));
+  });
+});
+
 

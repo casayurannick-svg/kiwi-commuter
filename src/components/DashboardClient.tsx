@@ -8,14 +8,18 @@ import RouteMap from '@/components/RouteMap';
 import { getSuburbById } from '@/config/suburbs';
 import { calculateCommuteArbitrage } from '@/lib/calculator';
 import { FuelBenchmarkDto } from '@/lib/supabase';
+import { parseCommuteFromParams, serializeCommuteToParams } from '@/lib/urlParams';
 import { CommuteInput } from '@/types';
 import {
   Bus,
+  Check,
   Compass,
+  Share2,
   ShieldCheck,
   Zap,
 } from 'lucide-react';
-import React, { useMemo, useState } from 'react';
+import { usePathname, useSearchParams } from 'next/navigation';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 const QUICK_COMMUTE_PRESETS = [
   { name: 'Epsom ➔ CBD', origin: 'epsom', dest: 'cbd', days: 3 },
@@ -32,19 +36,42 @@ interface DashboardClientProps {
 }
 
 export default function DashboardClient({ initialFuelPrices }: DashboardClientProps) {
-  const [commuteInput, setCommuteInput] = useState<CommuteInput>({
-    originSuburbId: 'epsom',
-    destinationSuburbId: 'cbd',
-    daysPerWeek: 3,
-    vehicleType: 'petrol91',
-    parkingDailyRate: 22.0,
-    parkingDaysPerWeek: 3,
-    parkingTier: 'CBD_EARLY_BIRD',
-    concession: 'adult',
-    includeMaintenanceWear: true,
-    carpoolPassengers: 1,
-    fuelPriceOverride: initialFuelPrices?.regular_91,
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isCopied, setIsCopied] = useState(false);
+  const toastTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const [commuteInput, setCommuteInput] = useState<CommuteInput>(() => {
+    const base: CommuteInput = {
+      originSuburbId: 'epsom',
+      destinationSuburbId: 'cbd',
+      daysPerWeek: 3,
+      vehicleType: 'petrol91',
+      parkingDailyRate: 22.0,
+      parkingDaysPerWeek: 3,
+      parkingTier: 'CBD_EARLY_BIRD',
+      concession: 'adult',
+      includeMaintenanceWear: true,
+      carpoolPassengers: 1,
+      fuelPriceOverride: initialFuelPrices?.regular_91,
+    };
+    if (searchParams && searchParams.toString()) {
+      return parseCommuteFromParams(searchParams, base);
+    }
+    return base;
   });
+
+  // Keep browser URL search params synchronized on input changes
+  useEffect(() => {
+    const params = serializeCommuteToParams(commuteInput);
+    const queryString = params.toString();
+    const newUrl = queryString ? `${pathname}?${queryString}` : pathname;
+    if (typeof window !== 'undefined' && window.location.search !== (queryString ? `?${queryString}` : '')) {
+      window.history.replaceState(null, '', newUrl);
+    }
+  }, [commuteInput, pathname]);
 
   const origin = useMemo(() => getSuburbById(commuteInput.originSuburbId), [commuteInput.originSuburbId]);
   const destination = useMemo(
@@ -62,6 +89,45 @@ export default function DashboardClient({ initialFuelPrices }: DashboardClientPr
       daysPerWeek: days,
       parkingDaysPerWeek: days,
     }));
+  };
+
+  const handleShareLink = async () => {
+    const url = typeof window !== 'undefined' ? window.location.href : '';
+    let success = false;
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(url);
+        success = true;
+      }
+    } catch {
+      // Fallback below
+    }
+
+    if (!success && typeof document !== 'undefined') {
+      try {
+        const input = document.createElement('input');
+        input.value = url;
+        document.body.appendChild(input);
+        input.select();
+        document.execCommand('copy');
+        document.body.removeChild(input);
+        success = true;
+      } catch {
+        success = false;
+      }
+    }
+
+    if (toastTimeoutRef.current) {
+      clearTimeout(toastTimeoutRef.current);
+    }
+
+    setIsCopied(true);
+    setToastMessage(success ? 'Comparison link copied to clipboard!' : 'Failed to copy link');
+
+    toastTimeoutRef.current = setTimeout(() => {
+      setIsCopied(false);
+      setToastMessage(null);
+    }, 2500);
   };
 
   return (
@@ -83,13 +149,31 @@ export default function DashboardClient({ initialFuelPrices }: DashboardClientPr
             </div>
           </div>
 
-          {/* Minimal Badges */}
+          {/* Minimal Badges & Share Link */}
           <div className="flex items-center gap-1.5 shrink-0">
-            <span className="text-[11px] bg-slate-900 border border-slate-800 text-slate-300 px-2 py-1 rounded-lg flex items-center gap-1 font-medium">
+            <button
+              type="button"
+              onClick={handleShareLink}
+              className="min-h-[32px] px-2.5 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5 text-xs font-semibold transition active:scale-95"
+              title="Copy shareable link with current commute parameters"
+            >
+              {isCopied ? (
+                <>
+                  <Check className="w-3.5 h-3.5 text-emerald-400" />
+                  <span className="hidden sm:inline">Copied!</span>
+                </>
+              ) : (
+                <>
+                  <Share2 className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Share</span>
+                </>
+              )}
+            </button>
+            <span className="text-[11px] bg-slate-900 border border-slate-800 text-slate-300 px-2 py-1 rounded-lg hidden md:flex items-center gap-1 font-medium">
               <Zap className="w-3 h-3 text-amber-400" />
               2026 RUC Active
             </span>
-            <span className="text-[11px] bg-slate-900 border border-slate-800 text-slate-300 px-2 py-1 rounded-lg flex items-center gap-1 font-medium">
+            <span className="text-[11px] bg-slate-900 border border-slate-800 text-slate-300 px-2 py-1 rounded-lg hidden sm:flex items-center gap-1 font-medium">
               <ShieldCheck className="w-3 h-3 text-emerald-400" />
               AT $50 Cap
             </span>
@@ -199,6 +283,18 @@ export default function DashboardClient({ initialFuelPrices }: DashboardClientPr
           </div>
         </div>
       </footer>
+
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed bottom-5 right-5 z-50 flex items-center gap-2 bg-slate-900/95 border border-emerald-500/40 text-slate-100 px-4 py-2.5 rounded-xl shadow-2xl backdrop-blur-md transition-all duration-200"
+        >
+          <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span className="text-xs font-medium">{toastMessage}</span>
+        </div>
+      )}
     </div>
   );
 }

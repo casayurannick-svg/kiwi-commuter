@@ -57,6 +57,10 @@ export interface CommuteInput {
   includeMaintenanceWear: boolean;
   maintenanceCostPerKm?: number; // NZ AA average ~$0.18/km
   carpoolPassengers: number; // 1 = solo driver, 2 = split driving costs with 1 passenger
+  fuelEconomy?: number; // Alias for consumptionOverride
+  customParkingDaily?: number; // Alias for parkingDailyRate
+  homeKWhRate?: number; // Alias for BEV electricity rate
+  customFuelPricePerL?: number; // Alias for ICE fuel price
 }
 
 export interface DrivingCostBreakdown {

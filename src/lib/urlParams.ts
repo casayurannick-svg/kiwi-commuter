@@ -1,0 +1,152 @@
+import {
+  CommuteInput,
+  ConcessionType,
+  ParkingTier,
+  VehiclePowertrain,
+  VehicleType,
+} from '@/types';
+
+const POWERTRAIN_TO_VEHICLE_TYPE: Record<VehiclePowertrain, VehicleType> = {
+  PETROL_91: 'petrol91',
+  PETROL_95: 'petrol95',
+  DIESEL: 'diesel',
+  PHEV: 'phev',
+  BEV: 'bev',
+};
+
+const VEHICLE_TYPE_TO_POWERTRAIN: Record<VehicleType, VehiclePowertrain> = {
+  petrol91: 'PETROL_91',
+  petrol95: 'PETROL_95',
+  diesel: 'DIESEL',
+  phev: 'PHEV',
+  bev: 'BEV',
+};
+
+/**
+ * Serializes a CommuteInput object to URLSearchParams.
+ */
+export function serializeCommuteToParams(input: CommuteInput): URLSearchParams {
+  const params = new URLSearchParams();
+
+  if (input.originSuburbId) params.set('from', input.originSuburbId);
+  if (input.destinationSuburbId) params.set('to', input.destinationSuburbId);
+  if (input.daysPerWeek !== undefined) params.set('days', input.daysPerWeek.toString());
+
+  const power: VehiclePowertrain =
+    input.powertrain ||
+    (input.vehicleType ? VEHICLE_TYPE_TO_POWERTRAIN[input.vehicleType] : 'PETROL_91');
+  if (power) params.set('power', power);
+
+  const econ = input.fuelEconomy ?? input.consumptionOverride;
+  if (econ !== undefined) params.set('econ', econ.toString());
+
+  const park = input.parkingTier || 'CBD_EARLY_BIRD';
+  if (park) params.set('park', park);
+
+  const customPark = input.customParkingDaily ?? input.parkingDailyRate;
+  if (customPark !== undefined) params.set('customPark', customPark.toString());
+
+  const kwhRate =
+    input.homeKWhRate ?? (power === 'BEV' ? input.fuelPriceOverride : undefined);
+  if (kwhRate !== undefined) params.set('kwhRate', kwhRate.toString());
+
+  const fuelRate =
+    input.customFuelPricePerL ?? (power !== 'BEV' ? input.fuelPriceOverride : undefined);
+  if (fuelRate !== undefined) params.set('fuelRate', fuelRate.toString());
+
+  if (input.concession && input.concession !== 'adult') {
+    params.set('conc', input.concession);
+  }
+
+  if (input.carpoolPassengers && input.carpoolPassengers > 1) {
+    params.set('carpool', input.carpoolPassengers.toString());
+  }
+
+  if (input.includeMaintenanceWear !== undefined && !input.includeMaintenanceWear) {
+    params.set('wear', '0');
+  }
+
+  return params;
+}
+
+/**
+ * Parses URLSearchParams into a CommuteInput, using fallback values for missing keys.
+ */
+export function parseCommuteFromParams(
+  params: URLSearchParams,
+  fallback: CommuteInput
+): CommuteInput {
+  const rawPower = params.get('power');
+  let resolvedPowertrain: VehiclePowertrain = fallback.powertrain || 'PETROL_91';
+  let resolvedVehicleType: VehicleType = fallback.vehicleType || 'petrol91';
+
+  if (rawPower) {
+    const upper = rawPower.toUpperCase() as VehiclePowertrain;
+    const lower = rawPower.toLowerCase() as VehicleType;
+
+    if (POWERTRAIN_TO_VEHICLE_TYPE[upper]) {
+      resolvedPowertrain = upper;
+      resolvedVehicleType = POWERTRAIN_TO_VEHICLE_TYPE[upper];
+    } else if (VEHICLE_TYPE_TO_POWERTRAIN[lower]) {
+      resolvedVehicleType = lower;
+      resolvedPowertrain = VEHICLE_TYPE_TO_POWERTRAIN[lower];
+    }
+  }
+
+  const econVal = params.has('econ') ? Number(params.get('econ')) : undefined;
+  const parkTierParam = params.get('park') as ParkingTier | undefined;
+  const customParkVal = params.has('customPark') ? Number(params.get('customPark')) : undefined;
+  const kwhRateVal = params.has('kwhRate') ? Number(params.get('kwhRate')) : undefined;
+  const fuelRateVal = params.has('fuelRate') ? Number(params.get('fuelRate')) : undefined;
+  const concVal = params.get('conc') as ConcessionType | undefined;
+  const carpoolVal = params.has('carpool') ? Number(params.get('carpool')) : undefined;
+  const wearVal = params.has('wear')
+    ? params.get('wear') === '1' || params.get('wear') === 'true'
+    : undefined;
+
+  const fuelPriceOverride =
+    resolvedVehicleType === 'bev'
+      ? (kwhRateVal ?? fallback.fuelPriceOverride)
+      : (fuelRateVal ?? fallback.fuelPriceOverride);
+
+  const daysPerWeek = params.has('days') ? Number(params.get('days')) : fallback.daysPerWeek;
+
+  return {
+    originSuburbId: params.get('from') || fallback.originSuburbId,
+    destinationSuburbId: params.get('to') || fallback.destinationSuburbId,
+    daysPerWeek: !isNaN(daysPerWeek) && daysPerWeek >= 1 && daysPerWeek <= 7 ? daysPerWeek : fallback.daysPerWeek,
+    vehicleType: resolvedVehicleType,
+    powertrain: resolvedPowertrain,
+    consumptionOverride: econVal !== undefined && !isNaN(econVal) ? econVal : fallback.consumptionOverride,
+    fuelEconomy: econVal !== undefined && !isNaN(econVal) ? econVal : fallback.fuelEconomy,
+    parkingTier: parkTierParam || fallback.parkingTier,
+    parkingDailyRate:
+      customParkVal !== undefined && !isNaN(customParkVal)
+        ? customParkVal
+        : fallback.parkingDailyRate,
+    customParkingDaily:
+      customParkVal !== undefined && !isNaN(customParkVal)
+        ? customParkVal
+        : fallback.customParkingDaily,
+    parkingDaysPerWeek: !isNaN(daysPerWeek) && daysPerWeek >= 1 && daysPerWeek <= 7 ? daysPerWeek : fallback.parkingDaysPerWeek,
+    concession: concVal || fallback.concession,
+    includeMaintenanceWear: wearVal !== undefined ? wearVal : fallback.includeMaintenanceWear,
+    carpoolPassengers:
+      carpoolVal !== undefined && !isNaN(carpoolVal) && carpoolVal >= 1
+        ? carpoolVal
+        : fallback.carpoolPassengers,
+    fuelPriceOverride,
+    homeKWhRate: kwhRateVal !== undefined && !isNaN(kwhRateVal) ? kwhRateVal : fallback.homeKWhRate,
+    customFuelPricePerL:
+      fuelRateVal !== undefined && !isNaN(fuelRateVal) ? fuelRateVal : fallback.customFuelPricePerL,
+  };
+}
+
+/**
+ * Returns a full serialized query string (e.g. "?from=albany&to=cbd&days=5").
+ */
+export function serializeCommuteToQueryString(input: CommuteInput): string {
+  const params = serializeCommuteToParams(input);
+  const str = params.toString();
+  return str ? `?${str}` : '';
+}
