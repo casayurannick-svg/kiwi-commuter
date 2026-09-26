@@ -108,8 +108,9 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
 
   // Statutory RUC rate ($/km) - HEV and Petrol (91/95) are exempt ($0.00/km)
   // Diesel light vehicle rate is $76.00 per 1,000 km ($0.076/km)
+  // BUG-44: The private vehicle baseline retains its RUC rate regardless of the compared alternative mode.
   let rucRate = 0;
-  if (!isEbike && !isHev) {
+  if (!isHev) {
     if (isDiesel) {
       rucRate = STATUTORY_NZTA_RUC_RATES.DIESEL.ratePerKm; // 0.076 ($76.00 / 1,000 km)
     } else if (STATUTORY_NZTA_RUC_RATES[effectivePowertrain]) {
@@ -133,24 +134,25 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
       : 1
   );
 
-  // BUG-43: Micromobility (E-Bike, E-Scooter) are inherently single-rider vehicles.
+  // BUG-43 & BUG-44: Micromobility (E-Bike, E-Scooter) are inherently single-rider vehicles.
   // The carpool passenger multiplier must NOT be applied to their energy costs or breakeven math.
   // transitPassengers is locked to 1 for these modes; it equals passengers for all other modes.
   const isMicromobilityMode =
     input.transitMode === 'EBIKE' ||
     input.transitMode === 'E-Bike' ||
+    input.transitMode === 'ESCOOTER' ||
     input.transitMode === 'MICROMOBILITY_TRANSIT' ||
     input.transitMode === 'Scooter & Ride' ||
     input.transitMode === 'Scooter & Transit';
   const transitPassengers = isMicromobilityMode ? 1 : passengers;
 
   // Parking daily rate: support parkingTier preset or explicit parkingDailyRate
-  let effectiveParkingRate = isEbike
-    ? 0
-    : typeof input.parkingDailyRate === 'number'
-    ? input.parkingDailyRate
-    : 0;
-  if (!isEbike && input.parkingTier && PARKING_TIER_RATES[input.parkingTier]) {
+  // BUG-44: Retain private vehicle parking costs regardless of the compared alternative mode.
+  let effectiveParkingRate =
+    typeof input.parkingDailyRate === 'number'
+      ? input.parkingDailyRate
+      : 0;
+  if (input.parkingTier && PARKING_TIER_RATES[input.parkingTier]) {
     if (typeof input.parkingDailyRate !== 'number' || input.parkingDailyRate === 0) {
       effectiveParkingRate = PARKING_TIER_RATES[input.parkingTier].rate;
     }

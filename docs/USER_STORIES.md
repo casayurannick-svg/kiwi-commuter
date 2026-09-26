@@ -44,6 +44,7 @@
 | **BUG-39** | Micromobility Tile Mismatch (Dynamic E-Bike vs Scooter State) | **DONE** | [`src/components/MiniReceipt.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/MiniReceipt.tsx), [`src/components/__tests__/MiniReceipt.test.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/__tests__/MiniReceipt.test.tsx) | Fixed breakeven card component to dynamically interpolate "OWNED E-BIKE" with 🚲 icon for E-Bike mode, and "OWNED SCOOTER" with 🛴 icon for Scooter mode. |
 | **BUG-41** | Mobile Viewport Tooltip Overflow & Collision Avoidance | **DONE** | [`src/components/Tooltip.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/Tooltip.tsx), [`src/components/ui/Tooltip.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/ui/Tooltip.tsx), [`src/app/layout.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/app/layout.tsx), [`src/components/RouteMap.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/RouteMap.tsx), [`tests/ui.spec.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/tests/ui.spec.ts) | Replaced inline tooltips with global collision-aware Tooltip component; enforced `max-w-[90vw]`, text wrapping, dynamic client viewport clamping, and `overflow-x-hidden` on html/body; verified 100% containment within 375px mobile viewport. |
 | **BUG-43** | Decouple Micromobility from Carpool Multiplier | **DONE** | [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts), [`src/components/ComparisonCard.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/ComparisonCard.tsx), [`src/components/JourneyTimeline.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/JourneyTimeline.tsx), [`src/lib/calculator.test.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.test.ts) | Introduced `transitPassengers` variable locked to 1 for EBIKE/Scooter modes; prevents carpool multiplier from scaling E-Bike energy costs or Scooter AT HOP fares; removed `(X pax)` UI badges from micromobility tiles; preserves BUG-37 carpool scaling for Bus/Train/Ferry. |
+| **BUG-44** | Decouple Private Vehicle Baseline from Alternative Modes | **DONE** | [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts), [`src/components/CommuteForm.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/CommuteForm.tsx), [`src/types/index.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/types/index.ts), [`src/lib/calculator.test.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.test.ts), [`tests/ui.spec.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/tests/ui.spec.ts) | Decoupled private vehicle baseline parameters (Powertrain, RUC, Parking, Fuel/Consumption) from alternative modes; refactored sidebar UI with persistent, independently collapsible "Private Vehicle Baseline" section; verified Diesel RUC applies to baseline in E-Bike mode and Powertrain selector remains functional when E-Bike active. |
 
 ---
 
@@ -743,6 +744,33 @@
     - Asserted `carpool=2` and `carpool=3` do NOT multiply E-Bike daily, weekly, or monthly energy costs.
     - Asserted `carpool=2` does not scale transit fares in `Scooter & Transit` mode.
     - Asserted `carpool=2` correctly doubles daily transit fare for standard `BUS` commute (BUG-37 regression test).
+
+---
+
+### BUG-44: Decouple Private Vehicle Baseline from Alternative Modes
+**As a** commuter evaluating active or alternative transport modes (E-Bike, Scooter, Ferry),  
+**I want** my private vehicle baseline parameters (Powertrain, RUC, Fuel Economy, Parking rates) to remain persistent, fully configurable, and active in the financial arbitrage engine,  
+**So that** selecting an alternative mode like E-Bike doesn't wipe out my car's RUC or parking costs, and I can configure my private vehicle baseline directly while viewing alternative mode settings.
+
+* **Acceptance Criteria:**
+  - **Decoupled Baseline Engine Calculation ([`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts))**:
+    - Removed `!isEbike` guards on `rucRate` calculation and `effectiveParkingRate`.
+    - Private vehicle baseline retains statutory Road User Charges (e.g. $76.00/1,000 km for DIESEL, $38.00/1,000 km for PHEV, $76.00/1,000 km for BEV) and daily parking costs regardless of the alternative mode selected for comparison.
+    - Updated `isMicromobilityMode` to include `'ESCOOTER'`.
+  - **Persistent & Collapsible Sidebar UI Layout ([`src/components/CommuteForm.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/CommuteForm.tsx))**:
+    - Extracted "Private Vehicle Baseline" settings (Powertrain 2x3 grid, Custom L/100km input, Daily Parking selector) into a persistent, independently collapsible panel with toggle header.
+    - Removed `{!isEbikeActive ? (...) : null}` unmounting guard; Powertrain and parking controls remain mounted and accessible when E-Bike or Scooter hardware parameters are displayed.
+  - **Types & State Management ([`src/types/index.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/types/index.ts))**:
+    - Added `'ESCOOTER'` to `TransitMode` union for complete type safety across URL parameters and state handling.
+  - **Automated Test Coverage**:
+    - **Vitest Unit & Engine Tests ([`src/lib/calculator.test.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.test.ts))**:
+      - Verified calculating an E-Bike comparison with `power=DIESEL` correctly applies $0.076/km RUC ($2.96/day for 39 km) to the private vehicle baseline.
+      - Verified calculating an E-Bike comparison preserves private vehicle parking costs ($22/day).
+      - Verified calculating a Scooter comparison with `power=DIESEL` retains private vehicle RUC in baseline.
+      - Updated CommuteForm component test to assert Powertrain, Daily Parking, and Private Vehicle Baseline remain mounted when E-Bike is active.
+    - **Playwright E2E UI Tests ([`tests/ui.spec.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/tests/ui.spec.ts))**:
+      - Added automated test that clicks the 🚲 E-Bike mode button, asserts E-Bike hardware parameters and Private Vehicle Baseline section are visible, and verifies the Powertrain selector buttons (Diesel, Petrol 91) remain interactive and functional.
+      - 12/12 Playwright tests passing across Mobile Chrome, Mobile Safari, and Desktop Chrome.
 
 ---
 

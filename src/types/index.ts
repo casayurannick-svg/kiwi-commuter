@@ -38,6 +38,7 @@ export type TransitMode =
   | 'BUSWAY'
   | 'FERRY'
   | 'EBIKE'
+  | 'ESCOOTER'
   | 'MICROMOBILITY_TRANSIT'
   | 'Bus'
   | 'Train'

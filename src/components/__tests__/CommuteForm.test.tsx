@@ -80,7 +80,7 @@ describe('src/components/CommuteForm.tsx - US-19 Wear & Tear Benchmark Tooltip',
     assert.ok(htmlDefault.includes('Powertrain'), 'Must render Powertrain for car mode');
     assert.ok(htmlDefault.includes('Daily Parking'), 'Must render Daily Parking for car mode');
 
-    // When transitMode is EBIKE, hide car fields and show E-Bike inputs
+    // When transitMode is EBIKE, show E-Bike inputs and retain persistent Private Vehicle Baseline (BUG-44)
     const ebikeInput: CommuteInput = {
       ...defaultInput,
       transitMode: 'EBIKE',
@@ -93,8 +93,9 @@ describe('src/components/CommuteForm.tsx - US-19 Wear & Tear Benchmark Tooltip',
 
     assert.ok(htmlEbike.includes('Upfront Setup Cost'), 'Must show Upfront Setup Cost input');
     assert.ok(htmlEbike.includes('Energy Cost/km'), 'Must show Energy Cost/km input');
-    assert.ok(!htmlEbike.includes('Powertrain'), 'Must hide Powertrain when EBIKE is active');
-    assert.ok(!htmlEbike.includes('Daily Parking'), 'Must hide Daily Parking when EBIKE is active');
+    assert.ok(htmlEbike.includes('Private Vehicle Baseline'), 'Must show Private Vehicle Baseline header when EBIKE is active (BUG-44)');
+    assert.ok(htmlEbike.includes('Powertrain'), 'Must retain Powertrain when EBIKE is active (BUG-44)');
+    assert.ok(htmlEbike.includes('Daily Parking'), 'Must retain Daily Parking when EBIKE is active (BUG-44)');
   });
 
   it('renders Scooter & Ride mode and switches between RENTAL and OWNED controls (US-23)', () => {

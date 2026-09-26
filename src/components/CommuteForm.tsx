@@ -64,6 +64,7 @@ const PARKING_SEGMENTS: { tier: ParkingTier | 'CUSTOM'; label: string; rate: num
 type TimeValuePreset = 'off' | '20' | '50' | 'custom';
 
 export default function CommuteForm({ input, onChange, onInputChange }: CommuteFormProps) {
+  const [isVehicleBaselineOpen, setIsVehicleBaselineOpen] = useState(true);
   const [isCustomRatesOpen, setIsCustomRatesOpen] = useState(true);
   const [selectedParkingTier, setSelectedParkingTier] = useState<ParkingTier | 'CUSTOM'>(() => {
     if (input.parkingTier) return input.parkingTier;
@@ -859,144 +860,163 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
         </div>
       ) : null}
 
-      {!isEbikeActive ? (
-        <>
-          {/* Powertrain (Segmented Pills with 44px min-height) */}
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-1.5">
-              <label className="text-xs font-semibold text-slate-300">Powertrain</label>
-              <Tooltip
-                avoidCollisions={true}
-                content="Default values are based on national averages. For a more accurate calculation, enter your vehicle's exact L/100km rating."
-              >
-                <button
-                  type="button"
-                  aria-label="Powertrain benchmark info"
-                  className="text-slate-400 hover:text-slate-200 transition-colors p-1 -m-1 focus:outline-none focus:text-slate-200"
+      {/* BUG-44: Private Vehicle Baseline Settings (Persistent, Independently Collapsible Section) */}
+      <div className="pt-2 border-t border-slate-800">
+        <button
+          type="button"
+          data-testid="toggle-vehicle-baseline-btn"
+          onClick={() => setIsVehicleBaselineOpen(!isVehicleBaselineOpen)}
+          className="w-full min-h-[44px] flex items-center justify-between text-xs font-semibold text-slate-300 hover:text-white transition"
+          aria-expanded={isVehicleBaselineOpen}
+        >
+          <span className="flex items-center gap-1.5 font-bold">
+            <Car className="w-3.5 h-3.5 text-emerald-400" />
+            Private Vehicle Baseline {isVehicleBaselineOpen ? '▴' : '▾'}
+          </span>
+          <span className="text-[11px] text-slate-400 font-mono">
+            {currentVehicle.name} • ${input.parkingDailyRate.toFixed(0)}/d park
+          </span>
+        </button>
+
+        {isVehicleBaselineOpen && (
+          <div className="mt-2.5 space-y-3.5">
+            {/* Powertrain (Segmented Pills with 44px min-height) */}
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-1.5">
+                <label className="text-xs font-semibold text-slate-300">Powertrain</label>
+                <Tooltip
+                  avoidCollisions={true}
+                  content="Default values are based on national averages. For a more accurate calculation, enter your vehicle's exact L/100km rating."
                 >
-                  <Info className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-200 transition-colors" />
-                </button>
-              </Tooltip>
-            </div>
-            {/* Powertrain 2x3 Icon Grid */}
-            <div className="grid grid-cols-3 gap-2">
-              {POWERTRAIN_OPTIONS.map((opt) => {
-                const isSelected = input.vehicleType === opt.id || input.powertrain === opt.powertrain;
-                const IconComponent = opt.icon;
-                const buttonContent = (
                   <button
-                    key={opt.id}
                     type="button"
-                    onClick={() => handlePowertrainSelect(opt)}
-                    aria-label={opt.fullLabel || opt.label}
-                    className={`w-full min-h-[48px] px-2 py-2 rounded-xl border text-center transition flex flex-col items-center justify-center gap-0.5 ${
-                      isSelected
-                        ? 'bg-slate-800 border-emerald-500 text-white font-bold shadow ring-1 ring-emerald-500/40'
-                        : 'bg-slate-900/80 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'
-                    }`}
+                    aria-label="Powertrain benchmark info"
+                    className="text-slate-400 hover:text-slate-200 transition-colors p-1 -m-1 focus:outline-none focus:text-slate-200"
                   >
-                    <div className="flex items-center gap-1.5">
-                      <IconComponent className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-emerald-400' : 'text-slate-400'}`} />
-                      <span className="text-xs font-semibold">{opt.label}</span>
-                    </div>
-                    <span className="text-[10px] text-slate-500 font-mono">
-                      {opt.baseline}
-                    </span>
+                    <Info className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-200 transition-colors" />
                   </button>
-                );
-
-                if (opt.tooltip) {
-                  return (
-                    <div key={opt.id} className="relative group/hev w-full">
-                      {buttonContent}
-                      <div
-                        role="tooltip"
-                        className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2.5 py-1 max-w-[90vw] bg-slate-900/95 border border-slate-700 rounded-lg text-[11px] text-slate-200 whitespace-nowrap shadow-xl backdrop-blur-md opacity-0 group-hover/hev:opacity-100 group-focus-within/hev:opacity-100 transition-opacity duration-150 z-50 pointer-events-none"
-                      >
-                        {opt.tooltip}
+                </Tooltip>
+              </div>
+              {/* Powertrain 2x3 Icon Grid */}
+              <div className="grid grid-cols-3 gap-2">
+                {POWERTRAIN_OPTIONS.map((opt) => {
+                  const isSelected = input.vehicleType === opt.id || input.powertrain === opt.powertrain;
+                  const IconComponent = opt.icon;
+                  const buttonContent = (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => handlePowertrainSelect(opt)}
+                      aria-label={opt.fullLabel || opt.label}
+                      className={`w-full min-h-[48px] px-2 py-2 rounded-xl border text-center transition flex flex-col items-center justify-center gap-0.5 ${
+                        isSelected
+                          ? 'bg-slate-800 border-emerald-500 text-white font-bold shadow ring-1 ring-emerald-500/40'
+                          : 'bg-slate-900/80 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <IconComponent className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-emerald-400' : 'text-slate-400'}`} />
+                        <span className="text-xs font-semibold">{opt.label}</span>
                       </div>
-                    </div>
+                      <span className="text-[10px] text-slate-500 font-mono">
+                        {opt.baseline}
+                      </span>
+                    </button>
                   );
-                }
 
-                return buttonContent;
-              })}
+                  if (opt.tooltip) {
+                    return (
+                      <div key={opt.id} className="relative group/hev w-full">
+                        {buttonContent}
+                        <div
+                          role="tooltip"
+                          className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2.5 py-1 max-w-[90vw] bg-slate-900/95 border border-slate-700 rounded-lg text-[11px] text-slate-200 whitespace-nowrap shadow-xl backdrop-blur-md opacity-0 group-hover/hev:opacity-100 group-focus-within/hev:opacity-100 transition-opacity duration-150 z-50 pointer-events-none"
+                        >
+                          {opt.tooltip}
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  return buttonContent;
+                })}
+              </div>
+
+              {/* US-26: Dynamically render Custom L/100km numeric input field below powertrain selector for fuel-consuming powertrains */}
+              {isFuelConsuming && (
+                <div className="pt-1.5 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <label htmlFor="custom-l100km-input" className="text-xs text-slate-300 font-medium">
+                      Custom L/100km
+                    </label>
+                    <span className="text-[10px] text-slate-500 font-mono">
+                      Default: {currentVehicle.defaultConsumption} L/100km
+                    </span>
+                  </div>
+                  <div className="relative">
+                    <input
+                      id="custom-l100km-input"
+                      data-testid="custom-l100km-input"
+                      type="number"
+                      step="0.1"
+                      min="1"
+                      max="40"
+                      placeholder={`e.g. ${currentVehicle.defaultConsumption}`}
+                      aria-label="Custom L/100km"
+                      value={customConsumption}
+                      onChange={(e) => handleCustomConsumptionChange(e.target.value)}
+                      className="w-full min-h-[44px] bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-sm text-slate-200 placeholder-slate-500 focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* US-26: Dynamically render Custom L/100km numeric input field below powertrain selector for fuel-consuming powertrains */}
-            {isFuelConsuming && (
-              <div className="pt-1.5 space-y-1">
-                <div className="flex items-center justify-between">
-                  <label htmlFor="custom-l100km-input" className="text-xs text-slate-300 font-medium">
-                    Custom L/100km
-                  </label>
-                  <span className="text-[10px] text-slate-500 font-mono">
-                    Default: {currentVehicle.defaultConsumption} L/100km
-                  </span>
-                </div>
-                <div className="relative">
+            {/* Daily Parking */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-semibold text-slate-300">Daily Parking</label>
+                <span className="text-xs font-bold text-sky-400 tabular-nums">
+                  ${input.parkingDailyRate.toFixed(0)}/day
+                </span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
+                {PARKING_SEGMENTS.map((seg) => {
+                  const isSelected =
+                    selectedParkingTier === seg.tier ||
+                    (seg.tier !== 'CUSTOM' && input.parkingDailyRate === seg.rate);
+                  return (
+                    <button
+                      key={seg.tier}
+                      type="button"
+                      onClick={() => handleParkingSelect(seg.tier, seg.rate)}
+                      className={`min-h-[44px] p-2 rounded-xl text-center border transition flex items-center justify-center ${
+                        isSelected
+                          ? 'bg-sky-950/60 border-sky-500 text-sky-300 font-bold shadow-sm'
+                          : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-300'
+                      }`}
+                    >
+                      <span className="text-xs truncate">{seg.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {selectedParkingTier === 'CUSTOM' && (
+                <div className="pt-1 flex items-center gap-2">
+                  <span className="text-xs text-slate-400">Rate:</span>
                   <input
-                    id="custom-l100km-input"
-                    data-testid="custom-l100km-input"
-                    type="number"
-                    step="0.1"
-                    min="1"
-                    max="40"
-                    placeholder={`e.g. ${currentVehicle.defaultConsumption}`}
-                    aria-label="Custom L/100km"
-                    value={customConsumption}
-                    onChange={(e) => handleCustomConsumptionChange(e.target.value)}
-                    className="w-full min-h-[44px] bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-sm text-slate-200 placeholder-slate-500 focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono"
+                    value={input.parkingDailyRate}
+                    onChange={(e) => handleFieldChange('parkingDailyRate', parseFloat(e.target.value) || 0)}
+                    className="w-24 min-h-[44px] bg-slate-900 border border-slate-700 rounded-xl px-3 py-1 text-sm text-slate-100"
                   />
+                  <span className="text-xs text-slate-400">$/day</span>
                 </div>
-              </div>
-            )}
-          </div>
-
-          {/* Daily Parking */}
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-semibold text-slate-300">Daily Parking</label>
-              <span className="text-xs font-bold text-sky-400 tabular-nums">
-                ${input.parkingDailyRate.toFixed(0)}/day
-              </span>
+              )}
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
-              {PARKING_SEGMENTS.map((seg) => {
-                const isSelected =
-                  selectedParkingTier === seg.tier ||
-                  (seg.tier !== 'CUSTOM' && input.parkingDailyRate === seg.rate);
-                return (
-                  <button
-                    key={seg.tier}
-                    type="button"
-                    onClick={() => handleParkingSelect(seg.tier, seg.rate)}
-                    className={`min-h-[44px] p-2 rounded-xl text-center border transition flex items-center justify-center ${
-                      isSelected
-                        ? 'bg-sky-950/60 border-sky-500 text-sky-300 font-bold shadow-sm'
-                        : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-300'
-                    }`}
-                  >
-                    <span className="text-xs truncate">{seg.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {selectedParkingTier === 'CUSTOM' && (
-              <div className="pt-1 flex items-center gap-2">
-                <span className="text-xs text-slate-400">Rate:</span>
-                <input
-                  value={input.parkingDailyRate}
-                  onChange={(e) => handleFieldChange('parkingDailyRate', parseFloat(e.target.value) || 0)}
-                  className="w-24 min-h-[44px] bg-slate-900 border border-slate-700 rounded-xl px-3 py-1 text-sm text-slate-100"
-                />
-                <span className="text-xs text-slate-400">$/day</span>
-              </div>
-            )}
           </div>
-        </>
-      ) : null}
+        )}
+      </div>
 
       {/* Disclosure: Custom Rates ▾ */}
       <div className="pt-1 border-t border-slate-800">

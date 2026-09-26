@@ -82,3 +82,36 @@ test.describe('Mobile Viewport & Tooltip UI Regression (BUG-41)', () => {
     }
   });
 });
+
+test.describe('Private Vehicle Baseline Decoupled UI (BUG-44)', () => {
+  test('verifies Powertrain selector remains visible and functional when E-Bike tab is active', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForSelector('main');
+
+    // 1. Locate and click on the 🚲 E-Bike mode button
+    const ebikeBtn = page.locator('button:has-text("E-Bike")').first();
+    await expect(ebikeBtn).toBeVisible();
+    await ebikeBtn.click();
+
+    // 2. Assert that E-Bike hardware parameters are displayed
+    await expect(page.locator('text=E-Bike Hardware & Cost Parameters')).toBeVisible();
+
+    // 3. Assert that Private Vehicle Baseline section remains mounted and visible (BUG-44)
+    await expect(page.locator('text=Private Vehicle Baseline')).toBeVisible();
+
+    // 4. Assert that Powertrain selector buttons remain visible and functional
+    const dieselButton = page.locator('button[aria-label="Diesel"]').first();
+    await expect(dieselButton).toBeVisible();
+
+    // 5. Click Diesel powertrain while E-Bike is active to verify full functionality
+    await dieselButton.click();
+    await expect(dieselButton).toHaveClass(/border-emerald-500/);
+
+    // 6. Click Petrol 91 button to verify switching works seamlessly
+    const petrolButton = page.locator('button[aria-label="Petrol 91"]').first();
+    await expect(petrolButton).toBeVisible();
+    await petrolButton.click();
+    await expect(petrolButton).toHaveClass(/border-emerald-500/);
+  });
+});
+

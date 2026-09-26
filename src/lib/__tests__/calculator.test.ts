@@ -577,11 +577,11 @@ describe('src/lib/calculator.ts - calculateCommuteArbitrage', () => {
 
       const result = calculateCommuteArbitrage(input);
 
-      // Assert that parking and RUC are zeroed out
-      assert.strictEqual(result.driving.dailyParkingCost, 0, 'Parking cost must be zeroed out in EBIKE mode');
-      assert.strictEqual(result.driving.monthlyParkingCost, 0, 'Monthly parking must be zero in EBIKE mode');
-      assert.strictEqual(result.driving.dailyRucCost, 0, 'RUC cost must be zeroed out in EBIKE mode');
-      assert.strictEqual(result.driving.monthlyRucCost, 0, 'Monthly RUC must be zero in EBIKE mode');
+      // BUG-44: Assert that the private vehicle baseline retains parking and RUC
+      assert.strictEqual(result.driving.dailyParkingCost, 20, 'Parking cost must be retained in private vehicle baseline');
+      assert.strictEqual(result.driving.dailyRucCost, 2.96, 'BEV RUC cost must be retained in private vehicle baseline');
+      assert.ok(result.driving.monthlyParkingCost > 0, 'Monthly parking must be retained in private vehicle baseline');
+      assert.ok(result.driving.monthlyRucCost > 0, 'Monthly RUC must be retained in private vehicle baseline');
 
       // Assert energy cost based on distance * ebikeCostPerKm
       const distanceRoundTripKm = result.driving.distanceRoundTripKm;

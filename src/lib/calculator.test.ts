@@ -250,3 +250,61 @@ describe('BUG-43: Micromobility Decoupled from Carpool Multiplier', () => {
     });
   });
 });
+
+describe('BUG-44: Decouple Private Vehicle Baseline from Alternative Modes', () => {
+  const baseInput: CommuteInput = {
+    originSuburbId: 'albany',
+    destinationSuburbId: 'cbd',
+    daysPerWeek: 5,
+    vehicleType: 'petrol91',
+    parkingDailyRate: 0,
+    parkingDaysPerWeek: 0,
+    concession: 'adult',
+    includeMaintenanceWear: false,
+    carpoolPassengers: 1,
+  };
+
+  it('calculating an E-Bike comparison with power=DIESEL correctly applies $0.076/km RUC to the private vehicle baseline', () => {
+    const result = calculateCommuteArbitrage({
+      ...baseInput,
+      power: 'DIESEL',
+      transitMode: 'EBIKE',
+    });
+
+    // 39.0 km round trip * $0.076/km = $2.964 -> rounded to $2.96/day
+    expect(result.driving.distanceRoundTripKm).toBe(39.0);
+    expect(result.driving.dailyRucCost).toBe(2.96);
+    expect(result.driving.weeklyRucCost).toBe(14.80);
+    expect(result.driving.monthlyRucCost).toBe(64.13);
+
+    // E-Bike energy cost on transit side remains intact
+    expect(result.transit.dailyFare).toBeCloseTo(0.11, 1);
+  });
+
+  it('calculating an E-Bike comparison preserves private vehicle parking costs in baseline', () => {
+    const result = calculateCommuteArbitrage({
+      ...baseInput,
+      transitMode: 'EBIKE',
+      parkingDailyRate: 22,
+      parkingDaysPerWeek: 5,
+      parkingTier: 'CBD_EARLY_BIRD',
+    });
+
+    // Driving baseline should include $22/day parking
+    expect(result.driving.dailyParkingCost).toBe(22);
+    expect(result.driving.weeklyParkingCost).toBe(110);
+    expect(result.driving.monthlyParkingCost).toBe(476.67);
+  });
+
+  it('calculating a Scooter comparison with power=DIESEL retains private vehicle RUC in baseline', () => {
+    const result = calculateCommuteArbitrage({
+      ...baseInput,
+      power: 'DIESEL',
+      transitMode: 'Scooter & Ride',
+      scooterOwnership: 'OWNED',
+    });
+
+    expect(result.driving.dailyRucCost).toBe(2.96);
+    expect(result.driving.weeklyRucCost).toBe(14.80);
+  });
+});
