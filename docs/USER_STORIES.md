@@ -31,6 +31,7 @@
 | **US-26** | Conventional Hybrid (HEV) Powertrain Option | **DONE** | [`src/types/index.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/types/index.ts), [`src/components/CommuteForm.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/CommuteForm.tsx), [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts), [`src/lib/__tests__/calculator.test.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/__tests__/calculator.test.ts) | HEV in Powertrain enum, 'Hybrid (Non-Plug-in)' in CommuteForm with 4.5 L/100km default efficiency, $0.00/km RUC rate with standard petrol pricing. |
 | **US-27** | 'Buy Me a Coffee' Donation Button (Revolut.me) | **DONE** | [`src/components/DonationButton.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/DonationButton.tsx), [`src/components/DashboardClient.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/DashboardClient.tsx), [`src/components/__tests__/DonationButton.test.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/__tests__/DonationButton.test.tsx) | Reusable DonationButton with 'header' (subtle minimal icon/text) and 'footer' (full text with ☕) variants, linking to NEXT_PUBLIC_DONATION_URL with target="_blank" and rel="noopener noreferrer". |
 | **US-28** | Address Geocoding & Nearest Station Spatial Search with Segmented Timeline UI | **DONE** | [`src/components/CommuteForm.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/CommuteForm.tsx), [`src/data/at-stations.json`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/data/at-stations.json), [`src/lib/stations.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/stations.ts), [`src/components/JourneyTimeline.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/JourneyTimeline.tsx), [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts) | Mapbox Geocoding autocomplete on To/From inputs, 45 AT stations GeoJSON, @turf/nearest-point spatial search, JourneyTimeline component with segmented nodes (Drive to Station, Transit Ride, Walk to Desk), decoupled first-mile running costs aggregated with AT HOP fares. |
+| **US-30** | AT GTFS API Local Stop Integration | **DONE** | [`src/app/api/nearest-stop/route.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/app/api/nearest-stop/route.ts), [`src/components/JourneyTimeline.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/JourneyTimeline.tsx), [`src/lib/mapbox.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/mapbox.ts) | Next.js API route querying AT GTFS geospatial endpoint, dynamic local stop lookup for walking/scooter modes, Mapbox Directions integration, retaining offline Turf.js spatial logic exclusively for driving modes. |
 
 ---
 
@@ -415,6 +416,21 @@
   - Updated `src/lib/calculator.ts` to compute first-mile running costs (fuel/energy, RUC, wear & tear) and AT HOP fares separately, aggregating them into the final daily, weekly, monthly, and annual transit totals without breaking baseline test suites.
   - Comprehensive unit test suites in `src/lib/__tests__/calculator.test.ts`, `src/lib/__tests__/stations.test.ts`, `src/components/__tests__/JourneyTimeline.test.tsx`, and `src/components/__tests__/CommuteForm.test.tsx`.
   - All 89 test suites pass and Next.js production build (`npm run build`) compiles with zero errors.
+
+---
+
+### US-30: AT GTFS API Local Stop Integration
+**As a** multimodal commuter walking or scootering to public transit,  
+**I want** the system to find my closest local Auckland Transport bus stop or train station via the AT GTFS API and calculate precise walking/scootering travel times,  
+**So that** my first-mile commute reflects an actual neighborhood stop rather than forcing me to travel all the way to a distant regional Park & Ride hub, while preserving offline Turf.js station logic for driving commutes.
+
+* **Acceptance Criteria:**
+  - Created a Next.js API route at `src/app/api/nearest-stop/route.ts` that validates `[lng, lat]` coordinates and queries the official Auckland Transport GTFS API (`https://api.at.govt.nz/gtfs/v3/stops`) using `AT_API_KEY` / `AT_API_SUBSCRIPTION_KEY`, calculating nearest stop distance via Haversine and falling back gracefully to static station data if rate-limited or offline.
+  - Updated `src/components/JourneyTimeline.tsx` to query `/api/nearest-stop` when non-driving modes are active (`WALK`, `SCOOTER`), displaying the specific local stop name and stop code badge.
+  - Retained offline Turf.js spatial search against `src/data/at-stations.json` exclusively for driving modes (`DRIVE`).
+  - Wired returned local stop coordinates into `fetchDirectionsRoute` (Mapbox Directions API) using walking or cycling routing profiles to provide real-time travel durations and distances for the first-mile leg.
+  - Unit tests in `src/app/api/nearest-stop/__tests__/route.test.ts` and `src/components/__tests__/JourneyTimeline.test.tsx` verify API validation, fallback behavior, driving vs non-driving mode routing, and UI rendering.
+  - All 93 Vitest unit tests pass and Next.js production build (`npm run build`) succeeds with zero errors.
 
 ---
 

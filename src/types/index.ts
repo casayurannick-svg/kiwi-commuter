@@ -111,6 +111,17 @@ export interface TransitStation {
   distanceKm: number;
 }
 
+export interface LocalTransitStop {
+  id: string;
+  code: string;
+  name: string;
+  coordinates: [number, number];
+  distanceKm: number;
+  locationType?: number;
+  vehicleType?: number;
+  source: 'at_gtfs_api' | 'local_fallback';
+}
+
 export interface JourneyLeg {
   id: string;
   title: string;

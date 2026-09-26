@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Car,
   Bus,
@@ -17,7 +17,8 @@ import {
   ShieldCheck,
   Navigation,
 } from 'lucide-react';
-import { CommuteComparisonResult, CommuteInput, JourneyLeg } from '@/types';
+import { CommuteComparisonResult, CommuteInput, JourneyLeg, LocalTransitStop } from '@/types';
+import { fetchDirectionsRoute } from '@/lib/mapbox';
 
 interface JourneyTimelineProps {
   arbitrage: CommuteComparisonResult;
@@ -32,13 +33,102 @@ export default function JourneyTimeline({
 }: JourneyTimelineProps) {
   const { journeyLegs, nearestStation, transit } = arbitrage;
 
+  const firstMileMode = input.firstMileMode || 'DRIVE';
+  const originCoords = input.originCoordinates;
+
+  // US-30: Local stop & first-mile directions state for non-driving modes
+  const [localStop, setLocalStop] = useState<LocalTransitStop | null>(null);
+  const [firstMileDirections, setFirstMileDirections] = useState<{
+    durationMinutes: number;
+    distanceKm: number;
+  } | null>(null);
+
+  useEffect(() => {
+    // US-30: Retain offline Turf.js station logic exclusively for DRIVE
+    if (firstMileMode === 'DRIVE' || !originCoords || input.transitMode === 'EBIKE') {
+      setLocalStop(null);
+      setFirstMileDirections(null);
+      return;
+    }
+
+    let isCancelled = false;
+
+    const fetchNearestStopAndDirections = async () => {
+      try {
+        const res = await fetch(
+          `/api/nearest-stop?lng=${originCoords[0]}&lat=${originCoords[1]}`
+        );
+        if (res.ok) {
+          const data = await res.json();
+          if (!isCancelled && data.stop) {
+            setLocalStop(data.stop);
+
+            // Wire returned local stop coordinates into Mapbox Directions API request
+            const profile = firstMileMode === 'SCOOTER' ? 'cycling' : 'walking';
+            const route = await fetchDirectionsRoute(
+              originCoords,
+              data.stop.coordinates,
+              profile
+            );
+
+            if (!isCancelled && route) {
+              setFirstMileDirections({
+                durationMinutes: route.durationMinutes,
+                distanceKm: route.distanceKm,
+              });
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to fetch nearest local stop or directions:', err);
+      }
+    };
+
+    fetchNearestStopAndDirections();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [firstMileMode, originCoords, input.transitMode]);
+
+  // Compute displayed journey legs: updated with local stop and directions when non-driving
+  const displayedLegs = useMemo(() => {
+    if (!journeyLegs || journeyLegs.length === 0) return [];
+    if (firstMileMode === 'DRIVE' || !localStop) return journeyLegs;
+
+    return journeyLegs.map((leg) => {
+      if (leg.type === 'FIRST_MILE') {
+        const dur = firstMileDirections?.durationMinutes ?? leg.durationMins;
+        const dist = firstMileDirections?.distanceKm ?? localStop.distanceKm;
+        return {
+          ...leg,
+          title: firstMileMode === 'SCOOTER' ? 'Scooter to Stop' : 'Walk to Stop',
+          destinationName: localStop.name,
+          durationMins: dur,
+          distanceKm: dist,
+          notes:
+            localStop.source === 'at_gtfs_api'
+              ? `Local AT Stop #${localStop.code || localStop.id}`
+              : 'Local AT Stop',
+        };
+      }
+      if (leg.type === 'TRANSIT') {
+        return {
+          ...leg,
+          originName: localStop.name,
+        };
+      }
+      return leg;
+    });
+  }, [journeyLegs, firstMileMode, localStop, firstMileDirections]);
+
   if (!journeyLegs || journeyLegs.length === 0) {
     return null;
   }
 
   // Calculate totals across legs
-  const totalDurationMins = journeyLegs.reduce((acc, leg) => acc + leg.durationMins, 0);
-  const totalOneWayCost = journeyLegs.reduce((acc, leg) => acc + leg.cost, 0);
+  const totalDurationMins = displayedLegs.reduce((acc, leg) => acc + leg.durationMins, 0);
+  const totalOneWayCost = displayedLegs.reduce((acc, leg) => acc + leg.cost, 0);
 
   const getLegIcon = (leg: JourneyLeg) => {
     switch (leg.mode) {
@@ -94,8 +184,8 @@ export default function JourneyTimeline({
           </div>
         </div>
 
-        {/* Nearest Station Hub Badge */}
-        {nearestStation && (
+        {/* Hub Badge: Local AT Stop for non-driving, Rapid Transit Hub for driving */}
+        {firstMileMode === 'DRIVE' && nearestStation && (
           <div className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-800/80 border border-slate-700 rounded-lg text-xs">
             <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
             <span className="text-slate-300">Nearest Hub:</span>
@@ -105,6 +195,29 @@ export default function JourneyTimeline({
                 P&R
               </span>
             )}
+          </div>
+        )}
+
+        {firstMileMode !== 'DRIVE' && localStop && (
+          <div className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-800/80 border border-slate-700 rounded-lg text-xs">
+            <MapPin className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+            <span className="text-slate-300">Local AT Stop:</span>
+            <span className="font-semibold text-white truncate max-w-[150px] sm:max-w-[200px]">
+              {localStop.name}
+            </span>
+            {localStop.code && (
+              <span className="ml-1 px-1.5 py-0.2 bg-sky-500/20 text-sky-300 text-[10px] rounded font-medium">
+                #{localStop.code}
+              </span>
+            )}
+          </div>
+        )}
+
+        {firstMileMode !== 'DRIVE' && !localStop && nearestStation && (
+          <div className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-800/80 border border-slate-700 rounded-lg text-xs">
+            <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+            <span className="text-slate-300">Nearest Hub:</span>
+            <span className="font-semibold text-white">{nearestStation.name}</span>
           </div>
         )}
       </div>
@@ -137,7 +250,7 @@ export default function JourneyTimeline({
 
       {/* Timeline Nodes */}
       <div className="relative pl-6 sm:pl-8 space-y-6 before:absolute before:left-3 sm:before:left-4 before:top-3 before:bottom-3 before:w-0.5 before:bg-slate-800">
-        {journeyLegs.map((leg, index) => {
+        {displayedLegs.map((leg, index) => {
           return (
             <div key={leg.id || index} className="relative group">
               {/* Timeline Node Dot / Icon */}

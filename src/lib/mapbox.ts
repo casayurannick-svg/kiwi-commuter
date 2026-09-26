@@ -87,7 +87,7 @@ export interface RouteGeometryResponse {
 /**
  * Calculates straight line distance in km using Haversine formula
  */
-function calculateHaversineDistanceKm(
+export function calculateHaversineDistanceKm(
   [lon1, lat1]: [number, number],
   [lon2, lat2]: [number, number]
 ): number {
@@ -129,11 +129,12 @@ function generateSyntheticAucklandRoute(
 }
 
 /**
- * Fetches driving route geometry from Mapbox Directions API, with seamless Auckland corridor synthetic fallback
+ * Fetches route geometry and metrics from Mapbox Directions API for driving, walking, or cycling
  */
-export async function fetchDrivingRoute(
+export async function fetchDirectionsRoute(
   origin: [number, number],
-  destination: [number, number]
+  destination: [number, number],
+  profile: 'driving' | 'walking' | 'cycling' = 'driving'
 ): Promise<RouteGeometryResponse | null> {
   if (
     !Array.isArray(origin) ||
@@ -154,7 +155,7 @@ export async function fetchDrivingRoute(
   // Attempt Mapbox Directions API if public token is configured
   if (MAPBOX_TOKEN && MAPBOX_TOKEN.startsWith('pk.')) {
     try {
-      const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${startLng},${startLat};${endLng},${endLat}?geometries=geojson&overview=full&access_token=${MAPBOX_TOKEN}`;
+      const url = `https://api.mapbox.com/directions/v5/mapbox/${profile}/${startLng},${startLat};${endLng},${endLat}?geometries=geojson&overview=full&access_token=${MAPBOX_TOKEN}`;
       const res = await fetch(url, { next: { revalidate: 3600 } });
       if (res.ok) {
         const data = await res.json();
@@ -168,16 +169,27 @@ export async function fetchDrivingRoute(
         }
       }
     } catch (e) {
-      console.warn('Mapbox Directions API failed, using synthetic fallback:', e);
+      console.warn(`Mapbox Directions API (${profile}) failed, using synthetic fallback:`, e);
     }
   }
 
-  // Realistic Auckland road network fallback calculation
+  // Realistic Auckland network fallback calculation
   const straightLine = calculateHaversineDistanceKm(origin, destination);
-  // Auckland urban routing factor ~1.28x straight line distance
-  const distanceKm = Math.round(Math.max(2.0, straightLine * 1.28) * 10) / 10;
-  // Average peak urban driving speed ~35 km/h
-  const durationMinutes = Math.max(5, Math.round((distanceKm / 35) * 60));
+  const factor = profile === 'walking' ? 1.2 : 1.28;
+  const distanceKm = Math.round(Math.max(0.1, straightLine * factor) * 10) / 10;
+
+  let durationMinutes: number;
+  if (profile === 'walking') {
+    // 5 km/h average walking speed (12 mins/km)
+    durationMinutes = Math.max(1, Math.round((distanceKm / 5) * 60));
+  } else if (profile === 'cycling') {
+    // 15 km/h scooter / bike speed (4 mins/km)
+    durationMinutes = Math.max(1, Math.round((distanceKm / 15) * 60));
+  } else {
+    // 35 km/h average peak urban driving
+    durationMinutes = Math.max(3, Math.round((distanceKm / 35) * 60));
+  }
+
   const coordinates = generateSyntheticAucklandRoute(origin, destination);
 
   return {
@@ -185,6 +197,16 @@ export async function fetchDrivingRoute(
     distanceKm,
     durationMinutes,
   };
+}
+
+/**
+ * Fetches driving route geometry from Mapbox Directions API, with seamless Auckland corridor synthetic fallback
+ */
+export async function fetchDrivingRoute(
+  origin: [number, number],
+  destination: [number, number]
+): Promise<RouteGeometryResponse | null> {
+  return fetchDirectionsRoute(origin, destination, 'driving');
 }
 
 /**

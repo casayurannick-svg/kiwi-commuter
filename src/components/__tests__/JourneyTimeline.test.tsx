@@ -68,4 +68,53 @@ describe('src/components/JourneyTimeline.tsx - US-28 Segmented Timeline UI', () 
     assert.ok(html.includes('E-Bike Commute'), 'Must render E-Bike Commute leg');
     assert.ok(html.includes('Direct active commute via cycleways'), 'Must include cycleway notes');
   });
+
+  it('US-30: retains offline Turf.js spatial logic for driving mode and switches mode controls for walk/scooter', () => {
+    const driveInput: CommuteInput = {
+      originSuburbId: 'albany',
+      destinationSuburbId: 'cbd',
+      originCoordinates: [174.7082, -36.7295],
+      destinationCoordinates: [174.7645, -36.8485],
+      daysPerWeek: 5,
+      vehicleType: 'petrol91',
+      firstMileMode: 'DRIVE',
+      parkingDailyRate: 0,
+      parkingDaysPerWeek: 0,
+      concession: 'adult',
+      includeMaintenanceWear: false,
+      carpoolPassengers: 1,
+    };
+
+    const driveArbitrage = calculateCommuteArbitrage(driveInput);
+    const driveHtml = renderToStaticMarkup(
+      React.createElement(JourneyTimeline, {
+        arbitrage: driveArbitrage,
+        input: driveInput,
+        onFirstMileModeChange: () => {},
+      })
+    );
+
+    // Retains offline rapid transit hub logic from at-stations.json exclusively for DRIVE
+    assert.ok(driveHtml.includes('Albany Busway Station'), 'Driving mode must display rapid transit hub');
+    assert.ok(driveHtml.includes('Drive to Station'), 'Must display Drive to Station leg');
+    assert.ok(driveHtml.includes('P&amp;R') || driveHtml.includes('P&R'), 'Must display Park & Ride indicator');
+
+    // Walk mode input
+    const walkInput: CommuteInput = {
+      ...driveInput,
+      firstMileMode: 'WALK',
+    };
+    const walkArbitrage = calculateCommuteArbitrage(walkInput);
+    const walkHtml = renderToStaticMarkup(
+      React.createElement(JourneyTimeline, {
+        arbitrage: walkArbitrage,
+        input: walkInput,
+        onFirstMileModeChange: () => {},
+      })
+    );
+
+    // Displays walk mode selection and nodes
+    assert.ok(walkHtml.includes('Walk to Station') || walkHtml.includes('Walk to Stop'));
+    assert.ok(walkHtml.includes('First-Mile Mode to Station:'));
+  });
 });
