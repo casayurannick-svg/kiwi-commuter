@@ -154,8 +154,10 @@ export async function GET(request: Request) {
                     totalTransitMins += stepMins;
 
                     const lineName =
+                      step.transitDetails?.transitLine?.nameShort ||
                       step.transitDetails?.transitLine?.shortName ||
                       step.transitDetails?.transitLine?.name ||
+                      step.transitDetails?.headsign ||
                       'Transit';
 
                     if (lineName && !transitLines.includes(lineName)) {
