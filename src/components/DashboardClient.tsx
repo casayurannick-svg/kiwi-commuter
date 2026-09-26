@@ -2,6 +2,7 @@
 
 import CommuteForm from '@/components/CommuteForm';
 import ComparisonCard from '@/components/ComparisonCard';
+import DonationButton from '@/components/DonationButton';
 import FuelRadarWidget from '@/components/FuelRadarWidget';
 import MonthlySavingsChart from '@/components/MonthlySavingsChart';
 import RouteMap from '@/components/RouteMap';
@@ -126,8 +127,9 @@ export default function DashboardClient({ initialFuelPrices }: DashboardClientPr
             </div>
           </div>
 
-          {/* Minimal Badges & Share Link */}
+          {/* Minimal Badges, Donation Button & Share Link */}
           <div className="flex items-center gap-1.5 shrink-0">
+            <DonationButton variant="header" />
             <button
               type="button"
               onClick={handleShareLink}
@@ -216,6 +218,9 @@ export default function DashboardClient({ initialFuelPrices }: DashboardClientPr
             >
               MBIE Data
             </a>
+          </div>
+          <div className="shrink-0">
+            <DonationButton variant="footer" />
           </div>
         </div>
       </footer>

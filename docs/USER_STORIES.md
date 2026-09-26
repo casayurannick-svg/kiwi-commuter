@@ -29,6 +29,7 @@
 | **US-24** | Empty String & Fallback Fuel Price Input Handling | **DONE** | [`src/components/CommuteForm.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/CommuteForm.tsx), [`src/config/fares.config.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/config/fares.config.ts), [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts), [`src/components/__tests__/CommuteForm.test.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/__tests__/CommuteForm.test.tsx), [`src/lib/__tests__/calculator.test.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/__tests__/calculator.test.ts) | Local string state for fuelCost with nullish coalescing (`fuelCost ?? ''`); clearing input does not snap back; calculation engine falls back to `DEFAULT_FUEL_RATE` when empty or NaN. |
 | **US-25** | Fix E-Bike Verdict Copy & Remove Leaked Transit Metadata | **DONE** | [`src/components/ComparisonCard.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/ComparisonCard.tsx), [`src/components/__tests__/ComparisonCard.test.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/__tests__/ComparisonCard.test.tsx), [`tests/calculator.test.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/tests/calculator.test.ts) | Dynamic verdict headline ("on an E-Bike" vs "on public transport"), AT HOP Cap/Corridor/badge hidden for E-Bike, footer shows "E-Bike energy cost" instead of cap text. |
 | **US-26** | Conventional Hybrid (HEV) Powertrain Option | **DONE** | [`src/types/index.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/types/index.ts), [`src/components/CommuteForm.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/CommuteForm.tsx), [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts), [`src/lib/__tests__/calculator.test.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/__tests__/calculator.test.ts) | HEV in Powertrain enum, 'Hybrid (Non-Plug-in)' in CommuteForm with 4.5 L/100km default efficiency, $0.00/km RUC rate with standard petrol pricing. |
+| **US-27** | 'Buy Me a Coffee' Donation Button (Revolut.me) | **DONE** | [`src/components/DonationButton.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/DonationButton.tsx), [`src/components/DashboardClient.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/DashboardClient.tsx), [`src/components/__tests__/DonationButton.test.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/__tests__/DonationButton.test.tsx) | Reusable DonationButton with 'header' (subtle minimal icon/text) and 'footer' (full text with ☕) variants, linking to NEXT_PUBLIC_DONATION_URL with target="_blank" and rel="noopener noreferrer". |
 
 ---
 
@@ -382,6 +383,21 @@
   - In `src/lib/calculator.ts` and `src/config/fares.config.ts`, HEV vehicles apply a `$0.00/km` RUC rate while calculating fuel expenses using pump petrol price and distance.
   - Unit tests in `src/lib/__tests__/calculator.test.ts` assert that an HEV commute calculates fuel correctly with exactly zero RUC.
   - Production build and test suite (`npx vitest run`) pass with 100% success.
+
+---
+
+### US-27: 'Buy Me a Coffee' Donation Button (Revolut.me)
+**As an** appreciative commuter and user of the dashboard,  
+**I want to** easily find a "Buy Me a Coffee" donation link in both the header and the footer,  
+**So that** I can tip and financially support the creator via Revolut.me or other payment links.
+
+* **Acceptance Criteria:**
+  - Created reusable `DonationButton` component (`src/components/DonationButton.tsx`) styled with standard Tailwind CSS.
+  - Supports a `variant` prop accepting `'header'` (subtle icon with minimal text) and `'footer'` (full "Buy Me a Coffee" text with `☕` emoji).
+  - Renders an `<a>` tag with `target="_blank"`, `rel="noopener noreferrer"`, and `href` set to `process.env.NEXT_PUBLIC_DONATION_URL` (falling back cleanly to `'#'`).
+  - Rendered `'header'` variant in the main navigation bar and `'footer'` variant in the application footer (`src/components/DashboardClient.tsx`).
+  - Unit tests in `src/components/__tests__/DonationButton.test.tsx` verify anchor tag properties, both variants, and URL/fallback handling.
+  - Verification via `npx vitest run` and `npm run build` succeeds with zero errors.
 
 ---
 
