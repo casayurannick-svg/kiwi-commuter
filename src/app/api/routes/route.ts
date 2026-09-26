@@ -98,7 +98,7 @@ export async function GET(request: Request) {
         headers: {
           'Content-Type': 'application/json',
           'X-Goog-Api-Key': apiKey,
-          'X-Goog-FieldMask': 'routes.duration,routes.legs.duration,routes.legs.steps.duration,routes.legs.steps.staticDuration,routes.legs.steps.travelMode,routes.legs.steps.transitDetails',
+          'X-Goog-FieldMask': 'routes.duration,routes.legs.duration,routes.legs.steps.staticDuration,routes.legs.steps.travelMode,routes.legs.steps.transitDetails',
         },
         body: JSON.stringify(requestBody),
       });
@@ -140,7 +140,7 @@ export async function GET(request: Request) {
                 for (const step of leg.steps) {
                   if (step.travelMode === 'TRANSIT') {
                     // Raw duration string from Google (e.g. "1860s")
-                    const rawDuration = step.duration || step.staticDuration;
+                    const rawDuration = step.staticDuration;
                     const stepSeconds = parseDurationSeconds(rawDuration);
                     // Convert to minutes via Math.round(parseInt(d.replace('s', '')) / 60)
                     const stepMins = rawDuration
