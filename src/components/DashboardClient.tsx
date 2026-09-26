@@ -101,7 +101,10 @@ export default function DashboardClient({ initialFuelPrices }: DashboardClientPr
         if (!cancelled && typeof data.transitDurationMins === 'number' && data.transitDurationMins > 0) {
           setCommuteInput((prev) => ({
             ...prev,
-            transitTimeMins: data.transitDurationMins,
+            transitTimeMins: data.totalDurationMins || data.transitDurationMins,
+            transitRideDurationMins: data.transitDurationMins,
+            transitSteps: data.transitSteps,
+            transitLines: data.transitLines,
           }));
         }
       } catch (err) {

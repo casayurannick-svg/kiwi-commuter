@@ -428,7 +428,10 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
       : isFerry
       ? 'Ferry'
       : origin.primaryTransitMode,
-    estimatedTransitTimeMins: adjustedTransitTimeMins,
+    estimatedTransitTimeMins:
+      typeof input.transitTimeMins === 'number' && input.transitTimeMins > 0
+        ? input.transitTimeMins
+        : adjustedTransitTimeMins,
     scooterRentalFeesDaily: isMicromobility && input.scooterOwnership === 'RENTAL' ? scooterRentalFeesDaily : undefined,
     scooterRentalFeesMonthly: isMicromobility && input.scooterOwnership === 'RENTAL' ? scooterRentalFeesMonthly : undefined,
     scooterDurationMins: isMicromobility ? scooterDurationMinsPerLeg : undefined,
@@ -579,10 +582,34 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
         ? 'FERRY'
         : 'BUS';
     const transitDist = Math.max(1, round1(distanceOneWayKm - effectiveFirstMileDist));
-    const transitMins = Math.max(5, Math.round(adjustedTransitTimeMins - effectiveFirstMileDuration - 8));
+
+    // Priority for middle transit leg duration:
+    // 1. Pure in-vehicle transit ride duration from live timetable routing (e.g. 31-36 mins)
+    // 2. Total door-to-door transit time minus first-mile and last-mile duration
+    // 3. Fallback: static suburb estimate minus first-mile and last-mile
+    const transitMins =
+      typeof input.transitRideDurationMins === 'number' && input.transitRideDurationMins > 0
+        ? input.transitRideDurationMins
+        : typeof input.transitTimeMins === 'number' && input.transitTimeMins > 0
+        ? Math.max(15, Math.round(input.transitTimeMins - effectiveFirstMileDuration - 8))
+        : Math.max(5, Math.round(adjustedTransitTimeMins - effectiveFirstMileDuration - 8));
+
+    // Compose dynamic title and notes reflecting multi-leg transit routes
+    const transitTitle =
+      input.transitLines && input.transitLines.length > 0
+        ? `Bus ${input.transitLines.join(' + ')} Ride`
+        : `${transitBreakdown.primaryMode || 'Transit'} Ride`;
+
+    const transitNotes =
+      input.transitSteps && input.transitSteps.length > 1
+        ? input.transitSteps.map((s) => `${s.line} (${s.durationMins}m)`).join(' → ')
+        : isHopCapApplied
+        ? 'Covered by AT $50 Weekly Cap'
+        : `${zoneCount}-Zone AT HOP Fare`;
+
     journeyLegs.push({
       id: 'leg-transit',
-      title: `${transitBreakdown.primaryMode || 'Transit'} Ride`,
+      title: transitTitle,
       type: 'TRANSIT',
       mode: transitRideMode,
       originName: stationName,
@@ -592,7 +619,8 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
       cost: singleTripConcessionFare,
       costFormatted: `$${singleTripConcessionFare.toFixed(2)}`,
       iconName: transitRideMode === 'TRAIN' ? 'Train' : transitRideMode === 'FERRY' ? 'Ship' : 'Bus',
-      notes: isHopCapApplied ? 'Covered by AT $50 Weekly Cap' : `${zoneCount}-Zone AT HOP Fare`,
+      notes: transitNotes,
+      transitSteps: input.transitSteps,
     });
 
     journeyLegs.push({

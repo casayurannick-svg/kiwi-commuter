@@ -95,6 +95,17 @@ export interface CommuteInput {
   destinationCoordinates?: [number, number]; // US-28: [lng, lat] geocoded coordinates
   firstMileMode?: 'DRIVE' | 'WALK' | 'SCOOTER'; // US-28: Mode used to reach nearest station
   firstMileDistanceKm?: number; // US-28: Distance to nearest transit station in km
+  transitRideDurationMins?: number; // In-vehicle transit ride duration (e.g. 36 mins for 25B + OuterLink)
+  transitSteps?: TransitStepDetail[]; // Breakdown of individual transit legs
+  transitLines?: string[]; // Transit line names (e.g. ['25B', 'OuterLink'])
+}
+
+export interface TransitStepDetail {
+  line: string;
+  durationMins: number;
+  durationSeconds?: number;
+  departureStop?: string;
+  arrivalStop?: string;
 }
 
 export type EVChargingSource = 'HOME_OFFPEAK' | 'HOME_FLAT' | 'PUBLIC_DC' | 'CUSTOM';
@@ -135,6 +146,7 @@ export interface JourneyLeg {
   costFormatted: string;
   iconName: string;
   notes?: string;
+  transitSteps?: TransitStepDetail[];
 }
 
 export interface TimeMetrics {

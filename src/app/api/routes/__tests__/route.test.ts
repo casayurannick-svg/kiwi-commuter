@@ -2,15 +2,24 @@ import assert from 'node:assert';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, it } from 'node:test';
+import { calculateCommuteArbitrage } from '@/lib/calculator';
+import { CommuteInput } from '@/types';
 
 // Test the parseDurationSeconds helper logic directly
-// (We inline the logic here since the function is not exported separately)
 function parseDurationSeconds(duration: string | undefined): number {
   if (!duration) return 0;
   const match = duration.match(/^(\d+)s$/);
   if (match) return parseInt(match[1], 10);
   if (/^\d+$/.test(duration)) return parseInt(duration, 10);
   return 0;
+}
+
+// Convert Google duration string to minutes via Math.round(parseInt(d.replace('s', '')) / 60)
+function parseDurationMinutes(duration: string | undefined): number {
+  if (!duration) return 0;
+  const cleaned = duration.replace('s', '').trim();
+  const seconds = parseInt(cleaned, 10);
+  return isNaN(seconds) ? 0 : Math.round(seconds / 60);
 }
 
 describe('US-21: /api/routes – Google Routes Transit Duration', () => {
@@ -34,14 +43,99 @@ describe('US-21: /api/routes – Google Routes Transit Duration', () => {
     assert.strictEqual(parseDurationSeconds('30m'), 0); // minutes format not supported
   });
 
-  it('validates that API route file exists and references TRANSIT travelMode', () => {
+  it('parseDurationMinutes converts duration strings to minutes via Math.round(parseInt(d.replace("s", "")) / 60)', () => {
+    assert.strictEqual(parseDurationMinutes('1860s'), 31);
+    assert.strictEqual(parseDurationMinutes('300s'), 5);
+    assert.strictEqual(parseDurationMinutes('2160s'), 36);
+    assert.strictEqual(parseDurationMinutes(undefined), 0);
+  });
+
+  it('ensures ALL transit steps are summed together rather than overwriting in loop', () => {
+    // Simulated Google Routes steps for Mt Roskill to Parnell:
+    // Step 1: Walk to bus stop
+    // Step 2: Bus 25B (1860s = 31m)
+    // Step 3: Walk/transfer
+    // Step 4: Bus OuterLink (300s = 5m)
+    // Step 5: Walk to destination
+    const steps = [
+      { travelMode: 'WALK', staticDuration: '480s' },
+      { travelMode: 'TRANSIT', staticDuration: '1860s', line: '25B' },
+      { travelMode: 'WALK', staticDuration: '180s' },
+      { travelMode: 'TRANSIT', staticDuration: '300s', line: 'OuterLink' },
+      { travelMode: 'WALK', staticDuration: '360s' },
+    ];
+
+    let totalTransitMins = 0;
+    const transitLines: string[] = [];
+
+    for (const step of steps) {
+      if (step.travelMode === 'TRANSIT') {
+        const stepMins = parseDurationMinutes(step.staticDuration);
+        // Correct accumulator logic:
+        totalTransitMins += stepMins;
+        if (step.line) transitLines.push(step.line);
+      }
+    }
+
+    // Must NOT be 5 minutes (which would happen if step 4 overwrote step 2)
+    assert.notStrictEqual(totalTransitMins, 5, 'Transit duration must not be overwritten by last step');
+    assert.strictEqual(totalTransitMins, 36, 'Sum of 25B (31m) + OuterLink (5m) must equal 36m');
+    assert.deepStrictEqual(transitLines, ['25B', 'OuterLink']);
+  });
+
+  it('reproduction test: Mt Roskill to Parnell outputs realistic transit duration (~30-36 mins) instead of 5 minutes', () => {
+    // Setup reproduction input for 10 McAlister Place, Mt Roskill -> 56 Parnell Rd, Parnell
+    const input: CommuteInput = {
+      originSuburbId: 'mt-roskill',
+      destinationSuburbId: 'parnell',
+      originAddress: '10 McAlister Place, Mount Roskill, Auckland',
+      destinationAddress: '56 Parnell Road, Parnell, Auckland',
+      originCoordinates: [174.728277, -36.91447],
+      destinationCoordinates: [174.778397, -36.851663],
+      daysPerWeek: 5,
+      vehicleType: 'petrol91',
+      firstMileMode: 'WALK',
+      parkingDailyRate: 0,
+      parkingDaysPerWeek: 0,
+      concession: 'adult',
+      includeMaintenanceWear: false,
+      carpoolPassengers: 1,
+      // Values returned by /api/routes for this corridor:
+      transitTimeMins: 56, // Total door-to-door
+      transitRideDurationMins: 36, // Sum of 25B (31m) + OuterLink (5m)
+      transitLines: ['25B', 'OuterLink'],
+      transitSteps: [
+        { line: '25B', durationMins: 31 },
+        { line: 'OuterLink', durationMins: 5 },
+      ],
+    };
+
+    const arbitrage = calculateCommuteArbitrage(input);
+    const legs = arbitrage.journeyLegs || [];
+    const transitLeg = legs.find((leg) => leg.type === 'TRANSIT');
+
+    assert.ok(transitLeg, 'Must include a TRANSIT leg in journeyLegs');
+    // Verify middle leg is NOT 5 minutes!
+    assert.notStrictEqual(transitLeg.durationMins, 5, 'Transit leg duration must NOT be 5 minutes');
+    // Verify middle leg outputs realistic travel time (~30-36 mins)
+    assert.ok(
+      transitLeg.durationMins >= 30 && transitLeg.durationMins <= 36,
+      `Transit leg duration must be between 30 and 36 minutes, got: ${transitLeg.durationMins}`
+    );
+    assert.strictEqual(transitLeg.durationMins, 36, 'Middle transit leg duration must be 36 mins');
+    assert.ok(transitLeg.title.includes('25B') && transitLeg.title.includes('OuterLink'), 'Title must reflect multi-leg lines');
+    assert.ok(transitLeg.notes?.includes('25B (31m)') && transitLeg.notes?.includes('OuterLink (5m)'), 'Notes must show leg breakdown');
+  });
+
+  it('validates that API route file exists and references TRANSIT travelMode and steps', () => {
     const routePath = resolve(process.cwd(), 'src/app/api/routes/route.ts');
     const content = readFileSync(routePath, 'utf-8');
 
     assert.ok(content.includes("travelMode: 'TRANSIT'"), 'Must set travelMode: TRANSIT');
     assert.ok(content.includes('GOOGLE_ROUTES_API_KEY'), 'Must reference GOOGLE_ROUTES_API_KEY');
     assert.ok(content.includes('routes.googleapis.com'), 'Must call Google Routes API endpoint');
-    assert.ok(content.includes('legs'), 'Must sum duration across all legs');
+    assert.ok(content.includes('steps'), 'Must inspect and parse route steps');
+    assert.ok(content.includes('totalTransitMins') || content.includes('totalTransitSeconds'), 'Must accumulate transit step duration');
     assert.ok(content.includes("source: 'google_routes_api'"), 'Must return source identifier');
     assert.ok(content.includes("source: 'fallback_none'"), 'Must return graceful fallback source');
   });
@@ -52,10 +146,10 @@ describe('US-21: /api/routes – Google Routes Transit Duration', () => {
 
     assert.ok(content.includes('/api/routes'), 'DashboardClient must call /api/routes');
     assert.ok(content.includes('transitTimeMins'), 'DashboardClient must inject transitTimeMins from Google Routes');
+    assert.ok(content.includes('transitRideDurationMins'), 'DashboardClient must inject transitRideDurationMins');
   });
 
   it('validates /api/routes route handles invalid coordinates with 400', async () => {
-    // Simulate bad request validation logic
     const queryParams = { originLng: 'NaN', originLat: '100', destinationLng: 'abc', destinationLat: '-36.8' };
     const values = Object.values(queryParams).map(parseFloat);
     const hasNaN = values.some(isNaN);

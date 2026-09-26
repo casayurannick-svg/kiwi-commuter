@@ -311,6 +311,23 @@ export default function JourneyTimeline({
                     {leg.distanceKm} km
                   </span>
                 </div>
+
+                {/* Multimodal Transit Step Breakdown (e.g. Bus 25B + OuterLink) */}
+                {leg.type === 'TRANSIT' && leg.transitSteps && leg.transitSteps.length > 1 && (
+                  <div className="mt-2.5 pt-2 border-t border-slate-800/80 flex flex-wrap items-center gap-1.5 text-[11px]">
+                    <span className="text-slate-400 font-medium">Transit Legs:</span>
+                    {leg.transitSteps.map((step, sIdx) => (
+                      <React.Fragment key={sIdx}>
+                        {sIdx > 0 && <span className="text-slate-600 font-bold">→</span>}
+                        <span className="px-2 py-0.5 rounded-md bg-slate-800 text-slate-200 border border-slate-700/60 font-semibold flex items-center gap-1">
+                          <Bus className="w-3 h-3 text-sky-400" />
+                          <span>{step.line}</span>
+                          <span className="text-emerald-400 font-normal">({step.durationMins}m)</span>
+                        </span>
+                      </React.Fragment>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           );

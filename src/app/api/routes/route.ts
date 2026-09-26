@@ -4,8 +4,18 @@ export const dynamic = 'force-dynamic';
 
 const GOOGLE_ROUTES_ENDPOINT = 'https://routes.googleapis.com/directions/v2:computeRoutes';
 
+export interface TransitStepDetail {
+  line: string;
+  durationMins: number;
+  departureStop?: string;
+  arrivalStop?: string;
+}
+
 export interface GoogleRoutesTransitResponse {
-  transitDurationMins: number | null;
+  transitDurationMins: number | null; // Pure in-vehicle transit duration (sum of all transit steps, e.g. 36 mins)
+  totalDurationMins: number | null; // Total door-to-door journey time (e.g. 56 mins)
+  transitSteps?: TransitStepDetail[]; // Breakdown of each transit step (e.g. 25B 31m, OuterLink 5m)
+  transitLines?: string[]; // Names of transit lines (e.g. ['25B', 'OuterLink'])
   legCount: number;
   source: 'google_routes_api' | 'fallback_none';
   departureTime?: string;
@@ -17,7 +27,7 @@ export interface GoogleRoutesTransitResponse {
  *
  * Accepts [originLng, originLat] and [destinationLng, destinationLat] as query params.
  * Calls the Google Routes API (v2) with travelMode TRANSIT and sums the duration
- * across all legs and steps, accounting for real-world timetables and pedestrian transfers.
+ * across all transit steps and legs, accounting for real-world timetables and pedestrian transfers.
  * Falls back gracefully if coordinates are missing or the API key is not configured.
  *
  * Query params:
@@ -88,7 +98,7 @@ export async function GET(request: Request) {
         headers: {
           'Content-Type': 'application/json',
           'X-Goog-Api-Key': apiKey,
-          'X-Goog-FieldMask': 'routes.duration,routes.legs.duration',
+          'X-Goog-FieldMask': 'routes.duration,routes.legs.duration,routes.legs.steps.duration,routes.legs.steps.staticDuration,routes.legs.steps.travelMode,routes.legs.steps.transitDetails',
         },
         body: JSON.stringify(requestBody),
       });
@@ -107,33 +117,86 @@ export async function GET(request: Request) {
 
         const route = data.routes?.[0];
         if (route) {
-          // Sum total route duration across all legs (includes waiting time, transfers)
+          // 1. Total route-level duration (includes waiting time, pedestrian transfers)
           let totalSeconds = 0;
-
           if (route.duration) {
-            // Route-level duration is the most accurate total (includes transfers)
-            const routeSecs = parseDurationSeconds(route.duration);
-            if (routeSecs > 0) {
-              totalSeconds = routeSecs;
-            }
+            totalSeconds = parseDurationSeconds(route.duration);
           }
-
-          // Fallback: sum leg durations if route-level is unavailable
           if (totalSeconds === 0 && Array.isArray(route.legs)) {
             for (const leg of route.legs) {
-              const legSecs = parseDurationSeconds(leg.duration);
-              totalSeconds += legSecs;
+              totalSeconds += parseDurationSeconds(leg.duration);
             }
           }
 
-          const transitDurationMins = totalSeconds > 0
-            ? Math.max(5, Math.round(totalSeconds / 60))
-            : null;
+          // 2. Extract and sum ALL transit steps (in-vehicle ride time)
+          let totalTransitSeconds = 0;
+          let totalTransitMins = 0;
+          const transitSteps: TransitStepDetail[] = [];
+          const transitLines: string[] = [];
 
-          const legCount = Array.isArray(route.legs) ? route.legs.length : 0;
+          if (Array.isArray(route.legs)) {
+            for (const leg of route.legs) {
+              if (Array.isArray(leg.steps)) {
+                for (const step of leg.steps) {
+                  if (step.travelMode === 'TRANSIT') {
+                    // Raw duration string from Google (e.g. "1860s")
+                    const rawDuration = step.duration || step.staticDuration;
+                    const stepSeconds = parseDurationSeconds(rawDuration);
+                    // Convert to minutes via Math.round(parseInt(d.replace('s', '')) / 60)
+                    const stepMins = rawDuration
+                      ? Math.round(parseInt(rawDuration.replace('s', ''), 10) / 60)
+                      : 0;
+
+                    // CRITICAL: Ensure ALL transit steps are summed together (duration += stepDuration),
+                    // rather than overwriting a variable in a loop where the last step (e.g. 5 mins on OuterLink)
+                    // replaces earlier legs (e.g. 31 mins on 25B).
+                    totalTransitSeconds += stepSeconds;
+                    totalTransitMins += stepMins;
+
+                    const lineName =
+                      step.transitDetails?.transitLine?.shortName ||
+                      step.transitDetails?.transitLine?.name ||
+                      'Transit';
+
+                    if (lineName && !transitLines.includes(lineName)) {
+                      transitLines.push(lineName);
+                    }
+
+                    transitSteps.push({
+                      line: lineName,
+                      durationMins: stepMins,
+                      departureStop: step.transitDetails?.stopDetails?.departureStop?.name,
+                      arrivalStop: step.transitDetails?.stopDetails?.arrivalStop?.name,
+                    });
+                  }
+                }
+              }
+            }
+          }
+
+          // Pure in-vehicle transit duration: sum of all transit steps
+          const pureTransitMins = totalTransitMins > 0
+            ? totalTransitMins
+            : (totalTransitSeconds > 0 ? Math.round(totalTransitSeconds / 60) : null);
+
+          // Total door-to-door duration
+          const totalDurationMins = totalSeconds > 0
+            ? Math.max(5, Math.round(totalSeconds / 60))
+            : pureTransitMins;
+
+          // For transitDurationMins, return pure transit duration if transit steps exist,
+          // otherwise fall back to total duration
+          const transitDurationMins = pureTransitMins ?? totalDurationMins;
+
+          const legCount = transitSteps.length > 0
+            ? transitSteps.length
+            : (Array.isArray(route.legs) ? route.legs.length : 1);
 
           const result: GoogleRoutesTransitResponse = {
             transitDurationMins,
+            totalDurationMins,
+            transitSteps,
+            transitLines,
             legCount,
             source: 'google_routes_api',
             departureTime,
@@ -162,6 +225,7 @@ export async function GET(request: Request) {
   // Graceful fallback: no API key or API call failed
   const result: GoogleRoutesTransitResponse = {
     transitDurationMins: null,
+    totalDurationMins: null,
     legCount: 0,
     source: 'fallback_none',
     ...(isDebug ? { debug: debugDetails } : {}),
