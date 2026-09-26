@@ -156,7 +156,7 @@ describe('Kiwi Commuter Cost & Arbitrage Math Engine', () => {
 
 describe('Step 2: Static Configuration & Regulatory Rate Tables', () => {
   it('defines statutory NZTA RUC rates for all VehiclePowertrain options', () => {
-    const powertrains: VehiclePowertrain[] = ['PETROL_91', 'PETROL_95', 'DIESEL', 'PHEV', 'BEV'];
+    const powertrains: VehiclePowertrain[] = ['PETROL_91', 'PETROL_95', 'DIESEL', 'PHEV', 'BEV', 'HEV'];
 
     for (const pt of powertrains) {
       const entry = STATUTORY_NZTA_RUC_RATES[pt];
@@ -171,6 +171,7 @@ describe('Step 2: Static Configuration & Regulatory Rate Tables', () => {
     assert.strictEqual(STATUTORY_NZTA_RUC_RATES.DIESEL.ratePerKm, 0.076);
     assert.strictEqual(STATUTORY_NZTA_RUC_RATES.PHEV.ratePerKm, 0.038);
     assert.strictEqual(STATUTORY_NZTA_RUC_RATES.BEV.ratePerKm, 0.076);
+    assert.strictEqual(STATUTORY_NZTA_RUC_RATES.HEV.ratePerKm, 0.0);
   });
 
   it('defines AT HOP zone fare tables across all FareConcession tiers', () => {
@@ -345,8 +346,7 @@ describe('Step 5: Next.js API Layer & Interactive Frontend Dashboard UI', () => 
   });
 
   it('evaluates Epsom to CBD default commute with 3 days and $22 CBD Early-Bird parking', () => {
-    const { calculateCommuteArbitrage } = require('../src/lib/calculator');
-    const result = calculateCommuteArbitrage({
+    const result = calculateArbitrage({
       originSuburbId: 'epsom',
       destinationSuburbId: 'cbd',
       daysPerWeek: 3,

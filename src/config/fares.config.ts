@@ -113,6 +113,14 @@ export const STATUTORY_NZTA_RUC_RATES: Record<VehiclePowertrain, StatutoryRucRat
     legislation: 'Road User Charges (PHEV Reduced Rate) Amendment 2024',
     description: 'Reduced RUC of $38 per 1,000 km acknowledging petrol excise duty paid in parallel.',
   },
+  HEV: {
+    powertrain: 'HEV',
+    ratePer1000Km: 0.0,
+    ratePerKm: 0.0,
+    adminTransactionFee: 0.0,
+    legislation: 'Land Transport Management Act 2003 (Excise Duty at Pump)',
+    description: 'Conventional petrol hybrid (non-plug-in): Road funding collected via Fuel Excise Duty at pump (no RUC).',
+  },
 };
 
 export const NZTA_RUC_RATES: Record<VehicleType, { ratePerKm: number; description: string }> = {
@@ -135,6 +143,10 @@ export const NZTA_RUC_RATES: Record<VehicleType, { ratePerKm: number; descriptio
   phev: {
     ratePerKm: STATUTORY_NZTA_RUC_RATES.PHEV.ratePerKm,
     description: STATUTORY_NZTA_RUC_RATES.PHEV.description,
+  },
+  hev: {
+    ratePerKm: STATUTORY_NZTA_RUC_RATES.HEV.ratePerKm,
+    description: STATUTORY_NZTA_RUC_RATES.HEV.description,
   },
 };
 
@@ -326,6 +338,17 @@ export const VEHICLE_PRESETS: Record<VehicleType, VehicleConfig> = {
     defaultFuelPrice: 2.72,
     rucRatePerKm: STATUTORY_NZTA_RUC_RATES.PHEV.ratePerKm,
     description: 'Plug-in hybrid operating on blended mode + $38/1,000km NZTA RUC',
+  },
+  hev: {
+    id: 'hev',
+    powertrain: 'HEV',
+    name: 'Hybrid (Non-Plug-in) (e.g. Prius, Aqua, Corolla Hybrid)',
+    category: 'Hybrid',
+    defaultConsumption: 4.5,
+    unit: 'L/100km',
+    defaultFuelPrice: 2.72,
+    rucRatePerKm: STATUTORY_NZTA_RUC_RATES.HEV.ratePerKm,
+    description: 'Conventional petrol hybrid (non-plug-in) with pump fuel and $0 RUC',
   },
 };
 

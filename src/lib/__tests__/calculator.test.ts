@@ -651,5 +651,65 @@ describe('src/lib/calculator.ts - calculateCommuteArbitrage', () => {
       assert.strictEqual(nanResult.driving.dailyFuelCost, 3.56);
     });
   });
+
+  describe('US-26: Conventional Hybrid (HEV) Powertrain Option', () => {
+    it('asserts that an HEV commute calculates fuel correctly with exactly zero RUC', () => {
+      const hevInput: CommuteInput = {
+        originSuburbId: 'takapuna',
+        destinationSuburbId: 'cbd',
+        daysPerWeek: 5,
+        vehicleType: 'hev',
+        powertrain: 'HEV',
+        parkingDailyRate: 0,
+        parkingDaysPerWeek: 0,
+        concession: 'adult',
+        includeMaintenanceWear: false,
+        carpoolPassengers: 1,
+      };
+
+      const result = calculateCommuteArbitrage(hevInput);
+
+      // Takapuna to CBD: 9.1 km one-way, 18.2 km round trip
+      // HEV default: 4.5 L/100km * 18.2 km = 0.819 L
+      // Standard petrol price: $2.72/L -> 0.819 * 2.72 = $2.22768 -> round2 = $2.23
+      assert.strictEqual(result.driving.dailyFuelCost, 2.23);
+      assert.strictEqual(result.driving.weeklyFuelCost, 11.15);
+      assert.strictEqual(result.driving.monthlyFuelCost, 48.32);
+
+      // Zero RUC assertions
+      assert.strictEqual(result.driving.dailyRucCost, 0);
+      assert.strictEqual(result.driving.weeklyRucCost, 0);
+      assert.strictEqual(result.driving.monthlyRucCost, 0);
+
+      // Also verify when powertrain: 'HEV' is specified with fallback vehicleType
+      const powertrainOnlyInput: CommuteInput = {
+        originSuburbId: 'takapuna',
+        destinationSuburbId: 'cbd',
+        daysPerWeek: 5,
+        vehicleType: 'petrol91',
+        powertrain: 'HEV',
+        parkingDailyRate: 0,
+        parkingDaysPerWeek: 0,
+        concession: 'adult',
+        includeMaintenanceWear: false,
+        carpoolPassengers: 1,
+      };
+
+      const ptResult = calculateCommuteArbitrage(powertrainOnlyInput);
+      assert.strictEqual(ptResult.driving.dailyFuelCost, 2.23);
+      assert.strictEqual(ptResult.driving.dailyRucCost, 0);
+      assert.strictEqual(ptResult.driving.weeklyRucCost, 0);
+      assert.strictEqual(ptResult.driving.monthlyRucCost, 0);
+
+      // Also verify with custom fuel price
+      const customPriceInput: CommuteInput = {
+        ...hevInput,
+        fuelPriceOverride: 2.80,
+      };
+      const customResult = calculateCommuteArbitrage(customPriceInput);
+      assert.strictEqual(customResult.driving.dailyFuelCost, 2.29);
+      assert.strictEqual(customResult.driving.dailyRucCost, 0);
+    });
+  });
 });
 

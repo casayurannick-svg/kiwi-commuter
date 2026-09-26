@@ -165,6 +165,15 @@ describe('src/components/CommuteForm.tsx - US-19 Wear & Tear Benchmark Tooltip',
     );
     assert.ok(clearedMarkup.includes('placeholder="2.72"'), 'Must provide default fuel price in placeholder');
   });
+
+  it('renders Hybrid (Non-Plug-in) option in the powertrain selector (US-26)', () => {
+    const html = renderToStaticMarkup(
+      React.createElement(CommuteForm, { input: defaultInput })
+    );
+
+    assert.ok(html.includes('Hybrid (Non-Plug-in)'), 'Must render Hybrid (Non-Plug-in) option');
+    assert.ok(html.includes('4.5'), 'Must render 4.5 L/100km default consumption for HEV');
+  });
 });
 
 

@@ -33,6 +33,7 @@ const POWERTRAIN_TO_VEHICLE_TYPE: Record<VehiclePowertrain, VehicleType> = {
   DIESEL: 'diesel',
   BEV: 'bev',
   PHEV: 'phev',
+  HEV: 'hev',
 };
 
 /**
@@ -60,9 +61,10 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
   const consumption = input.consumptionOverride ?? vehicle.defaultConsumption;
 
   const isEbike = input.transitMode === 'EBIKE' || input.transitMode === 'E-Bike';
+  const isHev = input.powertrain === 'HEV' || effectiveVehicleType === 'hev';
 
-  // Statutory RUC rate ($/km)
-  const rucRate = isEbike
+  // Statutory RUC rate ($/km) - HEV is exempt ($0.00/km)
+  const rucRate = isEbike || isHev
     ? 0
     : input.powertrain && STATUTORY_NZTA_RUC_RATES[input.powertrain]
     ? STATUTORY_NZTA_RUC_RATES[input.powertrain].ratePerKm

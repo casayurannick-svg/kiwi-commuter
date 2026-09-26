@@ -28,6 +28,7 @@
 | **US-23** | Micro-Mobility First/Last Mile (Scooter & Ride) | **DONE** | [`src/types/index.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/types/index.ts), [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts), [`src/components/CommuteForm.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/CommuteForm.tsx), [`src/components/MiniReceipt.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/MiniReceipt.tsx), [`src/lib/urlParams.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/urlParams.ts) | 'Scooter & Ride' mode, 15 km/h leg recalculation, rental fees ($1 unlock + $0.45/min) atop AT HOP capped fare, owned scooter payback timeline. |
 | **US-24** | Empty String & Fallback Fuel Price Input Handling | **DONE** | [`src/components/CommuteForm.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/CommuteForm.tsx), [`src/config/fares.config.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/config/fares.config.ts), [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts), [`src/components/__tests__/CommuteForm.test.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/__tests__/CommuteForm.test.tsx), [`src/lib/__tests__/calculator.test.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/__tests__/calculator.test.ts) | Local string state for fuelCost with nullish coalescing (`fuelCost ?? ''`); clearing input does not snap back; calculation engine falls back to `DEFAULT_FUEL_RATE` when empty or NaN. |
 | **US-25** | Fix E-Bike Verdict Copy & Remove Leaked Transit Metadata | **DONE** | [`src/components/ComparisonCard.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/ComparisonCard.tsx), [`src/components/__tests__/ComparisonCard.test.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/__tests__/ComparisonCard.test.tsx), [`tests/calculator.test.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/tests/calculator.test.ts) | Dynamic verdict headline ("on an E-Bike" vs "on public transport"), AT HOP Cap/Corridor/badge hidden for E-Bike, footer shows "E-Bike energy cost" instead of cap text. |
+| **US-26** | Conventional Hybrid (HEV) Powertrain Option | **DONE** | [`src/types/index.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/types/index.ts), [`src/components/CommuteForm.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/CommuteForm.tsx), [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts), [`src/lib/__tests__/calculator.test.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/__tests__/calculator.test.ts) | HEV in Powertrain enum, 'Hybrid (Non-Plug-in)' in CommuteForm with 4.5 L/100km default efficiency, $0.00/km RUC rate with standard petrol pricing. |
 
 ---
 
@@ -367,6 +368,20 @@
   - The transit card footer shows "E-Bike energy cost" instead of "Capped fare active" / "Under $50 cap" for E-Bike mode.
   - Unit tests in `src/components/__tests__/ComparisonCard.test.tsx` verify headline wording and absence of AT HOP Cap, Corridor, and badge elements.
   - The US-14 source-level test in `tests/calculator.test.ts` is updated to assert the dynamic `${modeLabel}` pattern.
+
+---
+
+### US-26: Conventional Hybrid (HEV) Powertrain Option
+**As a** hybrid vehicle commuter (e.g. Prius, Aqua, Corolla Hybrid),  
+**I want to** select Conventional Hybrid (HEV) in the powertrain selector with a 4.5 L/100km default efficiency,  
+**So that** my commute cost reflects hybrid fuel savings with standard pump petrol pricing and strictly zero Road User Charges ($0.00/km RUC).
+
+* **Acceptance Criteria:**
+  - Added `'HEV'` to `VehiclePowertrain` (and `Powertrain` alias) and `'hev'` to `VehicleType` in `src/types/index.ts`.
+  - In `src/components/CommuteForm.tsx`, included `'Hybrid (Non-Plug-in)'` in the powertrain selector buttons with a default fuel consumption of `4.5 L/100km`.
+  - In `src/lib/calculator.ts` and `src/config/fares.config.ts`, HEV vehicles apply a `$0.00/km` RUC rate while calculating fuel expenses using pump petrol price and distance.
+  - Unit tests in `src/lib/__tests__/calculator.test.ts` assert that an HEV commute calculates fuel correctly with exactly zero RUC.
+  - Production build and test suite (`npx vitest run`) pass with 100% success.
 
 ---
 

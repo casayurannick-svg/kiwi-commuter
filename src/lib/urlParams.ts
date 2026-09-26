@@ -16,6 +16,7 @@ const POWERTRAIN_TO_VEHICLE_TYPE: Record<VehiclePowertrain, VehicleType> = {
   DIESEL: 'diesel',
   PHEV: 'phev',
   BEV: 'bev',
+  HEV: 'hev',
 };
 
 const VEHICLE_TYPE_TO_POWERTRAIN: Record<VehicleType, VehiclePowertrain> = {
@@ -24,6 +25,7 @@ const VEHICLE_TYPE_TO_POWERTRAIN: Record<VehicleType, VehiclePowertrain> = {
   diesel: 'DIESEL',
   phev: 'PHEV',
   bev: 'BEV',
+  hev: 'HEV',
 };
 
 /**

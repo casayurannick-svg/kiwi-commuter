@@ -29,6 +29,7 @@ const POWERTRAIN_OPTIONS: { id: VehicleType; powertrain: VehiclePowertrain; labe
   { id: 'petrol91', powertrain: 'PETROL_91', label: 'Petrol 91', defaultConsumption: 7.6, unit: 'L/100km' },
   { id: 'petrol95', powertrain: 'PETROL_95', label: 'Petrol 95', defaultConsumption: 8.8, unit: 'L/100km' },
   { id: 'diesel', powertrain: 'DIESEL', label: 'Diesel', defaultConsumption: 8.4, unit: 'L/100km' },
+  { id: 'hev', powertrain: 'HEV', label: 'Hybrid (Non-Plug-in)', defaultConsumption: 4.5, unit: 'L/100km' },
   { id: 'phev', powertrain: 'PHEV', label: 'PHEV', defaultConsumption: 3.8, unit: 'L/100km' },
   { id: 'bev', powertrain: 'BEV', label: 'EV (BEV)', defaultConsumption: 16.5, unit: 'kWh/100km' },
 ];
@@ -529,7 +530,7 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
           {/* Powertrain (Segmented Pills with 44px min-height) */}
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-slate-300">Powertrain</label>
-            <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
               {POWERTRAIN_OPTIONS.map((opt) => {
                 const isSelected = input.vehicleType === opt.id || input.powertrain === opt.powertrain;
                 return (

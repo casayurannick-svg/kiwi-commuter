@@ -1,5 +1,6 @@
 // Statutory & Domain Core Enums/Unions
-export type VehiclePowertrain = 'PETROL_91' | 'PETROL_95' | 'DIESEL' | 'PHEV' | 'BEV';
+export type VehiclePowertrain = 'PETROL_91' | 'PETROL_95' | 'DIESEL' | 'PHEV' | 'BEV' | 'HEV';
+export type Powertrain = VehiclePowertrain;
 
 export type FareConcession = 'ADULT' | 'CHILD' | 'TERTIARY';
 
@@ -15,7 +16,7 @@ export interface SuburbCentroid {
 }
 
 // Backward compatibility & application types
-export type VehicleType = 'petrol91' | 'petrol95' | 'diesel' | 'bev' | 'phev';
+export type VehicleType = 'petrol91' | 'petrol95' | 'diesel' | 'bev' | 'phev' | 'hev';
 
 export type ConcessionType = 'adult' | 'tertiary' | 'community_connect' | 'youth' | 'supergold';
 
