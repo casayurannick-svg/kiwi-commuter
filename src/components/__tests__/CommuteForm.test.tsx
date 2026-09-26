@@ -247,6 +247,33 @@ describe('src/components/CommuteForm.tsx - US-19 Wear & Tear Benchmark Tooltip',
     assert.ok(html.includes('174.71, -36.73'), 'Must render origin coordinates indicator');
     assert.ok(html.includes('174.76, -36.85'), 'Must render destination coordinates indicator');
   });
+
+  it('renders Powertrain selector in a 2x3 icon grid with condensed labels, baseline values, and HEV tooltip', () => {
+    const html = renderToStaticMarkup(
+      React.createElement(CommuteForm, { input: defaultInput })
+    );
+
+    // 1. Grid container
+    assert.ok(html.includes('grid grid-cols-3 gap-2'), 'Must use grid grid-cols-3 gap-2 layout');
+
+    // 2. Condensed labels
+    assert.ok(html.includes('>91</span>'), 'Must render condensed 91 label');
+    assert.ok(html.includes('>95</span>'), 'Must render condensed 95 label');
+    assert.ok(html.includes('>Diesel</span>'), 'Must render condensed Diesel label');
+    assert.ok(html.includes('>HEV</span>'), 'Must render condensed HEV label');
+    assert.ok(html.includes('>PHEV</span>'), 'Must render condensed PHEV label');
+    assert.ok(html.includes('>EV</span>'), 'Must render condensed EV label');
+
+    // 3. Baseline values underneath
+    assert.ok(html.includes('7.6 L'), 'Must render 7.6 L baseline');
+    assert.ok(html.includes('8.8 L'), 'Must render 8.8 L baseline');
+    assert.ok(html.includes('+RUC'), 'Must render +RUC baseline');
+    assert.ok(html.includes('4.5 L'), 'Must render 4.5 L baseline');
+    assert.ok(html.includes('3.8 L'), 'Must render 3.8 L baseline');
+
+    // 4. HEV tooltip
+    assert.ok(html.includes('Non-plug-in hybrid'), 'Must render Non-plug-in hybrid tooltip for HEV');
+  });
 });
 
 

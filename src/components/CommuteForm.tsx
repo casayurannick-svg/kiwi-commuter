@@ -10,9 +10,12 @@ import {
   ChevronDown,
   Clock,
   CreditCard,
+  Fuel,
   Info,
+  Leaf,
   Loader2,
   MapPin,
+  Plug,
   Search,
   Settings2,
   Ship,
@@ -29,13 +32,23 @@ interface CommuteFormProps {
   onInputChange?: (updated: CommuteInput) => void;
 }
 
-const POWERTRAIN_OPTIONS: { id: VehicleType; powertrain: VehiclePowertrain; label: string; defaultConsumption: number; unit: string }[] = [
-  { id: 'petrol91', powertrain: 'PETROL_91', label: 'Petrol 91', defaultConsumption: 7.6, unit: 'L/100km' },
-  { id: 'petrol95', powertrain: 'PETROL_95', label: 'Petrol 95', defaultConsumption: 8.8, unit: 'L/100km' },
-  { id: 'diesel', powertrain: 'DIESEL', label: 'Diesel', defaultConsumption: 8.4, unit: 'L/100km' },
-  { id: 'hev', powertrain: 'HEV', label: 'Hybrid (Non-Plug-in)', defaultConsumption: 4.5, unit: 'L/100km' },
-  { id: 'phev', powertrain: 'PHEV', label: 'PHEV', defaultConsumption: 3.8, unit: 'L/100km' },
-  { id: 'bev', powertrain: 'BEV', label: 'EV (BEV)', defaultConsumption: 16.5, unit: 'kWh/100km' },
+const POWERTRAIN_OPTIONS: {
+  id: VehicleType;
+  powertrain: VehiclePowertrain;
+  label: string;
+  fullLabel: string;
+  defaultConsumption: number;
+  unit: string;
+  baseline: string;
+  icon: React.ComponentType<{ className?: string }>;
+  tooltip?: string;
+}[] = [
+  { id: 'petrol91', powertrain: 'PETROL_91', label: '91', fullLabel: 'Petrol 91', defaultConsumption: 7.6, unit: 'L/100km', baseline: '7.6 L', icon: Fuel },
+  { id: 'petrol95', powertrain: 'PETROL_95', label: '95', fullLabel: 'Petrol 95', defaultConsumption: 8.8, unit: 'L/100km', baseline: '8.8 L', icon: Fuel },
+  { id: 'diesel', powertrain: 'DIESEL', label: 'Diesel', fullLabel: 'Diesel', defaultConsumption: 8.4, unit: 'L/100km', baseline: '+RUC', icon: Fuel },
+  { id: 'hev', powertrain: 'HEV', label: 'HEV', fullLabel: 'Hybrid (Non-Plug-in)', defaultConsumption: 4.5, unit: 'L/100km', baseline: '4.5 L', icon: Leaf, tooltip: 'Non-plug-in hybrid' },
+  { id: 'phev', powertrain: 'PHEV', label: 'PHEV', fullLabel: 'PHEV', defaultConsumption: 3.8, unit: 'L/100km', baseline: '3.8 L', icon: Plug },
+  { id: 'bev', powertrain: 'BEV', label: 'EV', fullLabel: 'EV (BEV)', defaultConsumption: 16.5, unit: 'kWh/100km', baseline: '+RUC', icon: Zap },
 ];
 
 const PARKING_SEGMENTS: { tier: ParkingTier | 'CUSTOM'; label: string; rate: number }[] = [
@@ -823,26 +836,48 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
                 </div>
               </div>
             </div>
-            <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
+            {/* Powertrain 2x3 Icon Grid */}
+            <div className="grid grid-cols-3 gap-2">
               {POWERTRAIN_OPTIONS.map((opt) => {
                 const isSelected = input.vehicleType === opt.id || input.powertrain === opt.powertrain;
-                return (
+                const IconComponent = opt.icon;
+                const buttonContent = (
                   <button
                     key={opt.id}
                     type="button"
                     onClick={() => handlePowertrainSelect(opt)}
-                    className={`min-h-[44px] px-2 py-1.5 rounded-xl border text-center transition flex flex-col items-center justify-center ${
+                    aria-label={opt.fullLabel || opt.label}
+                    className={`w-full min-h-[48px] px-2 py-2 rounded-xl border text-center transition flex flex-col items-center justify-center gap-0.5 ${
                       isSelected
                         ? 'bg-slate-800 border-emerald-500 text-white font-bold shadow ring-1 ring-emerald-500/40'
                         : 'bg-slate-900/80 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'
                     }`}
                   >
-                    <span className="text-xs truncate">{opt.label}</span>
+                    <div className="flex items-center gap-1.5">
+                      <IconComponent className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-emerald-400' : 'text-slate-400'}`} />
+                      <span className="text-xs font-semibold">{opt.label}</span>
+                    </div>
                     <span className="text-[10px] text-slate-500 font-mono">
-                      {opt.id === 'bev' || opt.id === 'diesel' ? '+RUC' : opt.defaultConsumption}
+                      {opt.baseline}
                     </span>
                   </button>
                 );
+
+                if (opt.tooltip) {
+                  return (
+                    <div key={opt.id} className="relative group/hev w-full">
+                      {buttonContent}
+                      <div
+                        role="tooltip"
+                        className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2.5 py-1 bg-slate-900/95 border border-slate-700 rounded-lg text-[11px] text-slate-200 whitespace-nowrap shadow-xl backdrop-blur-md opacity-0 group-hover/hev:opacity-100 group-focus-within/hev:opacity-100 transition-opacity duration-150 z-50 pointer-events-none"
+                      >
+                        {opt.tooltip}
+                      </div>
+                    </div>
+                  );
+                }
+
+                return buttonContent;
               })}
             </div>
 
