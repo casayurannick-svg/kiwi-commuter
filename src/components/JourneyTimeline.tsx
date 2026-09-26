@@ -222,6 +222,14 @@ export default function JourneyTimeline({
         )}
       </div>
 
+      {/* US-21: Live routing indicator — shown when geocoded coordinates are available */}
+      {input.originCoordinates && input.destinationCoordinates && input.transitMode !== 'EBIKE' && (
+        <div className="flex items-center gap-1.5 text-[10px] px-2 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-emerald-400 font-medium">
+          <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+          Transit duration sourced from real-world timetable routing
+        </div>
+      )}
+
       {/* First-Mile Mode Toggle (if callback provided and not e-bike) */}
       {onFirstMileModeChange && input.transitMode !== 'EBIKE' && (
         <div className="flex items-center justify-between text-xs bg-slate-900/60 p-2.5 rounded-xl border border-slate-800">

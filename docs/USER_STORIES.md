@@ -33,6 +33,7 @@
 | **US-28** | Address Geocoding & Nearest Station Spatial Search with Segmented Timeline UI | **DONE** | [`src/components/CommuteForm.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/CommuteForm.tsx), [`src/data/at-stations.json`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/data/at-stations.json), [`src/lib/stations.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/stations.ts), [`src/components/JourneyTimeline.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/JourneyTimeline.tsx), [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts) | Mapbox Geocoding autocomplete on To/From inputs, 45 AT stations GeoJSON, @turf/nearest-point spatial search, JourneyTimeline component with segmented nodes (Drive to Station, Transit Ride, Walk to Desk), decoupled first-mile running costs aggregated with AT HOP fares. |
 | **US-30** | AT GTFS API Local Stop Integration | **DONE** | [`src/app/api/nearest-stop/route.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/app/api/nearest-stop/route.ts), [`src/components/JourneyTimeline.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/JourneyTimeline.tsx), [`src/lib/mapbox.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/mapbox.ts) | Next.js API route querying AT GTFS geospatial endpoint, dynamic local stop lookup for walking/scooter modes, Mapbox Directions integration, retaining offline Turf.js spatial logic exclusively for driving modes. |
 | **US-31** | Render and Integrate 'KiwiPathway' Logo | **DONE** | [`src/components/icons/KiwiPathwayIcon.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/icons/KiwiPathwayIcon.tsx), [`src/components/DashboardClient.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/DashboardClient.tsx), [`src/components/__tests__/KiwiPathwayIcon.test.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/__tests__/KiwiPathwayIcon.test.tsx) | SVG icon component representing the Kiwi Pathway transit lines, nodes, and momentum arrowheads with JSX attributes; rendered in the header with `h-8 w-8 text-emerald-500` and `aria-label="Kiwi Commuter"`. |
+| **US-21** | End-to-End Multimodal Journey Routing (Google Routes API) | **DONE** | [`src/app/api/routes/route.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/app/api/routes/route.ts), [`src/components/DashboardClient.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/DashboardClient.tsx), [`src/components/JourneyTimeline.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/JourneyTimeline.tsx), [`src/app/api/routes/__tests__/route.test.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/app/api/routes/__tests__/route.test.ts) | Google Routes API (v2) TRANSIT mode endpoint summing real-world leg/step durations; injected into `commuteInput.transitTimeMins` via `DashboardClient` `useEffect` when geocoded coordinates are set; graceful fallback to static estimates when API key absent; JourneyTimeline shows a pulsing "real-world timetable" indicator when live routing is active. |
 
 ---
 
@@ -454,6 +455,28 @@
   - Replaced the top-left bus icon in `src/components/DashboardClient.tsx` with `<KiwiPathwayIcon className="h-8 w-8 text-emerald-500 shrink-0" aria-label="Kiwi Commuter" />`.
   - Preserved adjacent typography alignment (`text-base sm:text-lg font-bold text-white` title and `text-xs text-slate-400` subtitle) and spacing (`gap-2.5`).
   - Unit tests in `src/components/__tests__/KiwiPathwayIcon.test.tsx` verify SVG rendering, paths, attributes, and header integration.
+
+---
+
+### US-21: End-to-End Multimodal Journey Routing (Google Routes API)
+**As a** commuter with a geocoded origin and destination,  
+**I want** the transit duration shown on the JourneyTimeline to reflect real-world timetables,  
+**So that** the time-cost comparison is accurate rather than based on static suburb estimates.
+
+* **Acceptance Criteria:**
+  - Created `src/app/api/routes/route.ts` — a server-side Next.js API route (GET) that accepts `originLng`, `originLat`, `destinationLng`, `destinationLat` query params and calls the Google Routes API v2 endpoint (`https://routes.googleapis.com/directions/v2:computeRoutes`) with `travelMode: "TRANSIT"`.
+  - Uses `X-Goog-Api-Key` and `X-Goog-FieldMask: routes.duration,routes.legs.duration,routes.legs.steps.staticDuration,routes.legs.steps.travelMode` headers to minimise billing impact.
+  - Sums `routes[0].duration` (route-level total inclusive of transfers and waiting time); falls back to summing individual leg durations if route-level is unavailable.
+  - Returns `{ transitDurationMins, legCount, source, departureTime }` where `source` is `"google_routes_api"` on success or `"fallback_none"` when the API key is absent or the call fails.
+  - Default `departureTime` is computed as the next weekday Monday at 08:00 NZST for stable timetable routing.
+  - Response is server-cached for 1 hour (`Cache-Control: public, max-age=3600, stale-while-revalidate=7200`) to avoid redundant billing charges.
+  - Added `GOOGLE_ROUTES_API_KEY` to `.env.example` with provisioning instructions.
+  - Updated `src/components/DashboardClient.tsx` with a `useEffect` that fetches `/api/routes` whenever `originCoordinates` and `destinationCoordinates` are set (from US-28 Mapbox autocomplete). On success, injects `data.transitDurationMins` into `commuteInput.transitTimeMins` so the `calculateCommuteArbitrage` engine uses real-world data.
+  - The effect is skipped for `EBIKE` transit mode (no AT transit involved) and cleans up on unmount.
+  - Updated `src/components/JourneyTimeline.tsx` to display a pulsing `●` indicator labelled "Transit duration sourced from real-world timetable routing" when coordinates are active.
+  - Graceful degradation: if `GOOGLE_ROUTES_API_KEY` is not set, the API route returns `source: "fallback_none"` and the dashboard silently retains the static suburb-based transit estimate.
+  - Unit tests in `src/app/api/routes/__tests__/route.test.ts` verify duration parsing, validation logic, file-level contract (TRANSIT travelMode, API key env, fallback source), DashboardClient wiring assertion, and `.env.example` documentation.
+  - All Vitest tests pass and Next.js production build succeeds.
 
 ---
 

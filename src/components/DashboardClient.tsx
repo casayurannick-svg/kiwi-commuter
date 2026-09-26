@@ -70,6 +70,56 @@ export default function DashboardClient({ initialFuelPrices }: DashboardClientPr
 
   const arbitrage = useMemo(() => calculateCommuteArbitrage(commuteInput), [commuteInput]);
 
+  // US-21: Fetch real-world transit duration from Google Routes API when geocoded coordinates are available.
+  // The result is injected into commuteInput.transitTimeMins so the calculator uses live timetable data.
+  useEffect(() => {
+    const originCoords = commuteInput.originCoordinates;
+    const destinationCoords = commuteInput.destinationCoordinates;
+
+    // Only query when we have full geocoded coordinates (from US-28 Mapbox autocomplete)
+    if (
+      !originCoords ||
+      !destinationCoords ||
+      commuteInput.transitMode === 'EBIKE'
+    ) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const fetchTransitDuration = async () => {
+      try {
+        const params = new URLSearchParams({
+          originLng: String(originCoords[0]),
+          originLat: String(originCoords[1]),
+          destinationLng: String(destinationCoords[0]),
+          destinationLat: String(destinationCoords[1]),
+        });
+        const res = await fetch(`/api/routes?${params.toString()}`);
+        if (!res.ok || cancelled) return;
+        const data = await res.json();
+        if (!cancelled && typeof data.transitDurationMins === 'number' && data.transitDurationMins > 0) {
+          setCommuteInput((prev) => ({
+            ...prev,
+            transitTimeMins: data.transitDurationMins,
+          }));
+        }
+      } catch (err) {
+        console.warn('[US-21] /api/routes fetch failed, using static estimate:', err);
+      }
+    };
+
+    fetchTransitDuration();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    commuteInput.originCoordinates,
+    commuteInput.destinationCoordinates,
+    commuteInput.transitMode,
+  ]);
+
   const handleShareLink = async () => {
     const url = typeof window !== 'undefined' ? window.location.href : '';
     let success = false;
