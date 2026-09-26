@@ -195,6 +195,152 @@ describe('src/components/ComparisonCard.tsx - US-16 Mini-Receipt Time Valuation'
       'Must preserve uppercase tracking-wider badge styling'
     );
   });
+
+  describe('US-34: Hero Summary Split UI & Dynamic Trade-off Badge', () => {
+    it('renders the side-by-side two-column grid (Drive vs Transit) in the hero banner', () => {
+      const input: CommuteInput = { ...defaultInput };
+      const arbitrage = createMockArbitrage();
+      const html = renderToStaticMarkup(
+        React.createElement(ComparisonCard, { arbitrage, input })
+      );
+
+      // Check hero split grid container
+      assert.ok(html.includes('data-testid="hero-split-grid"'), 'Must render hero split grid');
+      assert.ok(html.includes('md:grid-cols-2'), 'Must use two-column layout on desktop');
+
+      // Check Drive side
+      assert.ok(html.includes('Private Vehicle'), 'Must render Private Vehicle side');
+      assert.ok(html.includes('25 mins one-way'), 'Must render one-way drive time');
+      assert.ok(html.includes('$433'), 'Must render driving monthly total');
+
+      // Check Transit side
+      assert.ok(html.includes('AT HOP Transit'), 'Must render Transit side');
+      assert.ok(html.includes('40 mins one-way'), 'Must render one-way transit time');
+      assert.ok(html.includes('$166'), 'Must render transit monthly total');
+
+      // Check desktop VS badge
+      assert.ok(html.includes('VS'), 'Must include VS indicator badge between columns');
+    });
+
+    it('renders trade-off badge when transit saves money but driving is faster', () => {
+      const input: CommuteInput = { ...defaultInput };
+      // transit: $166/mo (saves $267/mo), transit 40 min vs drive 25 min (transit adds 15m)
+      const arbitrage = createMockArbitrage({
+        drivingTimeMins: 25,
+        transitTimeMins: 40,
+        timeMetrics: {
+          oneWayDriveMinutes: 25,
+          oneWayTransitMinutes: 40,
+          monthlyTimeDeltaHours: 8.66,
+          monetizedMonthlyTimeCost: 173.2,
+          generalizedMonthlySavings: 93.53,
+        },
+      });
+      const html = renderToStaticMarkup(
+        React.createElement(ComparisonCard, { arbitrage, input })
+      );
+
+      assert.ok(html.includes('data-testid="tradeoff-badge"'), 'Must render trade-off badge');
+      assert.ok(
+        html.includes('Trade-off: Save $267/mo (+15m travel time)'),
+        'Must state exact trade-off: money saved vs travel time added'
+      );
+    });
+
+    it('renders win-win badge when transit saves money and is faster', () => {
+      const input: CommuteInput = { ...defaultInput };
+      // transit: $166/mo (saves $267/mo), transit 20 min vs drive 35 min (transit 15m faster)
+      const arbitrage = createMockArbitrage({
+        drivingTimeMins: 35,
+        transitTimeMins: 20,
+        timeMetrics: {
+          oneWayDriveMinutes: 35,
+          oneWayTransitMinutes: 20,
+          monthlyTimeDeltaHours: -8.66,
+          monetizedMonthlyTimeCost: -173.2,
+          generalizedMonthlySavings: 440.2,
+        },
+      });
+      const html = renderToStaticMarkup(
+        React.createElement(ComparisonCard, { arbitrage, input })
+      );
+
+      assert.ok(
+        html.includes('Win-Win: Saves $267/mo &amp; 15m faster on transit') ||
+        html.includes('Win-Win: Saves $267/mo & 15m faster on transit'),
+        'Must state win-win badge when transit is cheaper and faster'
+      );
+    });
+
+    it('renders win-win badge when driving is cheaper and faster', () => {
+      const input: CommuteInput = { ...defaultInput };
+      // Driving: $100/mo, Transit: $250/mo (driving saves $150/mo), drive 15m vs transit 35m (drive 20m faster)
+      const arbitrage = createMockArbitrage({
+        driving: {
+          ...createMockArbitrage().driving,
+          monthlyTotal: 100,
+          weeklyTotal: 25,
+          dailyTotal: 5,
+        },
+        transit: {
+          ...createMockArbitrage().transit,
+          monthlyTotal: 250,
+          weeklyTotal: 62.5,
+          dailyFare: 12.5,
+        },
+        drivingTimeMins: 15,
+        transitTimeMins: 35,
+        timeMetrics: {
+          oneWayDriveMinutes: 15,
+          oneWayTransitMinutes: 35,
+          monthlyTimeDeltaHours: 11.5,
+          monetizedMonthlyTimeCost: 230,
+          generalizedMonthlySavings: -80,
+        },
+      });
+      const html = renderToStaticMarkup(
+        React.createElement(ComparisonCard, { arbitrage, input })
+      );
+
+      assert.ok(
+        html.includes('Win-Win: Drive saves $150/mo &amp; 20m faster') ||
+        html.includes('Win-Win: Drive saves $150/mo & 20m faster'),
+        'Must state win-win badge when driving is cheaper and faster'
+      );
+    });
+
+    it('renders similar cost badge when commute costs are break-even', () => {
+      const input: CommuteInput = { ...defaultInput };
+      const arbitrage = createMockArbitrage({
+        driving: {
+          ...createMockArbitrage().driving,
+          monthlyTotal: 200,
+        },
+        transit: {
+          ...createMockArbitrage().transit,
+          monthlyTotal: 200,
+        },
+        drivingTimeMins: 20,
+        transitTimeMins: 30,
+        timeMetrics: {
+          oneWayDriveMinutes: 20,
+          oneWayTransitMinutes: 30,
+          monthlyTimeDeltaHours: 5.77,
+          monetizedMonthlyTimeCost: 115.4,
+          generalizedMonthlySavings: -115.4,
+        },
+      });
+      const html = renderToStaticMarkup(
+        React.createElement(ComparisonCard, { arbitrage, input })
+      );
+
+      assert.ok(
+        html.includes('Similar Cost · Drive is 10m faster'),
+        'Must state similar cost badge with time difference'
+      );
+    });
+  });
 });
+
 
 

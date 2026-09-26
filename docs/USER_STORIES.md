@@ -34,6 +34,7 @@
 | **US-30** | AT GTFS API Local Stop Integration | **DONE** | [`src/app/api/nearest-stop/route.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/app/api/nearest-stop/route.ts), [`src/components/JourneyTimeline.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/JourneyTimeline.tsx), [`src/lib/mapbox.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/mapbox.ts) | Next.js API route querying AT GTFS geospatial endpoint, dynamic local stop lookup for walking/scooter modes, Mapbox Directions integration, retaining offline Turf.js spatial logic exclusively for driving modes. |
 | **US-31** | Render and Integrate 'KiwiPathway' Logo | **DONE** | [`src/components/icons/KiwiPathwayIcon.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/icons/KiwiPathwayIcon.tsx), [`src/components/DashboardClient.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/DashboardClient.tsx), [`src/components/__tests__/KiwiPathwayIcon.test.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/__tests__/KiwiPathwayIcon.test.tsx) | SVG icon component representing the Kiwi Pathway transit lines, nodes, and momentum arrowheads with JSX attributes; rendered in the header with `h-8 w-8 text-emerald-500` and `aria-label="Kiwi Commuter"`. |
 | **US-21** | End-to-End Multimodal Journey Routing (Google Routes API) | **DONE** | [`src/app/api/routes/route.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/app/api/routes/route.ts), [`src/components/DashboardClient.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/DashboardClient.tsx), [`src/components/JourneyTimeline.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/JourneyTimeline.tsx), [`src/app/api/routes/__tests__/route.test.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/app/api/routes/__tests__/route.test.ts) | Google Routes API (v2) TRANSIT mode endpoint summing real-world leg/step durations; injected into `commuteInput.transitTimeMins` via `DashboardClient` `useEffect` when geocoded coordinates are set; graceful fallback to static estimates when API key absent; JourneyTimeline shows a pulsing "real-world timetable" indicator when live routing is active. |
+| **US-34** | Hero Summary Split UI Pattern & Dynamic Trade-off Badge | **DONE** | [`src/components/ComparisonCard.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/ComparisonCard.tsx), [`src/components/__tests__/ComparisonCard.test.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/__tests__/ComparisonCard.test.tsx) | Refactored hero summary into two-column side-by-side grid (Drive vs Transit) with desktop VS badge, integrated dynamic trade-off badge evaluating time vs cost deltas. |
 
 ---
 
@@ -483,6 +484,27 @@
     5. Adding step breakdown pills to `src/components/JourneyTimeline.tsx` for multi-leg journeys.
   - Unit tests in `src/app/api/routes/__tests__/route.test.ts` verify duration parsing, validation logic, file-level contract (TRANSIT travelMode, API key env, fallback source), DashboardClient wiring assertion, multi-step accumulator logic, reproduction test for Mt Roskill to Parnell, and `.env.example` documentation.
   - All Vitest tests pass and Next.js production build succeeds.
+
+---
+
+### US-34: Hero Summary Split UI Pattern & Dynamic Trade-off Badge
+**As a** daily Auckland commuter,  
+**I want** to see an immediate side-by-side split comparison of driving versus public transport in the hero summary with a clear trade-off badge,  
+**So that** I instantly understand the exact money saved versus the travel time gained or lost.
+
+* **Acceptance Criteria:**
+  - **Given** commute parameters (origin, destination, powertrain, transit mode, parking, etc.),
+  - **When** the dashboard computes financial and duration arbitrage,
+  - **Then** the main hero banner in [`src/components/ComparisonCard.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/ComparisonCard.tsx) displays a two-column responsive grid (`hero-split-grid`, `grid-cols-1 md:grid-cols-2`) comparing **Private Vehicle** against **AT HOP Transit** (or active mode like E-Bike) side-by-side.
+  - **And** a desktop `VS` circular badge is rendered between the two columns.
+  - **And** each side highlights the monthly total, daily return rate, weekly total, one-way duration in minutes, and key cost drivers (fuel/parking/RUC or single fare/cap status).
+  - **And** a dynamic trade-off badge (`data-testid="tradeoff-badge"`) is prominently rendered alongside the `MONTHLY SUMMARY` badge:
+    - **Transit saves money & is faster**: `⚡ Win-Win: Saves $X/mo & Ym faster on transit` (emerald theme).
+    - **Transit saves money & driving is faster**: `⚖️ Trade-off: Save $X/mo (+Ym travel time)` (amber theme).
+    - **Driving saves money & is faster**: `⚡ Win-Win: Drive saves $X/mo & Ym faster` (amber theme).
+    - **Driving saves money & transit is faster**: `⚖️ Trade-off: Save $X/mo driving (+Ym drive time)` (sky theme).
+    - **Identical costs**: `⚖️ Similar Cost · [Mode] is Ym faster` or `⚖️ Identical Cost & Travel Time` (slate theme).
+  - Unit tests in `src/components/__tests__/ComparisonCard.test.tsx` verify the side-by-side layout, data presentation, and dynamic badge formatting across all conditions.
 
 ---
 

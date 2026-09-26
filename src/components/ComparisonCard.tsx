@@ -56,6 +56,7 @@ export default function ComparisonCard({ arbitrage, input }: ComparisonCardProps
   const oneWayTransit = timeMetrics?.oneWayTransitMinutes ?? arbitrage.transitTimeMins;
   const isDriveFaster = oneWayDrive < oneWayTransit;
   const isTransitFaster = oneWayTransit < oneWayDrive;
+  const oneWayTimeDelta = Math.abs(oneWayTransit - oneWayDrive);
 
   const timeBadgeLabel = isDriveFaster
     ? `⚡ Saves ${monthlyHoursSaved.toFixed(1)} h/mo driving`
@@ -63,9 +64,53 @@ export default function ComparisonCard({ arbitrage, input }: ComparisonCardProps
     ? `⚡ Saves ${monthlyHoursSaved.toFixed(1)} h/mo on transit`
     : `⚡ Same commute time`;
 
+  // US-34: Dynamic Trade-off Badge Calculation
+  let tradeoffBadgeText = '';
+  let tradeoffBadgeColor = '';
+
+  if (isBreakEven) {
+    if (oneWayTimeDelta === 0) {
+      tradeoffBadgeText = '⚖️ Identical Cost & Travel Time';
+      tradeoffBadgeColor = 'text-slate-300 bg-slate-800/80 border-slate-700';
+    } else if (isDriveFaster) {
+      tradeoffBadgeText = `⚖️ Similar Cost · Drive is ${oneWayTimeDelta}m faster`;
+      tradeoffBadgeColor = 'text-slate-300 bg-slate-800/80 border-slate-700';
+    } else {
+      tradeoffBadgeText = `⚖️ Similar Cost · Transit is ${oneWayTimeDelta}m faster`;
+      tradeoffBadgeColor = 'text-slate-300 bg-slate-800/80 border-slate-700';
+    }
+  } else if (isTransitCheaper) {
+    if (isTransitFaster) {
+      tradeoffBadgeText = oneWayTimeDelta === 0
+        ? `⚡ Win-Win: Saves $${delta}/mo on transit (same travel time)`
+        : `⚡ Win-Win: Saves $${delta}/mo & ${oneWayTimeDelta}m faster on transit`;
+      tradeoffBadgeColor = 'text-emerald-300 bg-emerald-500/20 border-emerald-500/40';
+    } else if (isDriveFaster) {
+      tradeoffBadgeText = `⚖️ Trade-off: Save $${delta}/mo (+${oneWayTimeDelta}m travel time)`;
+      tradeoffBadgeColor = 'text-amber-300 bg-amber-500/20 border-amber-500/40';
+    } else {
+      tradeoffBadgeText = `⚡ Win-Win: Saves $${delta}/mo on transit (same travel time)`;
+      tradeoffBadgeColor = 'text-emerald-300 bg-emerald-500/20 border-emerald-500/40';
+    }
+  } else {
+    // isDrivingCheaper
+    if (isDriveFaster) {
+      tradeoffBadgeText = oneWayTimeDelta === 0
+        ? `⚡ Win-Win: Drive saves $${delta}/mo (same travel time)`
+        : `⚡ Win-Win: Drive saves $${delta}/mo & ${oneWayTimeDelta}m faster`;
+      tradeoffBadgeColor = 'text-amber-300 bg-amber-500/20 border-amber-500/40';
+    } else if (isTransitFaster) {
+      tradeoffBadgeText = `⚖️ Trade-off: Save $${delta}/mo driving (+${oneWayTimeDelta}m drive time)`;
+      tradeoffBadgeColor = 'text-sky-300 bg-sky-500/20 border-sky-500/40';
+    } else {
+      tradeoffBadgeText = `⚡ Win-Win: Drive saves $${delta}/mo (same travel time)`;
+      tradeoffBadgeColor = 'text-amber-300 bg-amber-500/20 border-amber-500/40';
+    }
+  }
+
   return (
     <div className="space-y-3">
-      {/* Hero Arbitrage Banner (Clean Minimalist Metrics) */}
+      {/* Hero Arbitrage Banner (Clean Minimalist Metrics & Hero Split UI) */}
       <div
         className={`glass-panel rounded-2xl p-3.5 sm:p-4 border transition-all ${
           isTransitCheaper && !isBreakEven
@@ -75,9 +120,9 @@ export default function ComparisonCard({ arbitrage, input }: ComparisonCardProps
             : 'border-slate-700 bg-gradient-to-br from-slate-900/90 via-slate-900/80 to-slate-900/95'
         }`}
       >
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 pb-3.5 border-b border-slate-800/80">
           <div className="space-y-1">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <span
                 className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border flex items-center gap-1 ${badgeColor}`}
               >
@@ -87,6 +132,13 @@ export default function ComparisonCard({ arbitrage, input }: ComparisonCardProps
                   <TrendingUp className="w-3 h-3" />
                 ) : null}
                 {badgeLabel}
+              </span>
+              {/* Dynamic Trade-off Badge (US-34) */}
+              <span
+                data-testid="tradeoff-badge"
+                className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border flex items-center gap-1 ${tradeoffBadgeColor}`}
+              >
+                {tradeoffBadgeText}
               </span>
               {transit.isHopCapApplied && transit.primaryMode !== 'E-Bike' && (
                 <span className="text-[10px] bg-emerald-500/15 text-emerald-300 font-semibold px-2 py-0.5 rounded-full border border-emerald-500/30 flex items-center gap-1">
@@ -139,6 +191,105 @@ export default function ComparisonCard({ arbitrage, input }: ComparisonCardProps
               <div>
                 <span className="text-[10px] text-slate-400 block font-medium">Travel Time</span>
                 <span className="text-xs font-bold text-slate-200 tabular-nums">{timeBadgeLabel}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* US-34: Hero Summary Split UI (Two-Column Side-by-Side Comparison) */}
+        <div className="relative pt-3 pb-1">
+          {/* Desktop "VS" badge centered between columns */}
+          <div className="hidden md:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 items-center justify-center w-7 h-7 rounded-full bg-slate-950 border border-slate-700/80 text-[10px] font-black text-slate-400 shadow-lg">
+            VS
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3" data-testid="hero-split-grid">
+            {/* Drive Summary Panel */}
+            <div
+              className={`p-3 rounded-xl border transition-all ${
+                isDrivingCheaper && !isBreakEven
+                  ? 'bg-amber-950/20 border-amber-500/30'
+                  : 'bg-slate-950/40 border-slate-800/80'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 bg-slate-800/90 text-sky-400 rounded-lg">
+                    <Car className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold text-white block">Private Vehicle</span>
+                    <span className="text-[10px] text-slate-400">
+                      {oneWayDrive} mins one-way • {driving.distanceRoundTripKm} km/day
+                    </span>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="text-base sm:text-lg font-black text-rose-400 tabular-nums block leading-tight">
+                    ${driving.monthlyTotal.toFixed(0)}
+                  </span>
+                  <span className="text-[10px] text-slate-400">/mo (${driving.dailyTotal.toFixed(2)}/day)</span>
+                </div>
+              </div>
+
+              {/* Quick cost drivers */}
+              <div className="mt-2.5 pt-2 border-t border-slate-800/60 flex items-center justify-between text-[11px] text-slate-400">
+                <span className="truncate">Fuel: ${driving.monthlyFuelCost.toFixed(0)}</span>
+                {driving.monthlyParkingCost > 0 && (
+                  <span className="truncate">Parking: ${driving.monthlyParkingCost.toFixed(0)}</span>
+                )}
+                {driving.monthlyRucCost > 0 && (
+                  <span className="truncate">RUC: ${driving.monthlyRucCost.toFixed(0)}</span>
+                )}
+                <span>${driving.weeklyTotal.toFixed(0)}/wk</span>
+              </div>
+            </div>
+
+            {/* Transit Summary Panel */}
+            <div
+              className={`p-3 rounded-xl border transition-all ${
+                isTransitCheaper && !isBreakEven
+                  ? 'bg-emerald-950/20 border-emerald-500/30'
+                  : 'bg-slate-950/40 border-slate-800/80'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 bg-emerald-950/60 text-emerald-400 rounded-lg border border-emerald-500/30">
+                    {transit.primaryMode === 'E-Bike' ? (
+                      <span className="text-sm">🚲</span>
+                    ) : (
+                      <Bus className="w-4 h-4" />
+                    )}
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold text-white block">
+                      {transit.primaryMode === 'E-Bike' ? 'E-Bike' : 'AT HOP Transit'}
+                    </span>
+                    <span className="text-[10px] text-slate-400">
+                      {oneWayTransit} mins one-way • {transit.primaryMode === 'E-Bike' ? 'Active Commute' : `${transit.primaryMode}`}
+                    </span>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="text-base sm:text-lg font-black text-emerald-400 tabular-nums block leading-tight">
+                    ${transit.monthlyTotal.toFixed(0)}
+                  </span>
+                  <span className="text-[10px] text-slate-400">/mo (${transit.dailyFare.toFixed(2)}/day)</span>
+                </div>
+              </div>
+
+              {/* Quick cost drivers */}
+              <div className="mt-2.5 pt-2 border-t border-slate-800/60 flex items-center justify-between text-[11px] text-slate-400">
+                <span>Single: ${transit.singleTripConcessionFare.toFixed(2)}</span>
+                <span>
+                  {transit.primaryMode === 'E-Bike'
+                    ? 'Zero fares'
+                    : transit.isHopCapApplied
+                    ? '$50 cap active'
+                    : 'Under $50 cap'}
+                </span>
+                <span>${transit.weeklyTotal.toFixed(0)}/wk</span>
               </div>
             </div>
           </div>
