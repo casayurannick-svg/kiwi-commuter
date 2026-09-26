@@ -710,6 +710,78 @@ describe('src/lib/calculator.ts - calculateCommuteArbitrage', () => {
       assert.strictEqual(customResult.driving.dailyFuelCost, 2.29);
       assert.strictEqual(customResult.driving.dailyRucCost, 0);
     });
+
+    it('prioritizes custom L/100km override when provided and falls back to baseline average', () => {
+      // 1. HEV with custom 3.5 L/100km override (vs default 4.5 L/100km)
+      // Takapuna to CBD: 18.2 km round trip.
+      // 18.2 km * 0.035 * $2.72/L = $1.73264 -> $1.73
+      const hevCustomInput: CommuteInput = {
+        originSuburbId: 'takapuna',
+        destinationSuburbId: 'cbd',
+        daysPerWeek: 5,
+        vehicleType: 'hev',
+        powertrain: 'HEV',
+        consumptionOverride: 3.5,
+        parkingDailyRate: 0,
+        parkingDaysPerWeek: 0,
+        concession: 'adult',
+        includeMaintenanceWear: false,
+        carpoolPassengers: 1,
+      };
+      const hevCustomRes = calculateCommuteArbitrage(hevCustomInput);
+      assert.strictEqual(hevCustomRes.driving.dailyFuelCost, 1.73);
+
+      // Fallback when consumptionOverride is undefined:
+      const hevFallbackRes = calculateCommuteArbitrage({ ...hevCustomInput, consumptionOverride: undefined });
+      assert.strictEqual(hevFallbackRes.driving.dailyFuelCost, 2.23);
+
+      // 2. Petrol 91 with custom 6.0 L/100km override (vs default 7.2 L/100km)
+      // 18.2 km * 0.06 * $2.72/L = $2.97024 -> $2.97
+      const petrolCustomInput: CommuteInput = {
+        originSuburbId: 'takapuna',
+        destinationSuburbId: 'cbd',
+        daysPerWeek: 5,
+        vehicleType: 'petrol91',
+        powertrain: 'PETROL_91',
+        consumptionOverride: 6.0,
+        parkingDailyRate: 0,
+        parkingDaysPerWeek: 0,
+        concession: 'adult',
+        includeMaintenanceWear: false,
+        carpoolPassengers: 1,
+      };
+      const petrolCustomRes = calculateCommuteArbitrage(petrolCustomInput);
+      assert.strictEqual(petrolCustomRes.driving.dailyFuelCost, 2.97);
+
+      // Fallback when consumptionOverride is undefined:
+      const petrolFallbackRes = calculateCommuteArbitrage({ ...petrolCustomInput, consumptionOverride: undefined });
+      assert.strictEqual(petrolFallbackRes.driving.dailyFuelCost, 3.56);
+
+      // 3. PHEV with custom 4.0 L/100km petrol efficiency override (vs default 6.0 L/100km)
+      // Takapuna round trip is 18.2 km (< 35 km electric), so use Albany (18.3 km one way * 2 = 36.6 km round trip)
+      // Albany round trip = 39.0 km -> 35 km electric, 4.0 km petrol
+      // Default PHEV (6.0 L/100km): 4.0 km * 0.06 * 2.72 = $0.6528 petrol + 35 * 0.165 * 0.18 = $1.0395 -> $1.69
+      // Custom PHEV (4.0 L/100km): 4.0 km * 0.04 * 2.72 = $0.4352 petrol + 35 * 0.165 * 0.18 = $1.0395 -> $1.47
+      const phevCustomInput: CommuteInput = {
+        originSuburbId: 'albany',
+        destinationSuburbId: 'cbd',
+        daysPerWeek: 5,
+        vehicleType: 'phev',
+        powertrain: 'PHEV',
+        consumptionOverride: 4.0,
+        parkingDailyRate: 0,
+        parkingDaysPerWeek: 0,
+        concession: 'adult',
+        includeMaintenanceWear: false,
+        carpoolPassengers: 1,
+      };
+      const phevCustomRes = calculateCommuteArbitrage(phevCustomInput);
+      assert.strictEqual(phevCustomRes.driving.dailyFuelCost, 1.47);
+
+      // Fallback when consumptionOverride is undefined:
+      const phevFallbackRes = calculateCommuteArbitrage({ ...phevCustomInput, consumptionOverride: undefined });
+      assert.strictEqual(phevFallbackRes.driving.dailyFuelCost, 1.69);
+    });
   });
 
   describe('US-28: Address Geocoding & Nearest Station Spatial Search with First-Mile Running Costs', () => {

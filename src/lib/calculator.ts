@@ -60,7 +60,13 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
       : input.vehicleType || 'petrol91';
 
   const vehicle = VEHICLE_PRESETS[effectiveVehicleType] || VEHICLE_PRESETS.petrol91;
-  const consumption = input.consumptionOverride ?? vehicle.defaultConsumption;
+  const hasCustomConsumption =
+    typeof input.consumptionOverride === 'number' &&
+    !isNaN(input.consumptionOverride) &&
+    input.consumptionOverride > 0;
+  const consumption = hasCustomConsumption
+    ? input.consumptionOverride!
+    : vehicle.defaultConsumption;
 
   const isEbike = input.transitMode === 'EBIKE' || input.transitMode === 'E-Bike';
   const isHev = input.powertrain === 'HEV' || effectiveVehicleType === 'hev';
@@ -123,7 +129,10 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
     const petrolKm = Math.max(0, distanceRoundTripKm - 35);
     const evRate = resolveEvKwhRate();
     const phevEvEfficiency = 16.5; // kWh/100km
-    const phevPetrolEfficiency = 6.0; // L/100km
+    // US-26: Prioritize custom L/100km override if provided, falling back to 6.0 L/100km baseline average
+    const phevPetrolEfficiency = hasCustomConsumption
+      ? input.consumptionOverride!
+      : 6.0; // L/100km
     const petrolPrice = input.customFuelPricePerL ?? 2.72;
 
     const dailyElectricCost = ((electricKm * phevEvEfficiency) / 100) * evRate;

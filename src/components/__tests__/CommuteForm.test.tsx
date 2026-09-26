@@ -175,6 +175,58 @@ describe('src/components/CommuteForm.tsx - US-19 Wear & Tear Benchmark Tooltip',
     assert.ok(html.includes('4.5'), 'Must render 4.5 L/100km default consumption for HEV');
   });
 
+  it('renders Powertrain info icon with hover tooltip text (US-26)', () => {
+    const html = renderToStaticMarkup(
+      React.createElement(CommuteForm, { input: defaultInput })
+    );
+
+    assert.ok(
+      html.includes('aria-label="Powertrain benchmark info"'),
+      'Must render accessible info button for Powertrain'
+    );
+    assert.ok(
+      html.includes(
+        'Default values are based on national averages. For a more accurate calculation, enter your vehicle'
+      ) && html.includes('exact L/100km rating.'),
+      'Must contain exact Powertrain benchmark tooltip text'
+    );
+  });
+
+  it('dynamically renders Custom L/100km input for fuel-consuming powertrains and hides it for pure EV (US-26)', () => {
+    // 1. Combustion (Petrol 91)
+    const petrolHtml = renderToStaticMarkup(
+      React.createElement(CommuteForm, { input: defaultInput })
+    );
+    assert.ok(petrolHtml.includes('Custom L/100km'), 'Must render Custom L/100km for Petrol 91');
+    assert.ok(petrolHtml.includes('data-testid="custom-l100km-input"'), 'Must render custom L/100km input field');
+
+    // 2. Hybrid (HEV)
+    const hevHtml = renderToStaticMarkup(
+      React.createElement(CommuteForm, {
+        input: { ...defaultInput, vehicleType: 'hev', powertrain: 'HEV', consumptionOverride: 4.2 },
+      })
+    );
+    assert.ok(hevHtml.includes('Custom L/100km'), 'Must render Custom L/100km for HEV');
+    assert.ok(hevHtml.includes('value="4.2"'), 'Must populate custom consumption value');
+
+    // 3. Plug-in Hybrid (PHEV)
+    const phevHtml = renderToStaticMarkup(
+      React.createElement(CommuteForm, {
+        input: { ...defaultInput, vehicleType: 'phev', powertrain: 'PHEV' },
+      })
+    );
+    assert.ok(phevHtml.includes('Custom L/100km'), 'Must render Custom L/100km for PHEV');
+
+    // 4. Pure EV (BEV) - Must hide Custom L/100km input
+    const evHtml = renderToStaticMarkup(
+      React.createElement(CommuteForm, {
+        input: { ...defaultInput, vehicleType: 'bev', powertrain: 'BEV', consumptionOverride: 5.5 },
+      })
+    );
+    assert.ok(!evHtml.includes('Custom L/100km'), 'Must NOT render Custom L/100km for pure EV');
+    assert.ok(!evHtml.includes('data-testid="custom-l100km-input"'), 'Must hide custom-l100km-input for pure EV');
+  });
+
   it('renders Address Geocoding autocomplete inputs for Origin and Destination (US-28)', () => {
     const geoInput: CommuteInput = {
       ...defaultInput,

@@ -21,7 +21,7 @@ import {
   X,
   Zap,
 } from 'lucide-react';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 interface CommuteFormProps {
   input: CommuteInput;
@@ -65,12 +65,29 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
   });
 
   const currentVehicle = VEHICLE_PRESETS[input.vehicleType] || VEHICLE_PRESETS.petrol91;
+  const isPureEv = input.vehicleType === 'bev' || input.powertrain === 'BEV';
+  const isFuelConsuming = !isPureEv;
 
   // US-24: Store fuelCost as a string in local state so clearing the field doesn't snap back immediately
   const [fuelCost, setFuelCost] = useState<string>(() => {
     const initial = input.fuelPriceOverride ?? currentVehicle.defaultFuelPrice;
     return initial !== undefined ? initial.toString() : '';
   });
+
+  // US-26: Store custom L/100km override in local state for fuel-consuming powertrains
+  const [customConsumption, setCustomConsumption] = useState<string>(() => {
+    if (input.vehicleType === 'bev' || input.powertrain === 'BEV') return '';
+    return input.consumptionOverride !== undefined ? input.consumptionOverride.toString() : '';
+  });
+
+  // US-26: Explicitly clear custom L/100km React state if a pure EV is selected to prevent stale data
+  useEffect(() => {
+    if (input.vehicleType === 'bev' || input.powertrain === 'BEV') {
+      if (customConsumption !== '') {
+        setCustomConsumption('');
+      }
+    }
+  }, [input.vehicleType, input.powertrain, customConsumption]);
 
   const notifyChange = (updated: CommuteInput) => {
     if (onInputChange) onInputChange(updated);
@@ -102,17 +119,45 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
     }
   };
 
+  const handleCustomConsumptionChange = (valStr: string) => {
+    setCustomConsumption(valStr);
+    const trimmed = valStr.trim();
+    if (trimmed === '') {
+      handleFieldChange('consumptionOverride', undefined);
+    } else {
+      const parsed = parseFloat(trimmed);
+      if (isNaN(parsed) || parsed <= 0) {
+        handleFieldChange('consumptionOverride', undefined);
+      } else {
+        handleFieldChange('consumptionOverride', parsed);
+      }
+    }
+  };
+
   const handlePowertrainSelect = (opt: typeof POWERTRAIN_OPTIONS[0]) => {
+    const isPureEv = opt.id === 'bev' || opt.powertrain === 'BEV';
     const isEvOrPhev = opt.id === 'bev' || opt.id === 'phev';
     const newVehicle = VEHICLE_PRESETS[opt.id] || VEHICLE_PRESETS.petrol91;
     if (!isEvOrPhev) {
       setFuelCost(newVehicle.defaultFuelPrice.toString());
     }
+
+    // US-26: Clear custom consumption state if pure EV is selected to prevent stale data
+    let nextConsumptionOverride: number | undefined = undefined;
+    if (isPureEv) {
+      setCustomConsumption('');
+    } else {
+      const parsed = parseFloat(customConsumption.trim());
+      if (!isNaN(parsed) && parsed > 0) {
+        nextConsumptionOverride = parsed;
+      }
+    }
+
     const updated: CommuteInput = {
       ...input,
       vehicleType: opt.id,
       powertrain: opt.powertrain,
-      consumptionOverride: opt.defaultConsumption,
+      consumptionOverride: nextConsumptionOverride,
       fuelPriceOverride: isEvOrPhev ? (input.fuelPriceOverride ?? 0.18) : undefined,
       homeKWhRate: isEvOrPhev ? (input.homeKWhRate ?? 0.18) : undefined,
       evChargingSource: isEvOrPhev ? (input.evChargingSource ?? 'HOME_OFFPEAK') : undefined,
@@ -760,7 +805,24 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
         <>
           {/* Powertrain (Segmented Pills with 44px min-height) */}
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-300">Powertrain</label>
+            <div className="flex items-center gap-1.5">
+              <label className="text-xs font-semibold text-slate-300">Powertrain</label>
+              <div className="relative inline-flex items-center group">
+                <button
+                  type="button"
+                  aria-label="Powertrain benchmark info"
+                  className="text-slate-400 hover:text-slate-200 transition-colors p-1 -m-1 focus:outline-none focus:text-slate-200"
+                >
+                  <Info className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-200 transition-colors" />
+                </button>
+                <div
+                  role="tooltip"
+                  className="pointer-events-none absolute bottom-full left-0 mb-2 w-64 sm:w-72 max-w-[calc(100vw-3rem)] p-2.5 bg-slate-900/95 border border-slate-700 rounded-lg text-[11px] text-slate-200 leading-snug shadow-xl backdrop-blur-md opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-150 z-50"
+                >
+                  Default values are based on national averages. For a more accurate calculation, enter your vehicle&apos;s exact L/100km rating.
+                </div>
+              </div>
+            </div>
             <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
               {POWERTRAIN_OPTIONS.map((opt) => {
                 const isSelected = input.vehicleType === opt.id || input.powertrain === opt.powertrain;
@@ -783,6 +845,35 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
                 );
               })}
             </div>
+
+            {/* US-26: Dynamically render Custom L/100km numeric input field below powertrain selector for fuel-consuming powertrains */}
+            {isFuelConsuming && (
+              <div className="pt-1.5 space-y-1">
+                <div className="flex items-center justify-between">
+                  <label htmlFor="custom-l100km-input" className="text-xs text-slate-300 font-medium">
+                    Custom L/100km
+                  </label>
+                  <span className="text-[10px] text-slate-500 font-mono">
+                    Default: {currentVehicle.defaultConsumption} L/100km
+                  </span>
+                </div>
+                <div className="relative">
+                  <input
+                    id="custom-l100km-input"
+                    data-testid="custom-l100km-input"
+                    type="number"
+                    step="0.1"
+                    min="1"
+                    max="40"
+                    placeholder={`e.g. ${currentVehicle.defaultConsumption}`}
+                    aria-label="Custom L/100km"
+                    value={customConsumption}
+                    onChange={(e) => handleCustomConsumptionChange(e.target.value)}
+                    className="w-full min-h-[44px] bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-sm text-slate-200 placeholder-slate-500 focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono"
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Daily Parking */}
