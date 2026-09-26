@@ -32,6 +32,7 @@
 | **US-27** | 'Buy Me a Coffee' Donation Button (Revolut.me) | **DONE** | [`src/components/DonationButton.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/DonationButton.tsx), [`src/components/DashboardClient.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/DashboardClient.tsx), [`src/components/__tests__/DonationButton.test.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/__tests__/DonationButton.test.tsx) | Reusable DonationButton with 'header' (subtle minimal icon/text) and 'footer' (full text with ☕) variants, linking to NEXT_PUBLIC_DONATION_URL with target="_blank" and rel="noopener noreferrer". |
 | **US-28** | Address Geocoding & Nearest Station Spatial Search with Segmented Timeline UI | **DONE** | [`src/components/CommuteForm.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/CommuteForm.tsx), [`src/data/at-stations.json`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/data/at-stations.json), [`src/lib/stations.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/stations.ts), [`src/components/JourneyTimeline.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/JourneyTimeline.tsx), [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts) | Mapbox Geocoding autocomplete on To/From inputs, 45 AT stations GeoJSON, @turf/nearest-point spatial search, JourneyTimeline component with segmented nodes (Drive to Station, Transit Ride, Walk to Desk), decoupled first-mile running costs aggregated with AT HOP fares. |
 | **US-30** | AT GTFS API Local Stop Integration | **DONE** | [`src/app/api/nearest-stop/route.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/app/api/nearest-stop/route.ts), [`src/components/JourneyTimeline.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/JourneyTimeline.tsx), [`src/lib/mapbox.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/mapbox.ts) | Next.js API route querying AT GTFS geospatial endpoint, dynamic local stop lookup for walking/scooter modes, Mapbox Directions integration, retaining offline Turf.js spatial logic exclusively for driving modes. |
+| **US-31** | Render and Integrate 'KiwiPathway' Logo | **DONE** | [`src/components/icons/KiwiPathwayIcon.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/icons/KiwiPathwayIcon.tsx), [`src/components/DashboardClient.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/DashboardClient.tsx), [`src/components/__tests__/KiwiPathwayIcon.test.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/__tests__/KiwiPathwayIcon.test.tsx) | SVG icon component representing the Kiwi Pathway transit lines, nodes, and momentum arrowheads with JSX attributes; rendered in the header with `h-8 w-8 text-emerald-500` and `aria-label="Kiwi Commuter"`. |
 
 ---
 
@@ -439,6 +440,20 @@
   - Wired returned local stop coordinates into `fetchDirectionsRoute` (Mapbox Directions API) using walking or cycling routing profiles to provide real-time travel durations and distances for the first-mile leg.
   - Unit tests in `src/app/api/nearest-stop/__tests__/route.test.ts` and `src/components/__tests__/JourneyTimeline.test.tsx` verify API validation, fallback behavior, driving vs non-driving mode routing, and UI rendering.
   - All 93 Vitest unit tests pass and Next.js production build (`npm run build`) succeeds with zero errors.
+
+---
+
+### US-31: Render and Integrate 'KiwiPathway' Logo
+**As an** application visitor,  
+**I want** to see the custom KiwiPathway brand identity icon in the primary top-left navigation,  
+**So that** the dashboard has an intuitive, distinctive visual brand representing New Zealand transit routes and forward momentum.
+
+* **Acceptance Criteria:**
+  - Created a reusable React SVG icon component at `src/components/icons/KiwiPathwayIcon.tsx` translating raw SVG elements to standard JSX attributes (`strokeWidth`, `strokeLinecap`, `strokeLinejoin`, `role="img"`).
+  - Uses `currentColor` stroke and fill to dynamically inherit Tailwind text color classes (such as `text-emerald-500`).
+  - Replaced the top-left bus icon in `src/components/DashboardClient.tsx` with `<KiwiPathwayIcon className="h-8 w-8 text-emerald-500 shrink-0" aria-label="Kiwi Commuter" />`.
+  - Preserved adjacent typography alignment (`text-base sm:text-lg font-bold text-white` title and `text-xs text-slate-400` subtitle) and spacing (`gap-2.5`).
+  - Unit tests in `src/components/__tests__/KiwiPathwayIcon.test.tsx` verify SVG rendering, paths, attributes, and header integration.
 
 ---
 

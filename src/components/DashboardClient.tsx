@@ -12,8 +12,8 @@ import { calculateCommuteArbitrage } from '@/lib/calculator';
 import { FuelBenchmarkDto } from '@/lib/supabase';
 import { parseCommuteFromParams, serializeCommuteToParams } from '@/lib/urlParams';
 import { CommuteInput } from '@/types';
+import KiwiPathwayIcon from '@/components/icons/KiwiPathwayIcon';
 import {
-  Bus,
   Check,
   Share2,
 } from 'lucide-react';
@@ -115,9 +115,7 @@ export default function DashboardClient({ initialFuelPrices }: DashboardClientPr
       <header className="sticky top-0 z-30 bg-[#090d16]/90 backdrop-blur-md border-b border-slate-800/80 px-4 sm:px-6 py-3">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center border border-emerald-500/30 shrink-0">
-              <Bus className="w-4 h-4" />
-            </div>
+            <KiwiPathwayIcon className="h-8 w-8 text-emerald-500 shrink-0" aria-label="Kiwi Commuter" />
             <div>
               <h1 className="text-base sm:text-lg font-bold tracking-tight text-white leading-tight">
                 Kiwi Commuter
