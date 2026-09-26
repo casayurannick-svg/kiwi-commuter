@@ -40,6 +40,7 @@
 | **BUG-37** | Scale Public Transport Fares by Carpool Passenger Count | **DONE** | [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts), [`src/components/JourneyTimeline.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/JourneyTimeline.tsx), [`src/components/ComparisonCard.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/ComparisonCard.tsx) | Extracted passenger count from carpool settings; multiplied single trip, daily return, and monthly transit fares by passengers across bus, train, ferry, e-bike, and scooter modes; scaled AT HOP $50 weekly cap per commuter (`$50 * pax`); updated UI with clear `(X pax)` indicators. |
 | **US-38** | Fixed Vehicle Ownership Costs (WOF, Rego, Insurance) | **DONE** | [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts), [`src/components/CommuteForm.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/CommuteForm.tsx), [`src/components/ComparisonCard.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/ComparisonCard.tsx) | Models annual WOF ($85), Rego ($173), and Insurance ($1,311) amortized to monthly values with 70% commute apportionment; provides collapsible Custom Rates section with mutual exclusivity for custom insurance overrides; displays Fixed Costs line item beneath Fuel and RUC. |
 | **BUG-40** | Resolve Diesel RUC Exemption Error | **DONE** | [`src/types/index.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/types/index.ts), [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts), [`src/components/ComparisonCard.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/ComparisonCard.tsx), [`src/lib/urlParams.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/urlParams.ts) | Resolved root cause where DIESEL powertrain/power parameter failed lookup and defaulted to Petrol 91 ($0 RUC exemption); applies statutory New Zealand light vehicle RUC rate of $76.00 per 1,000 km ($0.076/km) applied to total distance; updates ComparisonCard UI to display calculated RUC value (e.g. $64/mo) and $0.076/km rate badge. |
+| **CI-01** | Intelligent CI/CD Regression Test Suite & GitHub Actions Workflow | **DONE** | [`.github/workflows/regression.yml`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/.github/workflows/regression.yml), [`src/lib/calculator.test.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.test.ts), [`playwright.config.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/playwright.config.ts), [`tests/ui.spec.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/tests/ui.spec.ts) | Scaffolded GitHub Actions regression workflow triggered on PR, push to main, and dispatch; path-triggered critical alert for calculator.ts / fares.ts; Vitest Private Vehicle Math suite verifying BUG-40 fix; Playwright 375px mobile viewport UI regression suite. |
 
 ---
 
@@ -644,6 +645,32 @@
     4. Lowercase strings (e.g. `power: 'diesel'`) normalize correctly without dropping RUC.
     5. Petrol 91, Petrol 95, and HEV commutes remain strictly $0 RUC exempt.
     6. ComparisonCard renders `RUC ($0.076/km): $64/mo` for diesel and `RUC (Exempt): $0` for petrol.
+
+---
+
+### CI-01: Intelligent CI/CD Regression Test Suite & GitHub Actions Workflow
+**As a** core maintainer of the Kiwi Commuter dashboard,  
+**I want** an intelligent continuous integration workflow with path-triggered critical calculation alerts and automated Vitest/Playwright regression testing,  
+**So that** any changes to financial engines, statutory RUC rates, or responsive UI components are strictly validated before merging and deployment.
+
+* **Acceptance Criteria:**
+  - **Framework Installation & Configuration**:
+    - Installed `vitest` and `@playwright/test` with TypeScript configuration.
+    - Configured `playwright.config.ts` defining Mobile Chrome (375px), Mobile Safari (390px), and Desktop Chrome projects with automatic web server management.
+  - **GitHub Actions Workflow ([`.github/workflows/regression.yml`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/.github/workflows/regression.yml))**:
+    - Configured triggers on `pull_request` to `main`, `push` to `main`, and `workflow_dispatch` for manual on-demand execution.
+    - Integrated `dorny/paths-filter@v3` targeting critical paths (`src/lib/calculator.ts`, `src/lib/fares.ts`).
+    - Added conditional path alert step: when critical calculation paths are touched, outputs `"⚠️ CRITICAL PATH MODIFIED: Enforcing full calculation regression suite."`
+  - **Calculation Regression Suite ([`src/lib/calculator.test.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.test.ts))**:
+    - Built dedicated Vitest suite with a `"Private Vehicle Math"` block.
+    - Specifically asserted BUG-40 fix: `power=DIESEL` applies statutory RUC of $76.00/1,000 km ($0.076/km), and `power=PETROL` returns $0 RUC exemption.
+    - Included tests for PHEV reduced rate ($0.038/km), BEV ($0.076/km), carpool cost splitting, and 70% commute fixed cost amortization.
+  - **UI Regression Suite ([`tests/ui.spec.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/tests/ui.spec.ts))**:
+    - Implemented mobile viewport test (width 375px, height 667px).
+    - Designed test assertions to inspect tooltip elements (`[role="tooltip"]`) for horizontal bounding box containment within the 375px viewport to catch BUG-41 tooltip overflow.
+  - **Verification**:
+    - Vitest execution (`npx vitest run`) executes 13 test files and 155 unit tests with 100% pass rate.
+    - Next.js production build (`npm run build`) compiles cleanly with zero TypeScript/ESLint errors.
 
 ---
 

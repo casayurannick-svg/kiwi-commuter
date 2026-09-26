@@ -63,12 +63,13 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
       : route.distanceKm;
   const distanceRoundTripKm = Math.round(distanceOneWayKm * 2 * 10) / 10;
 
-  // Resolve vehicle type and powertrain (BUG-40: support power=DIESEL parameter and case normalization)
+  // Resolve vehicle type and powertrain (BUG-40: support power=DIESEL and power=PETROL parameters and case normalization)
   const rawPower = input.powertrain || input.power;
+  const rawPowerStr = typeof rawPower === 'string' ? rawPower.toUpperCase() : undefined;
   const normalizedPower: VehiclePowertrain | undefined =
-    typeof rawPower === 'string'
-      ? (rawPower.toUpperCase() as VehiclePowertrain)
-      : undefined;
+    rawPowerStr === 'PETROL'
+      ? 'PETROL_91'
+      : (rawPowerStr as VehiclePowertrain | undefined);
 
   const effectiveVehicleType: VehicleType =
     normalizedPower && POWERTRAIN_TO_VEHICLE_TYPE[normalizedPower]
