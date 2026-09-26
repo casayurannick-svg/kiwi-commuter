@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 
-const GOOGLE_ROUTES_API_KEY = process.env.GOOGLE_ROUTES_API_KEY || '';
+export const dynamic = 'force-dynamic';
+
 const GOOGLE_ROUTES_ENDPOINT = 'https://routes.googleapis.com/directions/v2:computeRoutes';
 
 export interface GoogleRoutesTransitResponse {
@@ -8,6 +9,7 @@ export interface GoogleRoutesTransitResponse {
   legCount: number;
   source: 'google_routes_api' | 'fallback_none';
   departureTime?: string;
+  debug?: Record<string, unknown>;
 }
 
 /**
@@ -22,6 +24,7 @@ export interface GoogleRoutesTransitResponse {
  *   - originLng, originLat   – WGS84 origin coordinates
  *   - destinationLng, destinationLat – WGS84 destination coordinates
  *   - departureTime – optional ISO-8601 departure time (default: next Monday 08:00 NZST)
+ *   - debug – optional boolean ('1' or 'true') for diagnostic details
  */
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -30,6 +33,7 @@ export async function GET(request: Request) {
   const originLat = parseFloat(searchParams.get('originLat') || '');
   const destinationLng = parseFloat(searchParams.get('destinationLng') || '');
   const destinationLat = parseFloat(searchParams.get('destinationLat') || '');
+  const isDebug = searchParams.get('debug') === '1' || searchParams.get('debug') === 'true';
 
   // Validate coordinates
   if ([originLng, originLat, destinationLng, destinationLat].some(isNaN)) {
@@ -45,8 +49,20 @@ export async function GET(request: Request) {
     departureTime = getNextWeekdayMorningISO();
   }
 
+  const apiKey = process.env.GOOGLE_ROUTES_API_KEY || '';
+  let debugDetails: Record<string, unknown> | undefined;
+
+  if (isDebug) {
+    debugDetails = {
+      hasKey: Boolean(apiKey),
+      keyLength: apiKey.length,
+      keyPrefix: apiKey ? `${apiKey.slice(0, 4)}...` : null,
+      departureTime,
+    };
+  }
+
   // Attempt Google Routes API if key is configured
-  if (GOOGLE_ROUTES_API_KEY) {
+  if (apiKey) {
     try {
       const requestBody = {
         origin: {
@@ -63,7 +79,6 @@ export async function GET(request: Request) {
         departureTime,
         computeAlternativeRoutes: false,
         transitPreferences: {
-          allowedTravelModes: ['BUS', 'RAIL', 'FERRY'],
           routingPreference: 'FEWER_TRANSFERS',
         },
       };
@@ -72,16 +87,23 @@ export async function GET(request: Request) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-Goog-Api-Key': GOOGLE_ROUTES_API_KEY,
-          // Request only the duration fields to minimise billing
-          'X-Goog-FieldMask': 'routes.duration,routes.legs.duration,routes.legs.steps.staticDuration,routes.legs.steps.travelMode',
+          'X-Goog-Api-Key': apiKey,
+          'X-Goog-FieldMask': 'routes.duration,routes.legs.duration',
         },
         body: JSON.stringify(requestBody),
-        next: { revalidate: 3600 }, // Cache for 1 hour – transit schedules are stable
       });
+
+      if (isDebug && debugDetails) {
+        debugDetails.googleStatus = response.status;
+      }
 
       if (response.ok) {
         const data = await response.json();
+
+        if (isDebug && debugDetails) {
+          debugDetails.routesCount = Array.isArray(data.routes) ? data.routes.length : 0;
+          debugDetails.firstRouteDuration = data.routes?.[0]?.duration;
+        }
 
         const route = data.routes?.[0];
         if (route) {
@@ -115,6 +137,7 @@ export async function GET(request: Request) {
             legCount,
             source: 'google_routes_api',
             departureTime,
+            ...(isDebug ? { debug: debugDetails } : {}),
           };
 
           return NextResponse.json(result, {
@@ -124,9 +147,15 @@ export async function GET(request: Request) {
       } else {
         const errText = await response.text().catch(() => 'unknown');
         console.warn(`[US-21] Google Routes API returned ${response.status}: ${errText}`);
+        if (isDebug && debugDetails) {
+          debugDetails.googleError = errText;
+        }
       }
     } catch (err) {
       console.warn('[US-21] Google Routes API call failed, falling back:', err);
+      if (isDebug && debugDetails) {
+        debugDetails.caughtException = String(err);
+      }
     }
   }
 
@@ -135,6 +164,7 @@ export async function GET(request: Request) {
     transitDurationMins: null,
     legCount: 0,
     source: 'fallback_none',
+    ...(isDebug ? { debug: debugDetails } : {}),
   };
 
   return NextResponse.json(result);
@@ -159,15 +189,13 @@ function parseDurationSeconds(duration: string | undefined): number {
  */
 function getNextWeekdayMorningISO(): string {
   const now = new Date();
-  // Advance to next Monday
-  const daysUntilMonday = (8 - now.getDay()) % 7 || 7;
-  const monday = new Date(now);
-  monday.setDate(now.getDate() + daysUntilMonday);
-  monday.setHours(8, 0, 0, 0); // 08:00 local
-  // Auckland is UTC+12 (UTC+13 NZDT) — express as UTC offset
-  // We use 08:00 NZST (UTC+12) → 20:00 UTC previous day
-  const utcHour = monday.getUTCHours();
-  const offset = -12; // Auckland is UTC+12, so subtract to get UTC
-  monday.setUTCHours(utcHour + offset);
-  return monday.toISOString();
+  const day = now.getUTCDay();
+  const daysUntilNextMonday = ((1 - day + 7) % 7) || 7;
+  const target = new Date(now.getTime() + daysUntilNextMonday * 24 * 60 * 60 * 1000);
+  const sundayBefore = new Date(target.getTime() - 24 * 60 * 60 * 1000);
+  sundayBefore.setUTCHours(20, 0, 0, 0); // 20:00 UTC Sunday = 08:00 Monday NZST
+  if (sundayBefore.getTime() <= now.getTime()) {
+    sundayBefore.setTime(sundayBefore.getTime() + 7 * 24 * 60 * 60 * 1000);
+  }
+  return sundayBefore.toISOString();
 }
