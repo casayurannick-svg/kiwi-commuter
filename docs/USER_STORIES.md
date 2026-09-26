@@ -39,6 +39,7 @@
 | **US-36** | Share Link State Serialization & Share Button CTA | **DONE** | [`src/components/ShareButton.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/ShareButton.tsx), [`src/lib/urlParams.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/urlParams.ts), [`src/components/DashboardClient.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/DashboardClient.tsx), [`src/components/CommuteForm.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/CommuteForm.tsx) | Complete URL parameter serialization of exact origin/destination addresses, geocoded coordinates, powertrain, and route metrics; dedicated accessible ShareButton with polite toast confirmation; automatic hydration on fresh session loads. |
 | **BUG-37** | Scale Public Transport Fares by Carpool Passenger Count | **DONE** | [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts), [`src/components/JourneyTimeline.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/JourneyTimeline.tsx), [`src/components/ComparisonCard.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/ComparisonCard.tsx) | Extracted passenger count from carpool settings; multiplied single trip, daily return, and monthly transit fares by passengers across bus, train, ferry, e-bike, and scooter modes; scaled AT HOP $50 weekly cap per commuter (`$50 * pax`); updated UI with clear `(X pax)` indicators. |
 | **US-38** | Fixed Vehicle Ownership Costs (WOF, Rego, Insurance) | **DONE** | [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts), [`src/components/CommuteForm.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/CommuteForm.tsx), [`src/components/ComparisonCard.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/ComparisonCard.tsx) | Models annual WOF ($85), Rego ($173), and Insurance ($1,311) amortized to monthly values with 70% commute apportionment; provides collapsible Custom Rates section with mutual exclusivity for custom insurance overrides; displays Fixed Costs line item beneath Fuel and RUC. |
+| **BUG-40** | Resolve Diesel RUC Exemption Error | **DONE** | [`src/types/index.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/types/index.ts), [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts), [`src/components/ComparisonCard.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/ComparisonCard.tsx), [`src/lib/urlParams.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/urlParams.ts) | Resolved root cause where DIESEL powertrain/power parameter failed lookup and defaulted to Petrol 91 ($0 RUC exemption); applies statutory New Zealand light vehicle RUC rate of $76.00 per 1,000 km ($0.076/km) applied to total distance; updates ComparisonCard UI to display calculated RUC value (e.g. $64/mo) and $0.076/km rate badge. |
 
 ---
 
@@ -617,6 +618,32 @@
     3. Custom insurance override for 2018 Honda Jazz ($950/yr custom insurance -> $70.42/mo fixed cost, $3.25/day).
     4. Insurance disabled scenario (`insuranceEnabled: false` -> $14.95/mo fixed cost, $0.69/day).
     5. ComparisonCard rendering of the `Fixed Costs (Ins/Rego/WOF): $X/mo` line item.
+
+---
+
+### BUG-40: Resolve Diesel RUC Exemption Error
+**As a** diesel vehicle commuter,  
+**I want** the transport calculator to accurately assess Road User Charges (RUC) at New Zealand's statutory light vehicle rate of $76.00 per 1,000 km ($0.076/km) applied to my total travel distance,  
+**So that** my diesel commute costs reflect real statutory obligations rather than erroneously displaying a $0 RUC exemption.
+
+* **Acceptance Criteria:**
+  - **Given** a commuter selecting a diesel vehicle or providing a `power=DIESEL` parameter,
+  - **When** the financial calculation engine runs in `src/lib/calculator.ts`:
+    - Normalizes `powertrain` and `power` alias inputs (including case-insensitive strings like `"diesel"` and `"DIESEL"`).
+    - Resolves `effectiveVehicleType: 'diesel'` and `effectivePowertrain: 'DIESEL'`.
+    - Correctly calculates Road User Charges (RUC) at the New Zealand light vehicle rate of $76.00 per 1,000 km ($0.076/km) applied to the roundtrip distance (`distanceRoundTripKm * 0.076 / passengers`).
+    - Petrol vehicles (`PETROL_91`, `PETROL_95`) and conventional hybrids (`HEV`) continue to return strict $0 exemption.
+    - BEVs continue to receive $0.076/km RUC and PHEVs receive reduced $0.038/km RUC.
+  - **And** the UI provides accurate feedback in `src/components/ComparisonCard.tsx`:
+    - Displays `RUC ($0.076/km): $XX/mo` (or `$0.038/km` for PHEV) instead of `"RUC (Exempt): $0"` whenever RUC is active.
+    - Only displays `"RUC (Exempt): $0"` for petrol and HEV vehicles.
+  - Unit tests in `tests/calculator.test.ts`, `src/lib/__tests__/calculator.test.ts`, and `src/components/__tests__/ComparisonCard.test.tsx` verify:
+    1. Diesel vehicle roundtrip distance (e.g., Albany to CBD 39.0 km) incurs $2.96/day RUC, $14.80/wk, and ~$64.13/mo.
+    2. Input with `power: 'DIESEL'` parameter correctly overrides vehicle type and calculates $0.076/km RUC.
+    3. Input with `vehicleType: 'diesel'` without explicit powertrain calculates $0.076/km RUC.
+    4. Lowercase strings (e.g. `power: 'diesel'`) normalize correctly without dropping RUC.
+    5. Petrol 91, Petrol 95, and HEV commutes remain strictly $0 RUC exempt.
+    6. ComparisonCard renders `RUC ($0.076/km): $64/mo` for diesel and `RUC (Exempt): $0` for petrol.
 
 ---
 

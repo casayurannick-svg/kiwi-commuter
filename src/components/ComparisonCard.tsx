@@ -355,7 +355,7 @@ export default function ComparisonCard({ arbitrage, input }: ComparisonCardProps
             <div className="flex items-center justify-between">
               <span className="text-slate-400 flex items-center gap-1.5">
                 <Zap className="w-3 h-3 text-amber-400" />
-                RUC ({driving.dailyRucCost > 0 ? '$0.076/km' : 'Exempt'}):
+                RUC ({driving.dailyRucCost > 0 ? (input.powertrain === 'PHEV' || input.power === 'PHEV' || input.vehicleType === 'phev' ? '$0.038/km' : '$0.076/km') : 'Exempt'}):
               </span>
               <span className="font-semibold text-slate-200 tabular-nums">
                 {driving.monthlyRucCost > 0 ? `$${driving.monthlyRucCost.toFixed(0)}/mo` : '$0'}

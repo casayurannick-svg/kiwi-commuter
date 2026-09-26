@@ -213,6 +213,89 @@ describe('src/lib/calculator.ts - calculateCommuteArbitrage', () => {
 
       assert.strictEqual(result.driving.dailyRucCost, 0.0);
       assert.strictEqual(result.driving.weeklyRucCost, 0.0);
+      assert.strictEqual(result.driving.monthlyRucCost, 0.0);
+    });
+
+    it('BUG-40: applies $0.076/km ($76.00/1,000 km) statutory RUC to DIESEL vehicles', () => {
+      const result = calculateCommuteArbitrage({
+        originSuburbId: 'takapuna', // ~9.1km one way, 18.2km round trip
+        destinationSuburbId: 'cbd',
+        daysPerWeek: 5,
+        vehicleType: 'diesel',
+        powertrain: 'DIESEL',
+        parkingDailyRate: 0,
+        parkingDaysPerWeek: 0,
+        concession: 'adult',
+        includeMaintenanceWear: false,
+        carpoolPassengers: 1,
+      });
+
+      const expectedDailyRuc = Math.round(18.2 * 0.076 * 100) / 100; // 1.3832 -> 1.38
+      assert.strictEqual(result.driving.dailyRucCost, expectedDailyRuc);
+      assert.strictEqual(result.driving.weeklyRucCost, Math.round(expectedDailyRuc * 5 * 100) / 100); // 6.90
+      assert.ok(result.driving.monthlyRucCost > 0, 'Monthly RUC must be greater than 0 for diesel');
+      assert.strictEqual(
+        result.driving.monthlyRucCost,
+        Math.round(6.90 * (52 / 12) * 100) / 100 // 29.90
+      );
+    });
+
+    it('BUG-40: correctly parses and applies RUC when power=DIESEL alias parameter is supplied', () => {
+      const result = calculateCommuteArbitrage({
+        originSuburbId: 'albany', // ~19.5km one way, 39.0km round trip
+        destinationSuburbId: 'cbd',
+        daysPerWeek: 5,
+        vehicleType: 'petrol91', // Mismatched vehicleType to test power override
+        power: 'DIESEL',
+        parkingDailyRate: 0,
+        parkingDaysPerWeek: 0,
+        concession: 'adult',
+        includeMaintenanceWear: false,
+        carpoolPassengers: 1,
+      } as CommuteInput);
+
+      const expectedDailyRuc = Math.round(39.0 * 0.076 * 100) / 100; // 2.964 -> 2.96
+      assert.strictEqual(result.driving.dailyRucCost, expectedDailyRuc);
+      assert.strictEqual(result.driving.weeklyRucCost, Math.round(2.96 * 5 * 100) / 100); // 14.80
+      assert.strictEqual(
+        result.driving.monthlyRucCost,
+        Math.round(14.80 * (52 / 12) * 100) / 100 // 64.13
+      );
+    });
+
+    it('BUG-40: applies $0.076/km RUC when vehicleType is diesel even if powertrain is omitted', () => {
+      const result = calculateCommuteArbitrage({
+        originSuburbId: 'takapuna',
+        destinationSuburbId: 'cbd',
+        daysPerWeek: 5,
+        vehicleType: 'diesel',
+        parkingDailyRate: 0,
+        parkingDaysPerWeek: 0,
+        concession: 'adult',
+        includeMaintenanceWear: false,
+        carpoolPassengers: 1,
+      });
+
+      const expectedDailyRuc = Math.round(18.2 * 0.076 * 100) / 100;
+      assert.strictEqual(result.driving.dailyRucCost, expectedDailyRuc);
+    });
+
+    it('BUG-40: normalizes lowercase power/powertrain strings ("diesel") and applies RUC', () => {
+      const result = calculateCommuteArbitrage({
+        originSuburbId: 'takapuna',
+        destinationSuburbId: 'cbd',
+        daysPerWeek: 5,
+        vehicleType: 'petrol91',
+        power: 'diesel',
+        parkingDailyRate: 0,
+        parkingDaysPerWeek: 0,
+        concession: 'adult',
+        includeMaintenanceWear: false,
+        carpoolPassengers: 1,
+      } as CommuteInput);
+
+      const expectedDailyRuc = Math.round(18.2 * 0.076 * 100) / 100;
+      assert.strictEqual(result.driving.dailyRucCost, expectedDailyRuc);
     });
 
     it('US-09: electric fuel cost scales correctly between HOME_OFFPEAK and PUBLIC_DC while RUC remains identical', () => {

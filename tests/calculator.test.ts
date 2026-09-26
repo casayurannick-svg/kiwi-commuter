@@ -88,6 +88,55 @@ describe('Kiwi Commuter Cost & Arbitrage Math Engine', () => {
     });
 
     assert.ok(resultEv.driving.dailyRucCost > 0);
+
+    // BUG-40: Test Diesel vehicle with ~39km round-trip: 39km * 0.076 = $2.96/day RUC
+    const resultDiesel = calculateArbitrage({
+      originSuburbId: 'albany',
+      destinationSuburbId: 'cbd',
+      daysPerWeek: 5,
+      vehicleType: 'diesel',
+      parkingDailyRate: 0,
+      parkingDaysPerWeek: 0,
+      concession: 'adult',
+      includeMaintenanceWear: false,
+      carpoolPassengers: 1,
+    });
+
+    assert.strictEqual(resultDiesel.driving.dailyRucCost, 2.96);
+    assert.strictEqual(resultDiesel.driving.weeklyRucCost, 14.80);
+    assert.ok(resultDiesel.driving.monthlyRucCost > 0, 'Diesel must incur positive monthly RUC');
+
+    // BUG-40: Test power=DIESEL alias
+    const resultPowerDiesel = calculateArbitrage({
+      originSuburbId: 'albany',
+      destinationSuburbId: 'cbd',
+      daysPerWeek: 5,
+      vehicleType: 'petrol91',
+      power: 'DIESEL',
+      parkingDailyRate: 0,
+      parkingDaysPerWeek: 0,
+      concession: 'adult',
+      includeMaintenanceWear: false,
+      carpoolPassengers: 1,
+    } as any);
+
+    assert.strictEqual(resultPowerDiesel.driving.dailyRucCost, 2.96);
+
+    // Test Petrol exemption ($0 RUC)
+    const resultPetrol = calculateArbitrage({
+      originSuburbId: 'albany',
+      destinationSuburbId: 'cbd',
+      daysPerWeek: 5,
+      vehicleType: 'petrol91',
+      parkingDailyRate: 0,
+      parkingDaysPerWeek: 0,
+      concession: 'adult',
+      includeMaintenanceWear: false,
+      carpoolPassengers: 1,
+    });
+
+    assert.strictEqual(resultPetrol.driving.dailyRucCost, 0.0);
+    assert.strictEqual(resultPetrol.driving.monthlyRucCost, 0.0);
   });
 
   it('correctly calculates student tertiary concession discount (20% off)', () => {

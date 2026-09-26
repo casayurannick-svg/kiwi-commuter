@@ -63,11 +63,34 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
       : route.distanceKm;
   const distanceRoundTripKm = Math.round(distanceOneWayKm * 2 * 10) / 10;
 
-  // Resolve vehicle type and powertrain
+  // Resolve vehicle type and powertrain (BUG-40: support power=DIESEL parameter and case normalization)
+  const rawPower = input.powertrain || input.power;
+  const normalizedPower: VehiclePowertrain | undefined =
+    typeof rawPower === 'string'
+      ? (rawPower.toUpperCase() as VehiclePowertrain)
+      : undefined;
+
   const effectiveVehicleType: VehicleType =
-    input.powertrain && POWERTRAIN_TO_VEHICLE_TYPE[input.powertrain]
-      ? POWERTRAIN_TO_VEHICLE_TYPE[input.powertrain]
+    normalizedPower && POWERTRAIN_TO_VEHICLE_TYPE[normalizedPower]
+      ? POWERTRAIN_TO_VEHICLE_TYPE[normalizedPower]
+      : input.vehicleType === 'diesel' || normalizedPower === 'DIESEL'
+      ? 'diesel'
       : input.vehicleType || 'petrol91';
+
+  const effectivePowertrain: VehiclePowertrain =
+    normalizedPower && STATUTORY_NZTA_RUC_RATES[normalizedPower]
+      ? normalizedPower
+      : effectiveVehicleType === 'diesel'
+      ? 'DIESEL'
+      : effectiveVehicleType === 'bev'
+      ? 'BEV'
+      : effectiveVehicleType === 'phev'
+      ? 'PHEV'
+      : effectiveVehicleType === 'hev'
+      ? 'HEV'
+      : effectiveVehicleType === 'petrol95'
+      ? 'PETROL_95'
+      : 'PETROL_91';
 
   const vehicle = VEHICLE_PRESETS[effectiveVehicleType] || VEHICLE_PRESETS.petrol91;
   const hasCustomConsumption =
@@ -79,14 +102,21 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
     : vehicle.defaultConsumption;
 
   const isEbike = input.transitMode === 'EBIKE' || input.transitMode === 'E-Bike';
-  const isHev = input.powertrain === 'HEV' || effectiveVehicleType === 'hev';
+  const isHev = effectivePowertrain === 'HEV' || effectiveVehicleType === 'hev';
+  const isDiesel = effectivePowertrain === 'DIESEL' || effectiveVehicleType === 'diesel';
 
-  // Statutory RUC rate ($/km) - HEV is exempt ($0.00/km)
-  const rucRate = isEbike || isHev
-    ? 0
-    : input.powertrain && STATUTORY_NZTA_RUC_RATES[input.powertrain]
-    ? STATUTORY_NZTA_RUC_RATES[input.powertrain].ratePerKm
-    : NZTA_RUC_RATES[effectiveVehicleType]?.ratePerKm ?? 0;
+  // Statutory RUC rate ($/km) - HEV and Petrol (91/95) are exempt ($0.00/km)
+  // Diesel light vehicle rate is $76.00 per 1,000 km ($0.076/km)
+  let rucRate = 0;
+  if (!isEbike && !isHev) {
+    if (isDiesel) {
+      rucRate = STATUTORY_NZTA_RUC_RATES.DIESEL.ratePerKm; // 0.076 ($76.00 / 1,000 km)
+    } else if (STATUTORY_NZTA_RUC_RATES[effectivePowertrain]) {
+      rucRate = STATUTORY_NZTA_RUC_RATES[effectivePowertrain].ratePerKm;
+    } else if (NZTA_RUC_RATES[effectiveVehicleType]) {
+      rucRate = NZTA_RUC_RATES[effectiveVehicleType].ratePerKm;
+    }
+  }
 
   // Vehicle maintenance & wear ($/km)
   const maintenanceRate = input.includeMaintenanceWear

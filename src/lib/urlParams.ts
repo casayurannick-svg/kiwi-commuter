@@ -344,6 +344,7 @@ export function parseCommuteFromParams(
     daysPerWeek: !isNaN(daysPerWeek) && daysPerWeek >= 1 && daysPerWeek <= 7 ? daysPerWeek : fallback.daysPerWeek,
     vehicleType: resolvedVehicleType,
     powertrain: resolvedPowertrain,
+    power: resolvedPowertrain,
     consumptionOverride: econVal !== undefined && !isNaN(econVal) ? econVal : fallback.consumptionOverride,
     fuelEconomy: econVal !== undefined && !isNaN(econVal) ? econVal : fallback.fuelEconomy,
     parkingTier: parkTierParam || fallback.parkingTier,

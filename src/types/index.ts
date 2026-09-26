@@ -63,6 +63,7 @@ export interface CommuteInput {
   daysPerWeek: number; // 1 to 7
   vehicleType: VehicleType;
   powertrain?: VehiclePowertrain;
+  power?: VehiclePowertrain | string; // BUG-40: Alias for powertrain (e.g., power=DIESEL)
   consumptionOverride?: number; // custom L/100km or kWh/100km
   fuelPriceOverride?: number; // custom $/L or $/kWh
   parkingDailyRate: number; // NZD

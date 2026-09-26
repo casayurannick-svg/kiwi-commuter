@@ -356,6 +356,48 @@ describe('src/components/ComparisonCard.tsx - US-16 Mini-Receipt Time Valuation'
       assert.ok(html.includes('Fixed Costs (Ins/Rego/WOF):'), 'Must render Fixed Costs label');
       assert.ok(html.includes('$92/mo'), 'Must render rounded monthly fixed cost ($92/mo)');
     });
+
+    it('BUG-40: renders RUC ($0.076/km) with calculated monthly value for diesel instead of Exempt', () => {
+      const input: CommuteInput = {
+        ...defaultInput,
+        vehicleType: 'diesel',
+        powertrain: 'DIESEL',
+      };
+      const arbitrage = createMockArbitrage({
+        driving: {
+          ...createMockArbitrage().driving,
+          dailyRucCost: 2.96,
+          monthlyRucCost: 64.13,
+        },
+      });
+      const html = renderToStaticMarkup(
+        React.createElement(ComparisonCard, { arbitrage, input })
+      );
+
+      assert.ok(html.includes('RUC ($0.076/km):'), 'Must display $0.076/km RUC rate label for diesel');
+      assert.ok(html.includes('$64/mo'), 'Must display calculated monthly RUC ($64/mo)');
+      assert.ok(!html.includes('RUC (Exempt): $0'), 'Must not display RUC Exempt for diesel');
+    });
+
+    it('BUG-40: renders RUC (Exempt): $0 for petrol vehicles', () => {
+      const input: CommuteInput = {
+        ...defaultInput,
+        vehicleType: 'petrol91',
+        powertrain: 'PETROL_91',
+      };
+      const arbitrage = createMockArbitrage({
+        driving: {
+          ...createMockArbitrage().driving,
+          dailyRucCost: 0,
+          monthlyRucCost: 0,
+        },
+      });
+      const html = renderToStaticMarkup(
+        React.createElement(ComparisonCard, { arbitrage, input })
+      );
+
+      assert.ok(html.includes('RUC (Exempt):'), 'Must display RUC Exempt label for petrol');
+    });
   });
 });
 
