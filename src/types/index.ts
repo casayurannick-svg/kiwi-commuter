@@ -100,6 +100,7 @@ export interface CommuteInput {
   transitRideDurationMins?: number; // In-vehicle transit ride duration (e.g. 36 mins for 25B + OuterLink)
   transitSteps?: TransitStepDetail[]; // Breakdown of individual transit legs
   transitLines?: string[]; // Transit line names (e.g. ['25B', 'OuterLink'])
+  passengerCount?: number; // BUG-37: Alias for carpoolPassengers
 }
 
 export interface TransitStepDetail {
@@ -210,6 +211,9 @@ export interface TransitCostBreakdown {
   firstMileDurationMins?: number;
   firstMileMode?: 'DRIVE' | 'WALK' | 'SCOOTER';
   nearestStationName?: string;
+  passengers?: number; // BUG-37: Active passenger count for multi-passenger scaling
+  perPersonSingleFare?: number; // BUG-37: Per-commuter one-way fare before passenger scaling
+  perPersonDailyFare?: number; // BUG-37: Per-commuter daily return fare before passenger scaling
 }
 
 export interface CommuteComparisonResult {

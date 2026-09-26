@@ -32,6 +32,7 @@ export default function JourneyTimeline({
   onFirstMileModeChange,
 }: JourneyTimelineProps) {
   const { journeyLegs, nearestStation, transit } = arbitrage;
+  const passengers = Math.max(1, input.carpoolPassengers || transit.passengers || 1);
 
   const firstMileMode = input.firstMileMode || 'DRIVE';
   const originCoords = input.originCoordinates;
@@ -341,15 +342,21 @@ export default function JourneyTimeline({
           <p className="text-sm font-bold text-white">{totalDurationMins} mins</p>
         </div>
         <div className="bg-slate-900/50 p-2 rounded-xl border border-slate-800/80">
-          <p className="text-[10px] text-slate-400 font-medium">One-Way Cost</p>
+          <p className="text-[10px] text-slate-400 font-medium">
+            One-Way Cost{passengers > 1 ? ` (${passengers} pax)` : ''}
+          </p>
           <p className="text-sm font-bold text-emerald-400">${totalOneWayCost.toFixed(2)}</p>
         </div>
         <div className="bg-slate-900/50 p-2 rounded-xl border border-slate-800/80">
-          <p className="text-[10px] text-slate-400 font-medium">Daily Return Fare</p>
+          <p className="text-[10px] text-slate-400 font-medium">
+            Daily Return Fare{passengers > 1 ? ` (${passengers} pax)` : ''}
+          </p>
           <p className="text-sm font-bold text-sky-400">${transit.dailyFare.toFixed(2)}</p>
         </div>
         <div className="bg-slate-900/50 p-2 rounded-xl border border-slate-800/80">
-          <p className="text-[10px] text-slate-400 font-medium">Monthly Total</p>
+          <p className="text-[10px] text-slate-400 font-medium">
+            Monthly Total{passengers > 1 ? ` (${passengers} pax)` : ''}
+          </p>
           <p className="text-sm font-bold text-emerald-400">
             ${transit.monthlyTotal.toFixed(2)}
           </p>

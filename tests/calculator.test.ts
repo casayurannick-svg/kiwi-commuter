@@ -794,3 +794,99 @@ describe('US-22: Tooltip for Value of Your Time', () => {
   });
 });
 
+describe('BUG-37: Scale public transport fares by carpool passenger count', () => {
+  it('doubles transit one-way and daily return totals for standard bus/train zones when 2 passengers are selected', () => {
+    const singlePassengerInput: CommuteInput = {
+      originSuburbId: 'epsom',
+      destinationSuburbId: 'cbd',
+      daysPerWeek: 3,
+      vehicleType: 'petrol91',
+      parkingDailyRate: 20.0,
+      parkingDaysPerWeek: 3,
+      concession: 'adult',
+      includeMaintenanceWear: false,
+      carpoolPassengers: 1,
+    };
+    const twoPassengerInput: CommuteInput = {
+      ...singlePassengerInput,
+      carpoolPassengers: 2,
+    };
+
+    const res1 = calculateArbitrage(singlePassengerInput);
+    const res2 = calculateArbitrage(twoPassengerInput);
+
+    // Standard Zone 1 adult single fare: $3.00, daily return: $6.00
+    assert.strictEqual(res1.transit.singleTripStandardFare, 3.00);
+    assert.strictEqual(res1.transit.singleTripConcessionFare, 3.00);
+    assert.strictEqual(res1.transit.dailyFare, 6.00);
+    assert.strictEqual(res1.transit.weeklyTotal, 18.00);
+
+    // 2 passengers must double the one-way and daily return totals
+    assert.strictEqual(res2.transit.singleTripStandardFare, 6.00, 'Must double one-way standard fare for 2 passengers');
+    assert.strictEqual(res2.transit.singleTripConcessionFare, 6.00, 'Must double one-way concession fare for 2 passengers');
+    assert.strictEqual(res2.transit.dailyFare, 12.00, 'Must double daily return fare for 2 passengers');
+    assert.strictEqual(res2.transit.weeklyTotal, 36.00, 'Must double weekly total for 2 passengers');
+    assert.strictEqual(res2.transit.monthlyTotal, Math.round(36.00 * WEEKS_PER_MONTH * 100) / 100);
+  });
+
+  it('doubles transit one-way and daily return totals for ferry routes when 2 passengers are selected', () => {
+    const singlePassengerFerry: CommuteInput = {
+      originSuburbId: 'devonport',
+      destinationSuburbId: 'parnell',
+      daysPerWeek: 3,
+      vehicleType: 'petrol91',
+      concession: 'adult',
+      parkingDailyRate: 0,
+      parkingDaysPerWeek: 0,
+      includeMaintenanceWear: false,
+      carpoolPassengers: 1,
+    };
+    const twoPassengerFerry: CommuteInput = {
+      ...singlePassengerFerry,
+      carpoolPassengers: 2,
+    };
+
+    const ferryRes1 = calculateArbitrage(singlePassengerFerry);
+    const ferryRes2 = calculateArbitrage(twoPassengerFerry);
+
+    // Inner Harbour Ferry adult base fare: $7.80 one-way, $15.60 daily return
+    assert.strictEqual(ferryRes1.transit.singleTripStandardFare, 7.80);
+    assert.strictEqual(ferryRes1.transit.singleTripConcessionFare, 7.80);
+    assert.strictEqual(ferryRes1.transit.dailyFare, 15.60);
+
+    // 2 passengers must double the ferry one-way and daily return totals
+    assert.strictEqual(ferryRes2.transit.singleTripStandardFare, 15.60, 'Must double ferry one-way standard fare for 2 passengers');
+    assert.strictEqual(ferryRes2.transit.singleTripConcessionFare, 15.60, 'Must double ferry one-way concession fare for 2 passengers');
+    assert.strictEqual(ferryRes2.transit.dailyFare, 31.20, 'Must double ferry daily return fare for 2 passengers');
+  });
+
+  it('scales rolling fare cap (AT HOP $50/week) per commuter by passenger count', () => {
+    const fiveDayInput1Pax: CommuteInput = {
+      originSuburbId: 'albany',
+      destinationSuburbId: 'cbd',
+      daysPerWeek: 5,
+      vehicleType: 'petrol91',
+      parkingDailyRate: 20.0,
+      parkingDaysPerWeek: 5,
+      concession: 'adult',
+      includeMaintenanceWear: false,
+      carpoolPassengers: 1,
+    };
+    const fiveDayInput2Pax: CommuteInput = {
+      ...fiveDayInput1Pax,
+      carpoolPassengers: 2,
+    };
+
+    const res1 = calculateArbitrage(fiveDayInput1Pax);
+    const res2 = calculateArbitrage(fiveDayInput2Pax);
+
+    assert.strictEqual(res1.transit.isHopCapApplied, true);
+    assert.strictEqual(res1.transit.weeklyTotal, 50.00);
+
+    assert.strictEqual(res2.transit.isHopCapApplied, true);
+    assert.strictEqual(res2.transit.hopCappedWeeklyFare, 100.00, 'Must cap at $50 per commuter, scaled to $100 for 2 passengers');
+    assert.strictEqual(res2.transit.weeklyTotal, 100.00);
+    assert.strictEqual(res2.transit.uncappedWeeklyFare, 170.00);
+  });
+});
+

@@ -24,6 +24,7 @@ interface ComparisonCardProps {
 }
 export default function ComparisonCard({ arbitrage, input }: ComparisonCardProps) {
   const { driving, transit, co2SavedMonthlyKg, timeMetrics } = arbitrage;
+  const passengers = Math.max(1, input.carpoolPassengers || transit.passengers || 1);
 
   const delta = Math.round(Math.abs(driving.monthlyTotal - transit.monthlyTotal));
   const annualDelta = Math.round(delta * 12);
@@ -144,7 +145,7 @@ export default function ComparisonCard({ arbitrage, input }: ComparisonCardProps
               {transit.isHopCapApplied && transit.primaryMode !== 'E-Bike' && (
                 <span className="text-[10px] bg-emerald-500/15 text-emerald-300 font-semibold px-2 py-0.5 rounded-full border border-emerald-500/30 flex items-center gap-1">
                   <ShieldCheck className="w-3 h-3" />
-                  $50/wk Cap
+                  {passengers > 1 ? `$${50 * passengers}/wk Cap (${passengers} pax)` : '$50/wk Cap'}
                 </span>
               )}
             </div>
@@ -282,19 +283,24 @@ export default function ComparisonCard({ arbitrage, input }: ComparisonCardProps
                   <span className="text-base sm:text-lg font-black text-emerald-400 tabular-nums block leading-tight">
                     ${transit.monthlyTotal.toFixed(0)}
                   </span>
-                  <span className="text-[10px] text-slate-400">/mo (${transit.dailyFare.toFixed(2)}/day)</span>
+                  <span className="text-[10px] text-slate-400">
+                    /mo (${transit.dailyFare.toFixed(2)}/day{passengers > 1 ? ` · ${passengers} pax` : ''})
+                  </span>
                 </div>
               </div>
 
               {/* Quick cost drivers */}
               <div className="mt-2.5 pt-2 border-t border-slate-800/60 flex items-center justify-between text-[11px] text-slate-400">
-                <span>Single: ${transit.singleTripConcessionFare.toFixed(2)}</span>
+                <span>
+                  Single: ${transit.singleTripConcessionFare.toFixed(2)}
+                  {passengers > 1 && ` (${passengers} pax)`}
+                </span>
                 <span>
                   {transit.primaryMode === 'E-Bike'
                     ? 'Zero fares'
                     : transit.isHopCapApplied
-                    ? '$50 cap active'
-                    : 'Under $50 cap'}
+                    ? (passengers > 1 ? `$${50 * passengers} cap (${passengers}x)` : '$50 cap active')
+                    : (passengers > 1 ? `Under $${50 * passengers} cap` : 'Under $50 cap')}
                 </span>
                 <span>${transit.weeklyTotal.toFixed(0)}/wk</span>
               </div>
@@ -419,6 +425,11 @@ export default function ComparisonCard({ arbitrage, input }: ComparisonCardProps
               </span>
               <span className="font-semibold text-slate-200 tabular-nums">
                 ${transit.singleTripConcessionFare.toFixed(2)}
+                {passengers > 1 && (
+                  <span className="text-[10px] text-slate-400 font-normal ml-1">
+                    ({passengers} pax)
+                  </span>
+                )}
               </span>
             </div>
 
@@ -428,6 +439,11 @@ export default function ComparisonCard({ arbitrage, input }: ComparisonCardProps
               </span>
               <span className="font-semibold text-slate-200 tabular-nums">
                 ${transit.dailyFare.toFixed(2)}
+                {passengers > 1 && (
+                  <span className="text-[10px] text-slate-400 font-normal ml-1">
+                    ({passengers} pax)
+                  </span>
+                )}
               </span>
             </div>
 
@@ -435,7 +451,9 @@ export default function ComparisonCard({ arbitrage, input }: ComparisonCardProps
               <div className="flex items-center justify-between">
                 <span className="text-slate-400">AT HOP Cap:</span>
                 <span className="font-semibold text-emerald-300 tabular-nums">
-                  {transit.isHopCapApplied ? '$50/wk applied' : `$${transit.weeklyTotal.toFixed(2)}/wk`}
+                  {transit.isHopCapApplied
+                    ? (passengers > 1 ? `$${50 * passengers}/wk (${passengers}x $50)` : '$50/wk applied')
+                    : `$${transit.weeklyTotal.toFixed(2)}/wk`}
                 </span>
               </div>
             )}
@@ -453,7 +471,13 @@ export default function ComparisonCard({ arbitrage, input }: ComparisonCardProps
           </div>
 
           <div className="pt-1.5 border-t border-slate-800/80 text-[11px] text-slate-400 flex items-center justify-between">
-            <span>{transit.primaryMode === 'E-Bike' ? 'E-Bike energy cost' : (transit.isHopCapApplied ? 'Capped fare active' : 'Under $50 cap')}</span>
+            <span>
+              {transit.primaryMode === 'E-Bike'
+                ? 'E-Bike energy cost'
+                : transit.isHopCapApplied
+                ? (passengers > 1 ? `Capped fare active ($${50 * passengers}/wk)` : 'Capped fare active')
+                : (passengers > 1 ? `Under $${50 * passengers} cap` : 'Under $50 cap')}
+            </span>
             <span className="tabular-nums">Weekly: ${transit.weeklyTotal.toFixed(0)}</span>
           </div>
         </div>

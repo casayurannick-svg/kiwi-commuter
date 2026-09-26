@@ -37,6 +37,7 @@
 | **US-34** | Hero Summary Split UI Pattern & Dynamic Trade-off Badge | **DONE** | [`src/components/ComparisonCard.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/ComparisonCard.tsx), [`src/components/__tests__/ComparisonCard.test.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/__tests__/ComparisonCard.test.tsx) | Refactored hero summary into two-column side-by-side grid (Drive vs Transit) with desktop VS badge, integrated dynamic trade-off badge evaluating time vs cost deltas. |
 | **US-35** | Harbour-Separated Corridor Driving Road Distance & Routing | **DONE** | [`src/app/api/routes/route.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/app/api/routes/route.ts), [`src/config/suburbs.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/config/suburbs.ts), [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts), [`src/components/DashboardClient.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/DashboardClient.tsx), [`src/app/api/routes/__tests__/route.test.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/app/api/routes/__tests__/route.test.ts) | Replaced straight-line/Haversine water-crossing distances for harbour-separated corridors (e.g. Devonport to Parnell) with Google Routes API driving road distance (~17-18 km one-way, ~35 km/day roundtrip) via Harbour Bridge, recalculating fuel, RUC, and duration deltas. |
 | **US-36** | Share Link State Serialization & Share Button CTA | **DONE** | [`src/components/ShareButton.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/ShareButton.tsx), [`src/lib/urlParams.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/urlParams.ts), [`src/components/DashboardClient.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/DashboardClient.tsx), [`src/components/CommuteForm.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/CommuteForm.tsx) | Complete URL parameter serialization of exact origin/destination addresses, geocoded coordinates, powertrain, and route metrics; dedicated accessible ShareButton with polite toast confirmation; automatic hydration on fresh session loads. |
+| **BUG-37** | Scale Public Transport Fares by Carpool Passenger Count | **DONE** | [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts), [`src/components/JourneyTimeline.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/JourneyTimeline.tsx), [`src/components/ComparisonCard.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/ComparisonCard.tsx) | Extracted passenger count from carpool settings; multiplied single trip, daily return, and monthly transit fares by passengers across bus, train, ferry, e-bike, and scooter modes; scaled AT HOP $50 weekly cap per commuter (`$50 * pax`); updated UI with clear `(X pax)` indicators. |
 
 ---
 
@@ -565,6 +566,31 @@
     2. Accurate parameter extraction and fallback handling on load.
     3. Coordinate-only spatial fallback mapping to closest suburb centroid.
     4. Accessible rendering of `<ShareButton>` with `aria-label` and `data-testid="share-button"`.
+
+---
+
+### BUG-37: Scale Public Transport Fares by Carpool Passenger Count
+**As a** commuter evaluating carpooling vs catching public transit with multiple people,  
+**I want** public transit fares, daily return fares, monthly transit totals, and fare caps to scale accurately by the number of passengers traveling together,  
+**So that** comparing driving as a group (which splits 1 vehicle's costs) against transit (where each person must pay an individual fare) accurately reflects the true financial arbitrage.
+
+* **Acceptance Criteria:**
+  - **Given** an active commute configuration with `carpoolPassengers` or `passengerCount` > 1 (e.g. 2 commuters sharing the trip),
+  - **When** the financial calculation engine runs in `src/lib/calculator.ts`:
+    - Public transport single trip standard and concession fares (`singleTripStandardFare`, `singleTripConcessionFare`) are multiplied by `passengers`.
+    - Daily return transit fare (`dailyFare`) is multiplied by `passengers`.
+    - Rolling fare caps (e.g., AT HOP $50/week) are applied to each individual commuter's weekly spend before being scaled by passenger count (`weeklyCap * passengers`).
+    - Waiheke and Inner Harbour ferry rates scale directly by passenger count (e.g., Inner Harbour $7.80 base one-way becomes $15.60 for 2 pax, $31.20 daily return).
+    - Rental micro-mobility (scooters) and e-bike energy costs scale by passenger count.
+    - First-mile car driving to a transit hub represents 1 vehicle shared among the group and is not multiplied or divided.
+  - **And** the UI reflects the multiplied total transit fare when `passengers > 1`:
+    - `src/components/JourneyTimeline.tsx` displays clean passenger tags (e.g. `$15.60 total (2 pax)`, `(2 pax)` next to single, daily, and monthly figures).
+    - `src/components/ComparisonCard.tsx` displays scaled caps (e.g. `$100/wk Cap (2 pax)` or `$100/wk (2x $50)`) and indicates `(2 pax)` on transit side-by-side cards and split headers.
+  - Unit tests in `tests/calculator.test.ts` and `src/lib/__tests__/calculator.test.ts` verify:
+    1. Standard Zone 1 (Epsom to CBD) doubles from $3.00 one-way / $6.00 return to $6.00 one-way / $12.00 return for 2 passengers.
+    2. Inner Harbour Ferry (Devonport to Parnell) doubles from $7.80 one-way / $15.60 return to $15.60 one-way / $31.20 return for 2 passengers, and formats `$15.60 total (2 pax)` in JourneyLeg.
+    3. Rolling fare cap ($50/wk) scales to $100/wk for 2 passengers.
+    4. Single-passenger defaults remain completely unaffected with zero regression.
 
 ---
 
