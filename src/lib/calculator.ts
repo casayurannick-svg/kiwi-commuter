@@ -133,6 +133,17 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
       : 1
   );
 
+  // BUG-43: Micromobility (E-Bike, E-Scooter) are inherently single-rider vehicles.
+  // The carpool passenger multiplier must NOT be applied to their energy costs or breakeven math.
+  // transitPassengers is locked to 1 for these modes; it equals passengers for all other modes.
+  const isMicromobilityMode =
+    input.transitMode === 'EBIKE' ||
+    input.transitMode === 'E-Bike' ||
+    input.transitMode === 'MICROMOBILITY_TRANSIT' ||
+    input.transitMode === 'Scooter & Ride' ||
+    input.transitMode === 'Scooter & Transit';
+  const transitPassengers = isMicromobilityMode ? 1 : passengers;
+
   // Parking daily rate: support parkingTier preset or explicit parkingDailyRate
   let effectiveParkingRate = isEbike
     ? 0
@@ -389,14 +400,15 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
 
   if (isEbike) {
     // US-11: E-Bike mode: calculate energy cost based on distance * ebikeCostPerKm
+    // BUG-43: E-Bike is a single-rider vehicle — use transitPassengers (always 1) not passengers.
     const ebikeCostPerKm = typeof input.ebikeCostPerKm === 'number' ? input.ebikeCostPerKm : 0.0027;
     const perPersonDailyEbikeCost = round2(distanceRoundTripKm * ebikeCostPerKm);
     const perPersonSingleTrip = round2(perPersonDailyEbikeCost / 2);
 
-    singleTripStandardFare = round2(perPersonSingleTrip * passengers);
+    singleTripStandardFare = round2(perPersonSingleTrip * transitPassengers);
     singleTripConcessionFare = singleTripStandardFare;
 
-    dailyTransitFare = round2(perPersonDailyEbikeCost * passengers);
+    dailyTransitFare = round2(perPersonDailyEbikeCost * transitPassengers);
     uncappedWeeklyFare = round2(dailyTransitFare * input.daysPerWeek);
 
     isHopCapApplied = false;
@@ -460,11 +472,11 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
     isHopCapApplied = baseUncappedWeeklyFarePerPerson > AT_HOP_7_DAY_CAP;
     const cappedWeeklyPerPerson = isHopCapApplied ? AT_HOP_7_DAY_CAP : baseUncappedWeeklyFarePerPerson;
 
-    singleTripStandardFare = round2(perPersonStandard * passengers);
-    singleTripConcessionFare = round2(perPersonConcession * passengers);
-    dailyTransitFare = round2(baseDailyHopFarePerPerson * passengers);
-    uncappedWeeklyFare = round2(baseUncappedWeeklyFarePerPerson * passengers);
-    hopCappedWeeklyFare = round2(cappedWeeklyPerPerson * passengers);
+    singleTripStandardFare = round2(perPersonStandard * transitPassengers);
+    singleTripConcessionFare = round2(perPersonConcession * transitPassengers);
+    dailyTransitFare = round2(baseDailyHopFarePerPerson * transitPassengers);
+    uncappedWeeklyFare = round2(baseUncappedWeeklyFarePerPerson * transitPassengers);
+    hopCappedWeeklyFare = round2(cappedWeeklyPerPerson * transitPassengers);
     const baseWeeklyHopFare = hopCappedWeeklyFare;
     const baseMonthlyHopFare = round2(baseWeeklyHopFare * WEEKS_PER_MONTH);
     hopFareMonthly = baseMonthlyHopFare;
@@ -492,19 +504,20 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
     isHopCapApplied = baseUncappedWeeklyFarePerPerson > AT_HOP_7_DAY_CAP;
     const cappedWeeklyPerPerson = isHopCapApplied ? AT_HOP_7_DAY_CAP : baseUncappedWeeklyFarePerPerson;
 
-    singleTripStandardFare = round2(perPersonStandard * passengers);
-    singleTripConcessionFare = round2(perPersonConcession * passengers);
-    dailyTransitFare = round2(baseDailyHopFarePerPerson * passengers);
-    uncappedWeeklyFare = round2(baseUncappedWeeklyFarePerPerson * passengers);
-    hopCappedWeeklyFare = round2(cappedWeeklyPerPerson * passengers);
+    singleTripStandardFare = round2(perPersonStandard * transitPassengers);
+    singleTripConcessionFare = round2(perPersonConcession * transitPassengers);
+    dailyTransitFare = round2(baseDailyHopFarePerPerson * transitPassengers);
+    uncappedWeeklyFare = round2(baseUncappedWeeklyFarePerPerson * transitPassengers);
+    hopCappedWeeklyFare = round2(cappedWeeklyPerPerson * transitPassengers);
     const baseWeeklyHopFare = hopCappedWeeklyFare;
     const baseMonthlyHopFare = round2(baseWeeklyHopFare * WEEKS_PER_MONTH);
     hopFareMonthly = baseMonthlyHopFare;
 
     if (isMicromobility && input.scooterOwnership === 'RENTAL') {
       // US-23: Rental Scooter: $1 unlock + $0.45/min per leg per person
+      // BUG-43: Scooters are single-rider — use transitPassengers (always 1) not passengers.
       // 2 legs per day return
-      const costPerLeg = (1.00 + (scooterDurationMinsPerLeg * 0.45)) * passengers;
+      const costPerLeg = (1.00 + (scooterDurationMinsPerLeg * 0.45)) * transitPassengers;
       scooterRentalFeesDaily = round2(costPerLeg * 2);
       const weeklyRentalFees = round2(scooterRentalFeesDaily * input.daysPerWeek);
       scooterRentalFeesMonthly = round2(weeklyRentalFees * WEEKS_PER_MONTH);
@@ -626,8 +639,8 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
     firstMileMode: isEbike ? undefined : firstMileMode,
     nearestStationName: nearestStation?.name,
     passengers,
-    perPersonSingleFare: round2(singleTripConcessionFare / passengers),
-    perPersonDailyFare: round2((dailyTransitFare - firstMileDailyCost) / passengers),
+    perPersonSingleFare: round2(singleTripConcessionFare / transitPassengers),
+    perPersonDailyFare: round2((dailyTransitFare - firstMileDailyCost) / transitPassengers),
   };
 
   // --- Financial Arbitrage Deltas ---
@@ -643,10 +656,11 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
     const dDriveWeekly =
       (dailyFuelCost + dailyRucCost + dailyMaintenanceCost + dailyFixedCost) * d +
       (effectiveParkingRate * Math.min(input.parkingDaysPerWeek, d)) / passengers;
-    const perCommuterTransitDaily = (dailyTransitFare - firstMileDailyCost) / passengers;
-    const perCommuterFirstMileDaily = firstMileDailyCost / passengers;
+    // BUG-43: Use transitPassengers for transit breakeven — ebike is always 1 rider.
+    const perCommuterTransitDaily = (dailyTransitFare - firstMileDailyCost) / transitPassengers;
+    const perCommuterFirstMileDaily = firstMileDailyCost / transitPassengers;
     const dTransitWeekly =
-      (Math.min(perCommuterTransitDaily * d, AT_HOP_7_DAY_CAP) + perCommuterFirstMileDaily * d) * passengers;
+      (Math.min(perCommuterTransitDaily * d, AT_HOP_7_DAY_CAP) + perCommuterFirstMileDaily * d) * transitPassengers;
     if (dDriveWeekly > dTransitWeekly) {
       breakEvenDaysPerWeek = d;
       break;
@@ -739,10 +753,8 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
       distanceKm: round1(distanceOneWayKm),
       durationMins: Math.round((distanceOneWayKm / 20) * 60),
       cost: round2(dailyTransitFare / 2),
-      costFormatted:
-        passengers > 1
-          ? `$${(dailyTransitFare / 2).toFixed(2)} total (${passengers} pax)`
-          : `$${(dailyTransitFare / 2).toFixed(2)}`,
+      // BUG-43: No (X pax) badge — E-Bike is single-rider, transitPassengers is always 1.
+      costFormatted: `$${(dailyTransitFare / 2).toFixed(2)}`,
       iconName: 'Bike',
       notes: 'Direct active commute via cycleways',
     });

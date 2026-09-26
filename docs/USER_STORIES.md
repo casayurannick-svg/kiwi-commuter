@@ -43,6 +43,7 @@
 | **CI-01** | Intelligent CI/CD Regression Test Suite & GitHub Actions Workflow | **DONE** | [`.github/workflows/regression.yml`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/.github/workflows/regression.yml), [`src/lib/calculator.test.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.test.ts), [`playwright.config.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/playwright.config.ts), [`tests/ui.spec.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/tests/ui.spec.ts) | Scaffolded GitHub Actions regression workflow triggered on PR, push to main, and dispatch; path-triggered critical alert for calculator.ts / fares.ts; Vitest Private Vehicle Math suite verifying BUG-40 fix; Playwright 375px mobile viewport UI regression suite. |
 | **BUG-39** | Micromobility Tile Mismatch (Dynamic E-Bike vs Scooter State) | **DONE** | [`src/components/MiniReceipt.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/MiniReceipt.tsx), [`src/components/__tests__/MiniReceipt.test.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/__tests__/MiniReceipt.test.tsx) | Fixed breakeven card component to dynamically interpolate "OWNED E-BIKE" with 🚲 icon for E-Bike mode, and "OWNED SCOOTER" with 🛴 icon for Scooter mode. |
 | **BUG-41** | Mobile Viewport Tooltip Overflow & Collision Avoidance | **DONE** | [`src/components/Tooltip.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/Tooltip.tsx), [`src/components/ui/Tooltip.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/ui/Tooltip.tsx), [`src/app/layout.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/app/layout.tsx), [`src/components/RouteMap.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/RouteMap.tsx), [`tests/ui.spec.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/tests/ui.spec.ts) | Replaced inline tooltips with global collision-aware Tooltip component; enforced `max-w-[90vw]`, text wrapping, dynamic client viewport clamping, and `overflow-x-hidden` on html/body; verified 100% containment within 375px mobile viewport. |
+| **BUG-43** | Decouple Micromobility from Carpool Multiplier | **DONE** | [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts), [`src/components/ComparisonCard.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/ComparisonCard.tsx), [`src/components/JourneyTimeline.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/JourneyTimeline.tsx), [`src/lib/calculator.test.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.test.ts) | Introduced `transitPassengers` variable locked to 1 for EBIKE/Scooter modes; prevents carpool multiplier from scaling E-Bike energy costs or Scooter AT HOP fares; removed `(X pax)` UI badges from micromobility tiles; preserves BUG-37 carpool scaling for Bus/Train/Ferry. |
 
 ---
 
@@ -719,6 +720,29 @@
     - Playwright test iterates all tooltip buttons (`aria-label*="info"`, `aria-label*="benchmark"`), hovers/focuses them, and asserts `box.x >= -5` and `box.x + box.width <= viewportWidth + 5`.
     - Specific test for Powertrain HEV tooltip containment on mobile viewport.
     - Verified 9/9 tests passing across Mobile Chrome (375px), Mobile Safari (iPhone 12 - 390px), and Desktop Chrome.
+
+---
+
+### BUG-43: Decouple Micromobility from Carpool Multiplier
+**As an** active transport commuter (E-Bike, Scooter) or hybrid commuter with carpooling configured,  
+**I want** micromobility energy costs, single-rider journey legs, and breakeven calculations to remain strictly locked to 1 rider,  
+**So that** adjusting carpool passenger counts splits vehicle running costs without erroneously multiplying individual micromobility energy costs or showing inaccurate `(X pax)` badges on personal active transport modes.
+
+* **Acceptance Criteria:**
+  - **Decoupled Engine Calculation ([`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts))**:
+    - Introduced `transitPassengers` variable: locked to `1` when `transitMode` is `EBIKE`, `E-Bike`, `MICROMOBILITY_TRANSIT`, `Scooter & Ride`, or `Scooter & Transit`; equals `passengers` for mass public transit (`BUS`, `TRAIN`, `FERRY`).
+    - Locked E-Bike single-trip standard/concession fare and daily/weekly/monthly transit energy costs to single rider (`transitPassengers = 1`).
+    - Decoupled rental scooter fees and AT HOP hybrid fares in micromobility modes from carpool multiplier.
+    - Decoupled breakeven weekly calculation for micromobility transit so individual rider costs are evaluated against the per-person carpool driving cost.
+    - Preserved BUG-37 behavior: bus, train, and ferry fares correctly scale by `passengers` when carpool mode is selected.
+  - **UI Refinement & Badge Suppression**:
+    - Removed `(X pax)` badge from E-Bike journey leg formatted cost in `src/lib/calculator.ts`.
+    - Added `showPaxBadge` guard in [`src/components/ComparisonCard.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/ComparisonCard.tsx) and [`src/components/JourneyTimeline.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/JourneyTimeline.tsx) to suppress `(X pax)` labels on single fare, daily energy, and monthly totals for micromobility modes.
+  - **Regression Test Suite ([`src/lib/calculator.test.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.test.ts))**:
+    - Asserted solo rider E-Bike energy cost matches expected baseline (~$0.11/day for Albany-CBD).
+    - Asserted `carpool=2` and `carpool=3` do NOT multiply E-Bike daily, weekly, or monthly energy costs.
+    - Asserted `carpool=2` does not scale transit fares in `Scooter & Transit` mode.
+    - Asserted `carpool=2` correctly doubles daily transit fare for standard `BUS` commute (BUG-37 regression test).
 
 ---
 

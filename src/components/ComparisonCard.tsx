@@ -25,6 +25,14 @@ interface ComparisonCardProps {
 export default function ComparisonCard({ arbitrage, input }: ComparisonCardProps) {
   const { driving, transit, co2SavedMonthlyKg, timeMetrics } = arbitrage;
   const passengers = Math.max(1, input.carpoolPassengers || transit.passengers || 1);
+  // BUG-43: E-Bike and E-Scooter are single-rider — suppress (X pax) badges for these modes.
+  const isEbikeOrScooterMode =
+    transit.primaryMode === 'E-Bike' ||
+    input.transitMode === 'EBIKE' ||
+    input.transitMode === 'MICROMOBILITY_TRANSIT' ||
+    input.transitMode === 'Scooter & Ride' ||
+    input.transitMode === 'Scooter & Transit';
+  const showPaxBadge = !isEbikeOrScooterMode && passengers > 1;
 
   const delta = Math.round(Math.abs(driving.monthlyTotal - transit.monthlyTotal));
   const annualDelta = Math.round(delta * 12);
@@ -145,7 +153,7 @@ export default function ComparisonCard({ arbitrage, input }: ComparisonCardProps
               {transit.isHopCapApplied && transit.primaryMode !== 'E-Bike' && (
                 <span className="text-[10px] bg-emerald-500/15 text-emerald-300 font-semibold px-2 py-0.5 rounded-full border border-emerald-500/30 flex items-center gap-1">
                   <ShieldCheck className="w-3 h-3" />
-                  {passengers > 1 ? `$${50 * passengers}/wk Cap (${passengers} pax)` : '$50/wk Cap'}
+                  {showPaxBadge ? `$${50 * passengers}/wk Cap (${passengers} pax)` : '$50/wk Cap'}
                 </span>
               )}
             </div>
@@ -282,12 +290,12 @@ export default function ComparisonCard({ arbitrage, input }: ComparisonCardProps
                     </span>
                   </div>
                 </div>
-                <div className="text-right">
+                 <div className="text-right">
                   <span className="text-base sm:text-lg font-black text-emerald-400 tabular-nums block leading-tight">
                     ${transit.monthlyTotal.toFixed(0)}
                   </span>
                   <span className="text-[10px] text-slate-400">
-                    /mo (${transit.dailyFare.toFixed(2)}/day{passengers > 1 ? ` · ${passengers} pax` : ''})
+                    /mo (${transit.dailyFare.toFixed(2)}/day{showPaxBadge ? ` · ${passengers} pax` : ''})
                   </span>
                 </div>
               </div>
@@ -296,14 +304,14 @@ export default function ComparisonCard({ arbitrage, input }: ComparisonCardProps
               <div className="mt-2.5 pt-2 border-t border-slate-800/60 flex items-center justify-between text-[11px] text-slate-400">
                 <span>
                   Single: ${transit.singleTripConcessionFare.toFixed(2)}
-                  {passengers > 1 && ` (${passengers} pax)`}
+                  {showPaxBadge && ` (${passengers} pax)`}
                 </span>
                 <span>
                   {transit.primaryMode === 'E-Bike'
                     ? 'Zero fares'
                     : transit.isHopCapApplied
-                    ? (passengers > 1 ? `$${50 * passengers} cap (${passengers}x)` : '$50 cap active')
-                    : (passengers > 1 ? `Under $${50 * passengers} cap` : 'Under $50 cap')}
+                    ? (showPaxBadge ? `$${50 * passengers} cap (${passengers}x)` : '$50 cap active')
+                    : (showPaxBadge ? `Under $${50 * passengers} cap` : 'Under $50 cap')}
                 </span>
                 <span>${transit.weeklyTotal.toFixed(0)}/wk</span>
               </div>
@@ -441,7 +449,7 @@ export default function ComparisonCard({ arbitrage, input }: ComparisonCardProps
               </span>
               <span className="font-semibold text-slate-200 tabular-nums">
                 ${transit.singleTripConcessionFare.toFixed(2)}
-                {passengers > 1 && (
+                {showPaxBadge && (
                   <span className="text-[10px] text-slate-400 font-normal ml-1">
                     ({passengers} pax)
                   </span>
@@ -455,7 +463,7 @@ export default function ComparisonCard({ arbitrage, input }: ComparisonCardProps
               </span>
               <span className="font-semibold text-slate-200 tabular-nums">
                 ${transit.dailyFare.toFixed(2)}
-                {passengers > 1 && (
+                {showPaxBadge && (
                   <span className="text-[10px] text-slate-400 font-normal ml-1">
                     ({passengers} pax)
                   </span>
@@ -468,7 +476,7 @@ export default function ComparisonCard({ arbitrage, input }: ComparisonCardProps
                 <span className="text-slate-400">AT HOP Cap:</span>
                 <span className="font-semibold text-emerald-300 tabular-nums">
                   {transit.isHopCapApplied
-                    ? (passengers > 1 ? `$${50 * passengers}/wk (${passengers}x $50)` : '$50/wk applied')
+                    ? (showPaxBadge ? `$${50 * passengers}/wk (${passengers}x $50)` : '$50/wk applied')
                     : `$${transit.weeklyTotal.toFixed(2)}/wk`}
                 </span>
               </div>

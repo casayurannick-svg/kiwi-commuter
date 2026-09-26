@@ -143,3 +143,110 @@ describe('Private Vehicle Math', () => {
     });
   });
 });
+
+describe('BUG-43: Micromobility Decoupled from Carpool Multiplier', () => {
+  const baseInput: CommuteInput = {
+    originSuburbId: 'albany',
+    destinationSuburbId: 'cbd',
+    daysPerWeek: 5,
+    vehicleType: 'petrol91',
+    parkingDailyRate: 0,
+    parkingDaysPerWeek: 0,
+    concession: 'adult',
+    includeMaintenanceWear: false,
+    carpoolPassengers: 1,
+  };
+
+  describe('E-Bike: carpool multiplier is locked to 1', () => {
+    it('solo rider (carpoolPassengers=1) E-Bike energy cost matches expected', () => {
+      const result = calculateCommuteArbitrage({
+        ...baseInput,
+        transitMode: 'EBIKE',
+        carpoolPassengers: 1,
+      });
+      // Albany to CBD ~19.5km one-way = 39km round trip
+      // 39 km * $0.0027/km = $0.1053 -> $0.11/day
+      expect(result.transit.dailyFare).toBeCloseTo(0.11, 1);
+    });
+
+    it('carpool=2 does NOT double E-Bike energy costs', () => {
+      const soloResult = calculateCommuteArbitrage({
+        ...baseInput,
+        transitMode: 'EBIKE',
+        carpoolPassengers: 1,
+      });
+
+      const carpoolResult = calculateCommuteArbitrage({
+        ...baseInput,
+        transitMode: 'EBIKE',
+        carpoolPassengers: 2,
+      });
+
+      // Energy cost is per-rider and must not be multiplied by carpool count
+      expect(carpoolResult.transit.dailyFare).toBe(soloResult.transit.dailyFare);
+      expect(carpoolResult.transit.weeklyTotal).toBe(soloResult.transit.weeklyTotal);
+      expect(carpoolResult.transit.monthlyTotal).toBe(soloResult.transit.monthlyTotal);
+      expect(carpoolResult.transit.singleTripConcessionFare).toBe(soloResult.transit.singleTripConcessionFare);
+    });
+
+    it('carpool=3 does NOT multiply E-Bike costs', () => {
+      const soloResult = calculateCommuteArbitrage({
+        ...baseInput,
+        transitMode: 'EBIKE',
+        carpoolPassengers: 1,
+      });
+
+      const carpoolResult = calculateCommuteArbitrage({
+        ...baseInput,
+        transitMode: 'EBIKE',
+        carpoolPassengers: 3,
+      });
+
+      expect(carpoolResult.transit.dailyFare).toBe(soloResult.transit.dailyFare);
+      expect(carpoolResult.transit.monthlyTotal).toBe(soloResult.transit.monthlyTotal);
+    });
+  });
+
+  describe('Scooter-Transit: carpool multiplier is locked to 1', () => {
+    it('carpool=2 does NOT double Scooter & Transit AT HOP fares', () => {
+      const soloResult = calculateCommuteArbitrage({
+        ...baseInput,
+        transitMode: 'Scooter & Transit',
+        scooterOwnership: 'OWNED',
+        carpoolPassengers: 1,
+      });
+
+      const carpoolResult = calculateCommuteArbitrage({
+        ...baseInput,
+        transitMode: 'Scooter & Transit',
+        scooterOwnership: 'OWNED',
+        carpoolPassengers: 2,
+      });
+
+      // Transit fares for scooter+transit should not be scaled by passenger count
+      expect(carpoolResult.transit.dailyFare).toBe(soloResult.transit.dailyFare);
+      expect(carpoolResult.transit.monthlyTotal).toBe(soloResult.transit.monthlyTotal);
+    });
+  });
+
+  describe('Bus/Train: carpool multiplier correctly scales fares', () => {
+    it('carpool=2 doubles daily transit fare for standard bus commute (BUG-37 regression)', () => {
+      const soloResult = calculateCommuteArbitrage({
+        ...baseInput,
+        transitMode: 'BUS',
+        carpoolPassengers: 1,
+      });
+
+      const carpoolResult = calculateCommuteArbitrage({
+        ...baseInput,
+        transitMode: 'BUS',
+        carpoolPassengers: 2,
+      });
+
+      // Bus IS a shared/multi-rider mode, carpool scaling SHOULD apply
+      expect(carpoolResult.transit.dailyFare).toBe(
+        Math.round(soloResult.transit.dailyFare * 2 * 100) / 100
+      );
+    });
+  });
+});

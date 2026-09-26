@@ -33,6 +33,14 @@ export default function JourneyTimeline({
 }: JourneyTimelineProps) {
   const { journeyLegs, nearestStation, transit } = arbitrage;
   const passengers = Math.max(1, input.carpoolPassengers || transit.passengers || 1);
+  // BUG-43: E-Bike and E-Scooter are single-rider — suppress (X pax) labels for these modes.
+  const isEbikeOrScooterMode =
+    transit.primaryMode === 'E-Bike' ||
+    input.transitMode === 'EBIKE' ||
+    input.transitMode === 'MICROMOBILITY_TRANSIT' ||
+    input.transitMode === 'Scooter & Ride' ||
+    input.transitMode === 'Scooter & Transit';
+  const showPaxBadge = !isEbikeOrScooterMode && passengers > 1;
 
   const firstMileMode = input.firstMileMode || 'DRIVE';
   const originCoords = input.originCoordinates;
@@ -343,19 +351,19 @@ export default function JourneyTimeline({
         </div>
         <div className="bg-slate-900/50 p-2 rounded-xl border border-slate-800/80">
           <p className="text-[10px] text-slate-400 font-medium">
-            One-Way Cost{passengers > 1 ? ` (${passengers} pax)` : ''}
+            One-Way Cost{showPaxBadge ? ` (${passengers} pax)` : ''}
           </p>
           <p className="text-sm font-bold text-emerald-400">${totalOneWayCost.toFixed(2)}</p>
         </div>
         <div className="bg-slate-900/50 p-2 rounded-xl border border-slate-800/80">
           <p className="text-[10px] text-slate-400 font-medium">
-            Daily Return Fare{passengers > 1 ? ` (${passengers} pax)` : ''}
+            Daily Return Fare{showPaxBadge ? ` (${passengers} pax)` : ''}
           </p>
           <p className="text-sm font-bold text-sky-400">${transit.dailyFare.toFixed(2)}</p>
         </div>
         <div className="bg-slate-900/50 p-2 rounded-xl border border-slate-800/80">
           <p className="text-[10px] text-slate-400 font-medium">
-            Monthly Total{passengers > 1 ? ` (${passengers} pax)` : ''}
+            Monthly Total{showPaxBadge ? ` (${passengers} pax)` : ''}
           </p>
           <p className="text-sm font-bold text-emerald-400">
             ${transit.monthlyTotal.toFixed(2)}
