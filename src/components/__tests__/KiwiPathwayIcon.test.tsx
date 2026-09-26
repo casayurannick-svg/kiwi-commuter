@@ -51,5 +51,9 @@ describe('US-31: KiwiPathwayIcon Component', () => {
       content.includes('aria-label="Kiwi Commuter"'),
       'KiwiPathwayIcon must have aria-label="Kiwi Commuter"'
     );
+    assert.ok(
+      content.includes('The daily commute calculator for driving and public transport.'),
+      'DashboardClient must display the updated subtitle'
+    );
   });
 });

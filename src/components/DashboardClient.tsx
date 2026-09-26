@@ -121,7 +121,7 @@ export default function DashboardClient({ initialFuelPrices }: DashboardClientPr
                 Kiwi Commuter
               </h1>
               <p className="text-xs text-slate-400 leading-none mt-0.5">
-                Auckland driving vs AT transit cost arbitrage.
+                The daily commute calculator for driving and public transport.
               </p>
             </div>
           </div>
