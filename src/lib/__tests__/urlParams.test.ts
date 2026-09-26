@@ -176,4 +176,52 @@ describe('src/lib/urlParams.ts - URL Search Param Synchronization', () => {
     assert.strictEqual(parsed.scooterCapitalCost, 950);
     assert.strictEqual(parsed.walkDistanceKm, 2.5);
   });
+
+  it('US-36: serializes and parses exact addresses, coordinates, and route metrics', () => {
+    const inputWithAddresses: CommuteInput = {
+      ...defaultFallback,
+      originAddress: '10 McAlister Place, Mount Roskill, Auckland',
+      destinationAddress: '56 Parnell Road, Parnell, Auckland',
+      originCoordinates: [174.73602, -36.90385],
+      destinationCoordinates: [174.77881, -36.85764],
+      firstMileMode: 'WALK',
+      firstMileDistanceKm: 0.8,
+      drivingDistanceKm: 17.5,
+      drivingTimeMins: 24,
+      transitTimeMins: 36,
+    };
+
+    const params = serializeCommuteToParams(inputWithAddresses);
+    assert.strictEqual(params.get('fromAddress'), '10 McAlister Place, Mount Roskill, Auckland');
+    assert.strictEqual(params.get('toAddress'), '56 Parnell Road, Parnell, Auckland');
+    assert.strictEqual(params.get('fromCoords'), '174.73602,-36.90385');
+    assert.strictEqual(params.get('toCoords'), '174.77881,-36.85764');
+    assert.strictEqual(params.get('firstMileMode'), 'WALK');
+    assert.strictEqual(params.get('firstMileDist'), '0.8');
+    assert.strictEqual(params.get('driveDist'), '17.5');
+    assert.strictEqual(params.get('driveTime'), '24');
+    assert.strictEqual(params.get('transitTime'), '36');
+
+    const parsed = parseCommuteFromParams(params, defaultFallback);
+    assert.strictEqual(parsed.originAddress, '10 McAlister Place, Mount Roskill, Auckland');
+    assert.strictEqual(parsed.destinationAddress, '56 Parnell Road, Parnell, Auckland');
+    assert.deepStrictEqual(parsed.originCoordinates, [174.73602, -36.90385]);
+    assert.deepStrictEqual(parsed.destinationCoordinates, [174.77881, -36.85764]);
+    assert.strictEqual(parsed.firstMileMode, 'WALK');
+    assert.strictEqual(parsed.firstMileDistanceKm, 0.8);
+    assert.strictEqual(parsed.drivingDistanceKm, 17.5);
+    assert.strictEqual(parsed.drivingTimeMins, 24);
+    assert.strictEqual(parsed.transitTimeMins, 36);
+  });
+
+  it('US-36: resolves closest suburb centroid when only coordinates are provided without from/to suburb IDs', () => {
+    // Devonport centroid: [174.7972, -36.8306]
+    const search = new URLSearchParams('fromCoords=174.7972,-36.8306&toCoords=174.7633,-36.8485');
+    const parsed = parseCommuteFromParams(search, defaultFallback);
+
+    assert.strictEqual(parsed.originSuburbId, 'devonport');
+    assert.strictEqual(parsed.destinationSuburbId, 'cbd');
+    assert.deepStrictEqual(parsed.originCoordinates, [174.7972, -36.8306]);
+    assert.deepStrictEqual(parsed.destinationCoordinates, [174.7633, -36.8485]);
+  });
 });

@@ -36,6 +36,7 @@
 | **US-21** | End-to-End Multimodal Journey Routing (Google Routes API) | **DONE** | [`src/app/api/routes/route.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/app/api/routes/route.ts), [`src/components/DashboardClient.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/DashboardClient.tsx), [`src/components/JourneyTimeline.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/JourneyTimeline.tsx), [`src/app/api/routes/__tests__/route.test.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/app/api/routes/__tests__/route.test.ts) | Google Routes API (v2) TRANSIT mode endpoint summing real-world leg/step durations; injected into `commuteInput.transitTimeMins` via `DashboardClient` `useEffect` when geocoded coordinates are set; graceful fallback to static estimates when API key absent; JourneyTimeline shows a pulsing "real-world timetable" indicator when live routing is active. |
 | **US-34** | Hero Summary Split UI Pattern & Dynamic Trade-off Badge | **DONE** | [`src/components/ComparisonCard.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/ComparisonCard.tsx), [`src/components/__tests__/ComparisonCard.test.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/__tests__/ComparisonCard.test.tsx) | Refactored hero summary into two-column side-by-side grid (Drive vs Transit) with desktop VS badge, integrated dynamic trade-off badge evaluating time vs cost deltas. |
 | **US-35** | Harbour-Separated Corridor Driving Road Distance & Routing | **DONE** | [`src/app/api/routes/route.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/app/api/routes/route.ts), [`src/config/suburbs.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/config/suburbs.ts), [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts), [`src/components/DashboardClient.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/DashboardClient.tsx), [`src/app/api/routes/__tests__/route.test.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/app/api/routes/__tests__/route.test.ts) | Replaced straight-line/Haversine water-crossing distances for harbour-separated corridors (e.g. Devonport to Parnell) with Google Routes API driving road distance (~17-18 km one-way, ~35 km/day roundtrip) via Harbour Bridge, recalculating fuel, RUC, and duration deltas. |
+| **US-36** | Share Link State Serialization & Share Button CTA | **DONE** | [`src/components/ShareButton.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/ShareButton.tsx), [`src/lib/urlParams.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/urlParams.ts), [`src/components/DashboardClient.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/DashboardClient.tsx), [`src/components/CommuteForm.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/CommuteForm.tsx) | Complete URL parameter serialization of exact origin/destination addresses, geocoded coordinates, powertrain, and route metrics; dedicated accessible ShareButton with polite toast confirmation; automatic hydration on fresh session loads. |
 
 ---
 
@@ -538,6 +539,32 @@
     2. Monthly fuel costs reflect the real road distance (> $100/mo).
     3. `drivingDistanceKm` override takes precedence when supplied by `/api/routes`.
     4. `/api/routes` and `DashboardClient` support `travelMode: 'DRIVE'` and `drivingDistanceKm` injection.
+
+---
+
+### US-36: Share Link State Serialization & Share Button CTA
+**As a** commuter sharing commute analyses with colleagues or friends,  
+**I want** the Share button to capture and serialize the complete commute search state—including exact address queries, geocoded coordinates, powertrain, fuel rates, parking, and route metrics—into a portable URL link,  
+**So that** opening the link in a fresh browser session or sharing it across devices immediately parses all parameters and pre-fills the exact address inputs and commute calculations identically.
+
+* **Acceptance Criteria:**
+  - **Given** an active commute configuration with exact geocoded origin/destination addresses (e.g. `10 McAlister Place, Mount Roskill` to `56 Parnell Road, Parnell`),
+  - **When** the commuter clicks the Share button in the header,
+  - **Then** the application serializes all search parameters using `serializeCommuteToParams` in `src/lib/urlParams.ts`:
+    - `fromAddress`: exact text of origin address
+    - `toAddress`: exact text of destination address
+    - `fromCoords`: comma-delimited `[lng, lat]` coordinates formatted to 6 decimal places
+    - `toCoords`: comma-delimited `[lng, lat]` coordinates formatted to 6 decimal places
+    - `from` and `to`: closest suburb identifiers
+    - `power`, `econ`, `park`, `customPark`, `conc`, `carpool`, `wear`, `timeRate`, `transitMode`, `firstMileMode`, `firstMileDist`, `driveDist`, `driveTime`, `transitTime`.
+  - **And** the Share button updates the browser URL bar using `window.history.replaceState` and writes the fully qualified URL to the clipboard via `navigator.clipboard.writeText()` (with fallback to `document.execCommand('copy')`).
+  - **And** displays an accessible visual confirmation toast (`role="status"`, `aria-live="polite"`) that auto-dismisses after 2.5 seconds.
+  - **And** when opening the serialized share link in a fresh browser session (or after full page refresh), `DashboardClient` and `parseCommuteFromParams` parse all query parameters and pre-populate the `CommuteForm` exact address inputs (`originQuery` and `destQuery`) without losing geocoded coordinates.
+  - Unit tests in `src/lib/__tests__/urlParams.test.ts` and `src/components/__tests__/ShareButton.test.tsx` verify:
+    1. Complete parameter serialization including addresses, coordinates, and route metrics.
+    2. Accurate parameter extraction and fallback handling on load.
+    3. Coordinate-only spatial fallback mapping to closest suburb centroid.
+    4. Accessible rendering of `<ShareButton>` with `aria-label` and `data-testid="share-button"`.
 
 ---
 

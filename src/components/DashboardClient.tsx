@@ -12,13 +12,10 @@ import { calculateCommuteArbitrage } from '@/lib/calculator';
 import { FuelBenchmarkDto } from '@/lib/supabase';
 import { parseCommuteFromParams, serializeCommuteToParams } from '@/lib/urlParams';
 import { CommuteInput } from '@/types';
+import ShareButton from '@/components/ShareButton';
 import KiwiPathwayIcon from '@/components/icons/KiwiPathwayIcon';
-import {
-  Check,
-  Share2,
-} from 'lucide-react';
 import { usePathname, useSearchParams } from 'next/navigation';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 
 interface DashboardClientProps {
   initialFuelPrices?: FuelBenchmarkDto;
@@ -27,10 +24,6 @@ interface DashboardClientProps {
 export default function DashboardClient({ initialFuelPrices }: DashboardClientProps) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
-
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [isCopied, setIsCopied] = useState(false);
-  const toastTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const [commuteInput, setCommuteInput] = useState<CommuteInput>(() => {
     const base: CommuteInput = {
@@ -49,8 +42,29 @@ export default function DashboardClient({ initialFuelPrices }: DashboardClientPr
     if (searchParams && searchParams.toString()) {
       return parseCommuteFromParams(searchParams, base);
     }
+    if (typeof window !== 'undefined' && window.location.search) {
+      const windowParams = new URLSearchParams(window.location.search);
+      return parseCommuteFromParams(windowParams, base);
+    }
     return base;
   });
+
+  // US-36: Keep commuteInput in sync if searchParams updates from external navigation / popstate
+  useEffect(() => {
+    const rawSearch = searchParams?.toString() || (typeof window !== 'undefined' ? window.location.search.replace(/^\?/, '') : '');
+    if (rawSearch) {
+      const currentUrlParams = new URLSearchParams(rawSearch);
+      setCommuteInput((prev) => {
+        const parsed = parseCommuteFromParams(currentUrlParams, prev);
+        const prevParams = serializeCommuteToParams(prev).toString();
+        const nextParams = serializeCommuteToParams(parsed).toString();
+        if (prevParams !== nextParams) {
+          return parsed;
+        }
+        return prev;
+      });
+    }
+  }, [searchParams]);
 
   // Keep browser URL search params synchronized on input changes
   useEffect(() => {
@@ -154,45 +168,6 @@ export default function DashboardClient({ initialFuelPrices }: DashboardClientPr
     destination?.coordinates,
   ]);
 
-  const handleShareLink = async () => {
-    const url = typeof window !== 'undefined' ? window.location.href : '';
-    let success = false;
-    try {
-      if (navigator?.clipboard?.writeText) {
-        await navigator.clipboard.writeText(url);
-        success = true;
-      }
-    } catch {
-      // Fallback below
-    }
-
-    if (!success && typeof document !== 'undefined') {
-      try {
-        const input = document.createElement('input');
-        input.value = url;
-        document.body.appendChild(input);
-        input.select();
-        document.execCommand('copy');
-        document.body.removeChild(input);
-        success = true;
-      } catch {
-        success = false;
-      }
-    }
-
-    if (toastTimeoutRef.current) {
-      clearTimeout(toastTimeoutRef.current);
-    }
-
-    setIsCopied(true);
-    setToastMessage(success ? 'Comparison link copied to clipboard!' : 'Failed to copy link');
-
-    toastTimeoutRef.current = setTimeout(() => {
-      setIsCopied(false);
-      setToastMessage(null);
-    }, 2500);
-  };
-
   return (
     <div className="min-h-screen bg-[#090d16] text-slate-100 flex flex-col selection:bg-emerald-500 selection:text-white safe-pb">
       {/* Top Navbar / Header (Minimalist & Functional) */}
@@ -213,24 +188,7 @@ export default function DashboardClient({ initialFuelPrices }: DashboardClientPr
           {/* Minimal Badges, Donation Button & Share Link */}
           <div className="flex items-center gap-1.5 shrink-0">
             <DonationButton variant="header" />
-            <button
-              type="button"
-              onClick={handleShareLink}
-              className="min-h-[32px] px-2.5 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5 text-xs font-semibold transition active:scale-95"
-              title="Copy shareable link with current commute parameters"
-            >
-              {isCopied ? (
-                <>
-                  <Check className="w-3.5 h-3.5 text-emerald-400" />
-                  <span className="hidden sm:inline">Copied!</span>
-                </>
-              ) : (
-                <>
-                  <Share2 className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Share</span>
-                </>
-              )}
-            </button>
+            <ShareButton commuteInput={commuteInput} />
           </div>
         </div>
       </header>
@@ -316,18 +274,6 @@ export default function DashboardClient({ initialFuelPrices }: DashboardClientPr
           </div>
         </div>
       </footer>
-
-      {/* Toast Notification */}
-      {toastMessage && (
-        <div
-          role="status"
-          aria-live="polite"
-          className="fixed bottom-5 right-5 z-50 flex items-center gap-2 bg-slate-900/95 border border-emerald-500/40 text-slate-100 px-4 py-2.5 rounded-xl shadow-2xl backdrop-blur-md transition-all duration-200"
-        >
-          <Check className="w-4 h-4 text-emerald-400 shrink-0" />
-          <span className="text-xs font-medium">{toastMessage}</span>
-        </div>
-      )}
     </div>
   );
 }

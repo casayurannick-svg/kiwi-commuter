@@ -1,4 +1,5 @@
 import { EV_CHARGING_PRESETS, NZ_EV_CHARGING_RATES } from '@/config/fares.config';
+import { SUBURB_CENTROIDS } from '@/config/suburbs';
 import {
   CommuteInput,
   ConcessionType,
@@ -107,6 +108,39 @@ export function serializeCommuteToParams(input: CommuteInput): URLSearchParams {
     params.set('walkKm', input.walkDistanceKm.toString());
   }
 
+  // US-36: Exact Address & Geocoded Coordinates Serialization
+  if (input.originAddress && input.originAddress.trim()) {
+    params.set('fromAddress', input.originAddress.trim());
+  }
+  if (input.destinationAddress && input.destinationAddress.trim()) {
+    params.set('toAddress', input.destinationAddress.trim());
+  }
+  if (input.originCoordinates && input.originCoordinates.length === 2) {
+    const lng = Number(input.originCoordinates[0].toFixed(6));
+    const lat = Number(input.originCoordinates[1].toFixed(6));
+    params.set('fromCoords', `${lng},${lat}`);
+  }
+  if (input.destinationCoordinates && input.destinationCoordinates.length === 2) {
+    const lng = Number(input.destinationCoordinates[0].toFixed(6));
+    const lat = Number(input.destinationCoordinates[1].toFixed(6));
+    params.set('toCoords', `${lng},${lat}`);
+  }
+  if (input.firstMileMode) {
+    params.set('firstMileMode', input.firstMileMode);
+  }
+  if (input.firstMileDistanceKm !== undefined && input.firstMileDistanceKm > 0) {
+    params.set('firstMileDist', input.firstMileDistanceKm.toString());
+  }
+  if (input.drivingDistanceKm !== undefined && input.drivingDistanceKm > 0) {
+    params.set('driveDist', input.drivingDistanceKm.toString());
+  }
+  if (input.drivingTimeMins !== undefined && input.drivingTimeMins > 0) {
+    params.set('driveTime', input.drivingTimeMins.toString());
+  }
+  if (input.transitTimeMins !== undefined && input.transitTimeMins > 0) {
+    params.set('transitTime', input.transitTimeMins.toString());
+  }
+
   return params;
 }
 
@@ -151,14 +185,107 @@ export function parseCommuteFromParams(
     : undefined;
   const rawTransitMode = params.get('transitMode') as TransitMode | undefined;
   const rawWaiheke = params.get('waiheke');
-  const fromSuburb = params.get('from') || fallback.originSuburbId;
-  const toSuburb = params.get('to') || fallback.destinationSuburbId;
+  const fromSuburbParam = params.get('from');
+  const toSuburbParam = params.get('to');
+
+  // US-36: Exact Address & Coordinate Parsing
+  const originAddress =
+    params.get('fromAddress') ||
+    params.get('originAddress') ||
+    params.get('fromAddr') ||
+    fallback.originAddress;
+
+  const destinationAddress =
+    params.get('toAddress') ||
+    params.get('destinationAddress') ||
+    params.get('toAddr') ||
+    fallback.destinationAddress;
+
+  const rawFromCoords = params.get('fromCoords') || params.get('originCoords');
+  let originCoordinates: [number, number] | undefined = fallback.originCoordinates;
+  if (rawFromCoords) {
+    const parts = rawFromCoords.split(',').map((p) => parseFloat(p.trim()));
+    if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+      originCoordinates = [parts[0], parts[1]];
+    }
+  } else if (fromSuburbParam) {
+    const sub = SUBURB_CENTROIDS.find((s) => s.id === fromSuburbParam);
+    if (sub) {
+      originCoordinates = sub.coordinates;
+    }
+  }
+
+  const rawToCoords = params.get('toCoords') || params.get('destCoords') || params.get('destinationCoords');
+  let destinationCoordinates: [number, number] | undefined = fallback.destinationCoordinates;
+  if (rawToCoords) {
+    const parts = rawToCoords.split(',').map((p) => parseFloat(p.trim()));
+    if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+      destinationCoordinates = [parts[0], parts[1]];
+    }
+  } else if (toSuburbParam) {
+    const sub = SUBURB_CENTROIDS.find((s) => s.id === toSuburbParam);
+    if (sub) {
+      destinationCoordinates = sub.coordinates;
+    }
+  }
+
+  // Resolve suburb ID, falling back to closest centroid if coordinates are given without suburb ID
+  let fromSuburb = fromSuburbParam || fallback.originSuburbId;
+  if (!fromSuburbParam && originCoordinates) {
+    let minDistance = Infinity;
+    for (const sub of SUBURB_CENTROIDS) {
+      const d = Math.hypot(sub.coordinates[0] - originCoordinates[0], sub.coordinates[1] - originCoordinates[1]);
+      if (d < minDistance) {
+        minDistance = d;
+        fromSuburb = sub.id;
+      }
+    }
+  }
+
+  let toSuburb = toSuburbParam || fallback.destinationSuburbId;
+  if (!toSuburbParam && destinationCoordinates) {
+    let minDistance = Infinity;
+    for (const sub of SUBURB_CENTROIDS) {
+      const d = Math.hypot(sub.coordinates[0] - destinationCoordinates[0], sub.coordinates[1] - destinationCoordinates[1]);
+      if (d < minDistance) {
+        minDistance = d;
+        toSuburb = sub.id;
+      }
+    }
+  }
+
   const isWaiheke =
     rawWaiheke === '1' ||
     rawWaiheke === 'true' ||
     fromSuburb === 'waiheke' ||
     toSuburb === 'waiheke' ||
     Boolean(fallback.isWaihekeRoute);
+
+  const rawFirstMileMode = params.get('firstMileMode')?.toUpperCase();
+  const firstMileMode: 'DRIVE' | 'WALK' | 'SCOOTER' | undefined =
+    rawFirstMileMode === 'DRIVE' || rawFirstMileMode === 'WALK' || rawFirstMileMode === 'SCOOTER'
+      ? rawFirstMileMode
+      : fallback.firstMileMode;
+
+  const firstMileDistanceKm =
+    params.has('firstMileDist') && !isNaN(Number(params.get('firstMileDist')))
+      ? Number(params.get('firstMileDist'))
+      : fallback.firstMileDistanceKm;
+
+  const drivingDistanceKm =
+    params.has('driveDist') && !isNaN(Number(params.get('driveDist')))
+      ? Number(params.get('driveDist'))
+      : fallback.drivingDistanceKm;
+
+  const drivingTimeMins =
+    params.has('driveTime') && !isNaN(Number(params.get('driveTime')))
+      ? Number(params.get('driveTime'))
+      : fallback.drivingTimeMins;
+
+  const transitTimeMins =
+    params.has('transitTime') && !isNaN(Number(params.get('transitTime')))
+      ? Number(params.get('transitTime'))
+      : fallback.transitTimeMins;
 
   const rawChargeSource = params.get('chargeSource') || params.get('evChargeMode');
   let evChargingSource: EVChargingSource | undefined = fallback.evChargingSource;
@@ -194,8 +321,12 @@ export function parseCommuteFromParams(
   const daysPerWeek = params.has('days') ? Number(params.get('days')) : fallback.daysPerWeek;
 
   return {
-    originSuburbId: params.get('from') || fallback.originSuburbId,
-    destinationSuburbId: params.get('to') || fallback.destinationSuburbId,
+    originSuburbId: fromSuburb,
+    destinationSuburbId: toSuburb,
+    originAddress,
+    destinationAddress,
+    originCoordinates,
+    destinationCoordinates,
     daysPerWeek: !isNaN(daysPerWeek) && daysPerWeek >= 1 && daysPerWeek <= 7 ? daysPerWeek : fallback.daysPerWeek,
     vehicleType: resolvedVehicleType,
     powertrain: resolvedPowertrain,
@@ -226,6 +357,11 @@ export function parseCommuteFromParams(
     hourlyTimeValue: timeVal !== undefined && !isNaN(timeVal) && timeVal >= 0 ? timeVal : fallback.hourlyTimeValue,
     transitMode: rawTransitMode || (isWaiheke ? 'FERRY' : fallback.transitMode),
     isWaihekeRoute: isWaiheke,
+    firstMileMode,
+    firstMileDistanceKm,
+    drivingDistanceKm,
+    drivingTimeMins,
+    transitTimeMins,
     scooterOwnership:
       params.get('scooterType') === 'OWNED' || params.get('scooterType') === 'RENTAL'
         ? (params.get('scooterType') as 'OWNED' | 'RENTAL')

@@ -218,7 +218,7 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
     // If 'custom', retain current or default to 30
   };
 
-  // US-28: Address Geocoding autocomplete states
+  // US-28 & US-36: Address Geocoding autocomplete states
   const [originQuery, setOriginQuery] = useState(input.originAddress || '');
   const [originSuggestions, setOriginSuggestions] = useState<GeocodingResult[]>([]);
   const [isOriginLoading, setIsOriginLoading] = useState(false);
@@ -229,8 +229,22 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
   const [isDestLoading, setIsDestLoading] = useState(false);
   const [showDestDropdown, setShowDestDropdown] = useState(false);
 
+  // US-36: Synchronize address inputs when hydrated from URL or updated from parent
+  useEffect(() => {
+    if (input.originAddress !== undefined) {
+      setOriginQuery((prev) => (prev !== input.originAddress ? input.originAddress! : prev));
+    }
+  }, [input.originAddress]);
+
+  useEffect(() => {
+    if (input.destinationAddress !== undefined) {
+      setDestQuery((prev) => (prev !== input.destinationAddress ? input.destinationAddress! : prev));
+    }
+  }, [input.destinationAddress]);
+
   const handleOriginSearch = async (val: string) => {
     setOriginQuery(val);
+    handleFieldChange('originAddress', val || undefined);
     if (val.trim().length >= 2) {
       setIsOriginLoading(true);
       setShowOriginDropdown(true);
@@ -276,6 +290,7 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
 
   const handleDestSearch = async (val: string) => {
     setDestQuery(val);
+    handleFieldChange('destinationAddress', val || undefined);
     if (val.trim().length >= 2) {
       setIsDestLoading(true);
       setShowDestDropdown(true);
@@ -428,6 +443,12 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
                   onClick={() => {
                     setOriginQuery('');
                     setShowOriginDropdown(false);
+                    const sub = SUBURB_CENTROIDS.find((s) => s.id === input.originSuburbId);
+                    notifyChange({
+                      ...input,
+                      originAddress: undefined,
+                      originCoordinates: sub ? sub.coordinates : undefined,
+                    });
                   }}
                   className="absolute right-2.5 p-1 text-slate-400 hover:text-white"
                 >
@@ -509,6 +530,12 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
                   onClick={() => {
                     setDestQuery('');
                     setShowDestDropdown(false);
+                    const sub = SUBURB_CENTROIDS.find((s) => s.id === input.destinationSuburbId);
+                    notifyChange({
+                      ...input,
+                      destinationAddress: undefined,
+                      destinationCoordinates: sub ? sub.coordinates : undefined,
+                    });
                   }}
                   className="absolute right-2.5 p-1 text-slate-400 hover:text-white"
                 >
