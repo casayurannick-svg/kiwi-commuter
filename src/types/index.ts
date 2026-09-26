@@ -80,6 +80,8 @@ export interface CommuteInput {
   evChargingSource?: EVChargingSource; // Preset: HOME_OFFPEAK, HOME_FLAT, PUBLIC_DC, CUSTOM
   evChargingMode?: EvChargingMode; // Preset: home_offpeak, home_flat, public_dc, custom
   hourlyTimeValue?: number; // Value of commuter time in NZD/hour (default 0)
+  drivingDistanceKm?: number; // US-35: Optional one-way driving road distance in km
+  distanceKm?: number; // Optional one-way distance in km override
   drivingTimeMins?: number; // Optional one-way driving time in minutes override
   transitTimeMins?: number; // Optional one-way transit time in minutes override
   transitMode?: TransitMode; // Selected transit mode e.g. 'FERRY' | 'BUS' | 'TRAIN' | 'EBIKE' | 'MICROMOBILITY_TRANSIT'

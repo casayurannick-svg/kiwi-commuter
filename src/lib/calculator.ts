@@ -48,10 +48,15 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
   const origin = getSuburbById(input.originSuburbId);
   const destination = getSuburbById(input.destinationSuburbId);
 
-  // Route distance and zones
+  // Route distance and zones (US-35: support Google Routes API driving road distance)
   const route = estimateRouteMetrics(origin, destination);
-  const distanceOneWayKm = route.distanceKm;
-  const distanceRoundTripKm = distanceOneWayKm * 2;
+  const distanceOneWayKm =
+    typeof input.drivingDistanceKm === 'number' && input.drivingDistanceKm > 0
+      ? input.drivingDistanceKm
+      : typeof input.distanceKm === 'number' && input.distanceKm > 0
+      ? input.distanceKm
+      : route.distanceKm;
+  const distanceRoundTripKm = Math.round(distanceOneWayKm * 2 * 10) / 10;
 
   // Resolve vehicle type and powertrain
   const effectiveVehicleType: VehicleType =

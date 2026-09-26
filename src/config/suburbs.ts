@@ -952,12 +952,25 @@ export function estimateRouteMetrics(
   // Suburb to Suburb
   const straightLine = haversineDistanceKm(origin.coordinates, destination.coordinates);
   const windingMultiplier = 1.34;
-  const distanceKm = Math.round(straightLine * windingMultiplier * 10) / 10;
+  let distanceKm = Math.round(straightLine * windingMultiplier * 10) / 10;
   const zonesTraveled = Math.min(5, Math.max(1, Math.abs(origin.zone - destination.zone) + 1));
-  const drivingTimePeakMins = Math.round(distanceKm * 2.1 + 8);
+  let drivingTimePeakMins = Math.round(distanceKm * 2.1 + 8);
   const transitTimeMins = Math.round(
     Math.min(origin.transitTimeToCbdMins + destination.transitTimeToCbdMins * 0.7, distanceKm * 2.3 + 15)
   );
+
+  // US-35: Harbour-crossing road routing adjustment.
+  // Vehicles traveling between the North Shore and Central/East/South Auckland cannot drive
+  // straight across the Waitematā Harbour; road traffic must route via the Auckland Harbour Bridge.
+  const isHarbourCrossing =
+    (origin.region === 'North Shore' && (destination.region === 'Auckland Central' || destination.region === 'East Auckland' || destination.region === 'South Auckland')) ||
+    (destination.region === 'North Shore' && (origin.region === 'Auckland Central' || origin.region === 'East Auckland' || origin.region === 'South Auckland'));
+
+  if (isHarbourCrossing) {
+    const bridgeRoadDistance = Math.round((origin.drivingDistanceToCbdKm + destination.drivingDistanceToCbdKm) * 10) / 10;
+    distanceKm = Math.max(distanceKm, bridgeRoadDistance);
+    drivingTimePeakMins = Math.max(drivingTimePeakMins, Math.round(distanceKm * 2.1 + 8));
+  }
 
   return {
     distanceKm,

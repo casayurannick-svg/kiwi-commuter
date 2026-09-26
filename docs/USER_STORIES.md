@@ -35,6 +35,7 @@
 | **US-31** | Render and Integrate 'KiwiPathway' Logo | **DONE** | [`src/components/icons/KiwiPathwayIcon.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/icons/KiwiPathwayIcon.tsx), [`src/components/DashboardClient.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/DashboardClient.tsx), [`src/components/__tests__/KiwiPathwayIcon.test.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/__tests__/KiwiPathwayIcon.test.tsx) | SVG icon component representing the Kiwi Pathway transit lines, nodes, and momentum arrowheads with JSX attributes; rendered in the header with `h-8 w-8 text-emerald-500` and `aria-label="Kiwi Commuter"`. |
 | **US-21** | End-to-End Multimodal Journey Routing (Google Routes API) | **DONE** | [`src/app/api/routes/route.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/app/api/routes/route.ts), [`src/components/DashboardClient.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/DashboardClient.tsx), [`src/components/JourneyTimeline.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/JourneyTimeline.tsx), [`src/app/api/routes/__tests__/route.test.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/app/api/routes/__tests__/route.test.ts) | Google Routes API (v2) TRANSIT mode endpoint summing real-world leg/step durations; injected into `commuteInput.transitTimeMins` via `DashboardClient` `useEffect` when geocoded coordinates are set; graceful fallback to static estimates when API key absent; JourneyTimeline shows a pulsing "real-world timetable" indicator when live routing is active. |
 | **US-34** | Hero Summary Split UI Pattern & Dynamic Trade-off Badge | **DONE** | [`src/components/ComparisonCard.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/ComparisonCard.tsx), [`src/components/__tests__/ComparisonCard.test.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/__tests__/ComparisonCard.test.tsx) | Refactored hero summary into two-column side-by-side grid (Drive vs Transit) with desktop VS badge, integrated dynamic trade-off badge evaluating time vs cost deltas. |
+| **US-35** | Harbour-Separated Corridor Driving Road Distance & Routing | **DONE** | [`src/app/api/routes/route.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/app/api/routes/route.ts), [`src/config/suburbs.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/config/suburbs.ts), [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts), [`src/components/DashboardClient.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/DashboardClient.tsx), [`src/app/api/routes/__tests__/route.test.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/app/api/routes/__tests__/route.test.ts) | Replaced straight-line/Haversine water-crossing distances for harbour-separated corridors (e.g. Devonport to Parnell) with Google Routes API driving road distance (~17-18 km one-way, ~35 km/day roundtrip) via Harbour Bridge, recalculating fuel, RUC, and duration deltas. |
 
 ---
 
@@ -505,6 +506,27 @@
     - **Driving saves money & transit is faster**: `⚖️ Trade-off: Save $X/mo driving (+Ym drive time)` (sky theme).
     - **Identical costs**: `⚖️ Similar Cost · [Mode] is Ym faster` or `⚖️ Identical Cost & Travel Time` (slate theme).
   - Unit tests in `src/components/__tests__/ComparisonCard.test.tsx` verify the side-by-side layout, data presentation, and dynamic badge formatting across all conditions.
+
+---
+
+### US-35: Harbour-Separated Corridor Driving Road Distance & Routing
+**As an** Auckland cross-harbour commuter (e.g. traveling between Devonport / North Shore and Parnell / Central / South Auckland),  
+**I want** driving distances and commute durations to reflect actual road routing via the Auckland Harbour Bridge instead of water-crossing straight-line Haversine math,  
+**So that** my vehicle costs (fuel, RUC, wear & tear) and travel time deltas accurately reflect reality (~35 km/day instead of 8 km/day).
+
+* **Acceptance Criteria:**
+  - **Given** origin and destination on opposite sides of the Waitematā Harbour (e.g., Devonport to Parnell or 56 Parnell Road),
+  - **When** the driving metrics are calculated,
+  - **Then** the engine replaces straight-line/Haversine water-crossing approximations (which incorrectly produced 4 km one-way / 8 km/day) with real road distance via the Auckland Harbour Bridge (~17–18 km one-way / ~34–36 km round-trip daily).
+  - **And** `/api/routes` calls the Google Routes API (v2) with `travelMode: 'DRIVE'` (alongside `TRANSIT`), extracting `routes.distanceMeters` and `routes.duration`.
+  - **And** `drivingDistanceKm` is injected into `CommuteInput` and consumed by `calculateCommuteArbitrage` in `src/lib/calculator.ts`.
+  - **And** fuel expenses, RUC costs, and maintenance costs recalculate based on the real ~35 km/day road distance (~$140–$160/mo in fuel for petrol cars, rather than $34/mo).
+  - **And** the Hero Summary Split UI and Private Vehicle card display the accurate roundtrip distance (e.g. `35 km/day` and `35 km daily`).
+  - Unit tests in `src/app/api/routes/__tests__/route.test.ts` verify:
+    1. Devonport to 56 Parnell Road returns ~17–18 km one-way road distance and ~34–36 km/day roundtrip distance.
+    2. Monthly fuel costs reflect the real road distance (> $100/mo).
+    3. `drivingDistanceKm` override takes precedence when supplied by `/api/routes`.
+    4. `/api/routes` and `DashboardClient` support `travelMode: 'DRIVE'` and `drivingDistanceKm` injection.
 
 ---
 

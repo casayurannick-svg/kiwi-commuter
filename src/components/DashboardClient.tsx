@@ -70,24 +70,19 @@ export default function DashboardClient({ initialFuelPrices }: DashboardClientPr
 
   const arbitrage = useMemo(() => calculateCommuteArbitrage(commuteInput), [commuteInput]);
 
-  // US-21: Fetch real-world transit duration from Google Routes API when geocoded coordinates are available.
-  // The result is injected into commuteInput.transitTimeMins so the calculator uses live timetable data.
+  // US-21 & US-35: Fetch real-world transit & driving metrics from Google Routes API.
+  // Injects drivingDistanceKm and drivingTimeMins into commuteInput so calculations reflect actual road routing (e.g. ~17-18 km for Devonport to Parnell).
   useEffect(() => {
-    const originCoords = commuteInput.originCoordinates;
-    const destinationCoords = commuteInput.destinationCoordinates;
+    const originCoords = commuteInput.originCoordinates || origin?.coordinates;
+    const destinationCoords = commuteInput.destinationCoordinates || destination?.coordinates;
 
-    // Only query when we have full geocoded coordinates (from US-28 Mapbox autocomplete)
-    if (
-      !originCoords ||
-      !destinationCoords ||
-      commuteInput.transitMode === 'EBIKE'
-    ) {
+    if (!originCoords || !destinationCoords) {
       return;
     }
 
     let cancelled = false;
 
-    const fetchTransitDuration = async () => {
+    const fetchRouteMetrics = async () => {
       try {
         const params = new URLSearchParams({
           originLng: String(originCoords[0]),
@@ -98,21 +93,53 @@ export default function DashboardClient({ initialFuelPrices }: DashboardClientPr
         const res = await fetch(`/api/routes?${params.toString()}`);
         if (!res.ok || cancelled) return;
         const data = await res.json();
-        if (!cancelled && typeof data.transitDurationMins === 'number' && data.transitDurationMins > 0) {
-          setCommuteInput((prev) => ({
+        if (cancelled) return;
+
+        setCommuteInput((prev) => {
+          const newDrivingDist =
+            typeof data.drivingDistanceKm === 'number' && data.drivingDistanceKm > 0
+              ? data.drivingDistanceKm
+              : prev.drivingDistanceKm;
+          const newDrivingTime =
+            typeof data.drivingDurationMins === 'number' && data.drivingDurationMins > 0
+              ? data.drivingDurationMins
+              : prev.drivingTimeMins;
+          const newTransitTime =
+            prev.transitMode !== 'EBIKE' && typeof data.totalDurationMins === 'number' && data.totalDurationMins > 0
+              ? data.totalDurationMins
+              : prev.transitMode !== 'EBIKE' && typeof data.transitDurationMins === 'number' && data.transitDurationMins > 0
+              ? data.transitDurationMins
+              : prev.transitTimeMins;
+          const newTransitRide =
+            prev.transitMode !== 'EBIKE' && typeof data.transitDurationMins === 'number' && data.transitDurationMins > 0
+              ? data.transitDurationMins
+              : prev.transitRideDurationMins;
+
+          if (
+            prev.drivingDistanceKm === newDrivingDist &&
+            prev.drivingTimeMins === newDrivingTime &&
+            prev.transitTimeMins === newTransitTime &&
+            prev.transitRideDurationMins === newTransitRide
+          ) {
+            return prev;
+          }
+
+          return {
             ...prev,
-            transitTimeMins: data.totalDurationMins || data.transitDurationMins,
-            transitRideDurationMins: data.transitDurationMins,
-            transitSteps: data.transitSteps,
-            transitLines: data.transitLines,
-          }));
-        }
+            drivingDistanceKm: newDrivingDist,
+            drivingTimeMins: newDrivingTime,
+            transitTimeMins: newTransitTime,
+            transitRideDurationMins: newTransitRide,
+            transitSteps: data.transitSteps ?? prev.transitSteps,
+            transitLines: data.transitLines ?? prev.transitLines,
+          };
+        });
       } catch (err) {
-        console.warn('[US-21] /api/routes fetch failed, using static estimate:', err);
+        console.warn('[US-35] /api/routes fetch failed, using static estimate:', err);
       }
     };
 
-    fetchTransitDuration();
+    fetchRouteMetrics();
 
     return () => {
       cancelled = true;
@@ -120,7 +147,11 @@ export default function DashboardClient({ initialFuelPrices }: DashboardClientPr
   }, [
     commuteInput.originCoordinates,
     commuteInput.destinationCoordinates,
+    commuteInput.originSuburbId,
+    commuteInput.destinationSuburbId,
     commuteInput.transitMode,
+    origin?.coordinates,
+    destination?.coordinates,
   ]);
 
   const handleShareLink = async () => {

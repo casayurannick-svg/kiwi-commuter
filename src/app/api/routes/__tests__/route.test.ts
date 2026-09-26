@@ -161,4 +161,86 @@ describe('US-21: /api/routes – Google Routes Transit Duration', () => {
     const content = readFileSync(envExamplePath, 'utf-8');
     assert.ok(content.includes('GOOGLE_ROUTES_API_KEY'), 'Must document GOOGLE_ROUTES_API_KEY in .env.example');
   });
+
+  describe('US-35: Harbour-Separated Corridor Driving Road Distance (Devonport to Parnell)', () => {
+    it('verifies Devonport to 56 Parnell Road returns ~17-18 km one-way road distance via Harbour Bridge', () => {
+      // Devonport coordinates: [174.7960, -36.8315]
+      // 56 Parnell Road coordinates: [174.778397, -36.851663]
+      const input: CommuteInput = {
+        originSuburbId: 'devonport',
+        destinationSuburbId: 'parnell',
+        originAddress: 'Devonport, Auckland',
+        destinationAddress: '56 Parnell Road, Parnell, Auckland',
+        originCoordinates: [174.7960, -36.8315],
+        destinationCoordinates: [174.778397, -36.851663],
+        daysPerWeek: 5,
+        vehicleType: 'petrol91',
+        parkingDailyRate: 0,
+        parkingDaysPerWeek: 0,
+        concession: 'adult',
+        includeMaintenanceWear: true,
+        carpoolPassengers: 1,
+      };
+
+      const result = calculateCommuteArbitrage(input);
+
+      // Verify one-way distance is ~17-18 km (NOT 4 km straight-line across harbour water!)
+      assert.ok(
+        result.driving.distanceOneWayKm >= 17 && result.driving.distanceOneWayKm <= 18,
+        `One-way road driving distance must be between 17 and 18 km, got: ${result.driving.distanceOneWayKm}`
+      );
+      assert.notStrictEqual(result.driving.distanceOneWayKm, 4, 'Must NOT use 4 km straight-line distance across harbour water');
+
+      // Verify round-trip daily distance is ~34-36 km/day (NOT 8 km/day!)
+      assert.ok(
+        result.driving.distanceRoundTripKm >= 34 && result.driving.distanceRoundTripKm <= 36,
+        `Round-trip daily road distance must be ~35 km/day, got: ${result.driving.distanceRoundTripKm}`
+      );
+      assert.notStrictEqual(result.driving.distanceRoundTripKm, 8, 'Must NOT be 8 km/day');
+
+      // Verify monthly fuel cost reflects real ~35 km/day commute (e.g. ~$140-$160/mo, not $34/mo)
+      assert.ok(
+        result.driving.monthlyFuelCost > 100,
+        `Monthly fuel cost must reflect real 35 km/day commute (> $100/mo), got: $${result.driving.monthlyFuelCost}`
+      );
+    });
+
+    it('verifies drivingDistanceKm override takes precedence when supplied by /api/routes', () => {
+      const input: CommuteInput = {
+        originSuburbId: 'devonport',
+        destinationSuburbId: 'parnell',
+        drivingDistanceKm: 17.5,
+        drivingTimeMins: 24,
+        daysPerWeek: 5,
+        vehicleType: 'petrol91',
+        parkingDailyRate: 0,
+        parkingDaysPerWeek: 0,
+        concession: 'adult',
+        includeMaintenanceWear: false,
+        carpoolPassengers: 1,
+      };
+
+      const result = calculateCommuteArbitrage(input);
+
+      assert.strictEqual(result.driving.distanceOneWayKm, 17.5);
+      assert.strictEqual(result.driving.distanceRoundTripKm, 35);
+      assert.strictEqual(result.drivingTimeMins, 24);
+    });
+
+    it('validates /api/routes and DashboardClient support travelMode: DRIVE and drivingDistanceKm', () => {
+      const routePath = resolve(process.cwd(), 'src/app/api/routes/route.ts');
+      const routeContent = readFileSync(routePath, 'utf-8');
+
+      assert.ok(routeContent.includes("travelMode: 'DRIVE'"), 'Must support travelMode: DRIVE');
+      assert.ok(routeContent.includes('drivingDistanceKm'), 'Must export drivingDistanceKm');
+      assert.ok(routeContent.includes('drivingDurationMins'), 'Must export drivingDurationMins');
+      assert.ok(routeContent.includes('distanceMeters'), 'Must parse distanceMeters from Google');
+
+      const dashPath = resolve(process.cwd(), 'src/components/DashboardClient.tsx');
+      const dashContent = readFileSync(dashPath, 'utf-8');
+
+      assert.ok(dashContent.includes('drivingDistanceKm'), 'DashboardClient must inject drivingDistanceKm');
+      assert.ok(dashContent.includes('drivingDurationMins') || dashContent.includes('drivingTimeMins'), 'DashboardClient must inject driving time');
+    });
+  });
 });

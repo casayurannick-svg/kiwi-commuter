@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { estimateRoadMetrics } from '@/lib/routes';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,28 +12,38 @@ export interface TransitStepDetail {
   arrivalStop?: string;
 }
 
-export interface GoogleRoutesTransitResponse {
+export interface GoogleRoutesResponse {
   transitDurationMins: number | null; // Pure in-vehicle transit duration (sum of all transit steps, e.g. 36 mins)
   totalDurationMins: number | null; // Total door-to-door journey time (e.g. 56 mins)
   transitSteps?: TransitStepDetail[]; // Breakdown of each transit step (e.g. 25B 31m, OuterLink 5m)
   transitLines?: string[]; // Names of transit lines (e.g. ['25B', 'OuterLink'])
   legCount: number;
+
+  // US-35: Driving metrics via Google Routes computeRoutes (travelMode: 'DRIVE')
+  drivingDistanceMeters?: number | null; // e.g. 17500 meters
+  drivingDistanceKm?: number | null; // Real road driving distance e.g. 17.5 km
+  drivingDurationMins?: number | null; // Real road driving duration e.g. 25 mins
+
   source: 'google_routes_api' | 'fallback_none';
   departureTime?: string;
   debug?: Record<string, unknown>;
 }
 
+export type GoogleRoutesTransitResponse = GoogleRoutesResponse;
+
 /**
- * US-21: Google Routes API – Transit Duration Endpoint
+ * US-21 & US-35: Google Routes API – Multimodal Route Endpoint
  *
  * Accepts [originLng, originLat] and [destinationLng, destinationLat] as query params.
- * Calls the Google Routes API (v2) with travelMode TRANSIT and sums the duration
- * across all transit steps and legs, accounting for real-world timetables and pedestrian transfers.
- * Falls back gracefully if coordinates are missing or the API key is not configured.
+ * Calls the Google Routes API (v2) for both DRIVE and TRANSIT (or via travelMode param).
+ * Captures:
+ *   - DRIVE: routes.distanceMeters and routes.duration (real road distance e.g. ~17-18 km for Devonport to Parnell)
+ *   - TRANSIT: routes.duration, routes.legs.steps... summing all transit steps
  *
  * Query params:
  *   - originLng, originLat   – WGS84 origin coordinates
  *   - destinationLng, destinationLat – WGS84 destination coordinates
+ *   - travelMode – optional 'DRIVE' | 'TRANSIT' | 'BOTH' (default: 'BOTH')
  *   - departureTime – optional ISO-8601 departure time (default: next Monday 08:00 NZST)
  *   - debug – optional boolean ('1' or 'true') for diagnostic details
  */
@@ -43,6 +54,7 @@ export async function GET(request: Request) {
   const originLat = parseFloat(searchParams.get('originLat') || '');
   const destinationLng = parseFloat(searchParams.get('destinationLng') || '');
   const destinationLat = parseFloat(searchParams.get('destinationLat') || '');
+  const travelModeParam = (searchParams.get('travelMode') || 'BOTH').toUpperCase();
   const isDebug = searchParams.get('debug') === '1' || searchParams.get('debug') === 'true';
 
   // Validate coordinates
@@ -68,156 +80,189 @@ export async function GET(request: Request) {
       keyLength: apiKey.length,
       keyPrefix: apiKey ? `${apiKey.slice(0, 4)}...` : null,
       departureTime,
+      travelModeParam,
     };
   }
+
+  const shouldFetchDrive = travelModeParam === 'DRIVE' || travelModeParam === 'BOTH';
+  const shouldFetchTransit = travelModeParam === 'TRANSIT' || travelModeParam === 'BOTH';
 
   // Attempt Google Routes API if key is configured
   if (apiKey) {
     try {
-      const requestBody = {
-        origin: {
-          location: {
-            latLng: { latitude: originLat, longitude: originLng },
-          },
-        },
-        destination: {
-          location: {
-            latLng: { latitude: destinationLat, longitude: destinationLng },
-          },
-        },
-        travelMode: 'TRANSIT',
-        departureTime,
-        computeAlternativeRoutes: false,
-        transitPreferences: {
-          routingPreference: 'FEWER_TRANSFERS',
-        },
-      };
+      let drivingDistanceMeters: number | null = null;
+      let drivingDistanceKm: number | null = null;
+      let drivingDurationMins: number | null = null;
 
-      const response = await fetch(GOOGLE_ROUTES_ENDPOINT, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Goog-Api-Key': apiKey,
-          'X-Goog-FieldMask': 'routes.duration,routes.legs.duration,routes.legs.steps.staticDuration,routes.legs.steps.travelMode,routes.legs.steps.transitDetails',
-        },
-        body: JSON.stringify(requestBody),
-      });
+      let transitDurationMins: number | null = null;
+      let totalDurationMins: number | null = null;
+      const transitSteps: TransitStepDetail[] = [];
+      const transitLines: string[] = [];
+      let legCount = 0;
 
-      if (isDebug && debugDetails) {
-        debugDetails.googleStatus = response.status;
-      }
+      // 1. Fetch Driving Route if requested
+      const drivePromise = shouldFetchDrive
+        ? fetch(GOOGLE_ROUTES_ENDPOINT, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Goog-Api-Key': apiKey,
+              'X-Goog-FieldMask': 'routes.duration,routes.distanceMeters,routes.legs.duration,routes.legs.distanceMeters',
+            },
+            body: JSON.stringify({
+              origin: { location: { latLng: { latitude: originLat, longitude: originLng } } },
+              destination: { location: { latLng: { latitude: destinationLat, longitude: destinationLng } } },
+              travelMode: 'DRIVE',
+              routingPreference: 'TRAFFIC_AWARE',
+            }),
+          }).then(async (res) => (res.ok ? res.json() : null)).catch(() => null)
+        : Promise.resolve(null);
 
-      if (response.ok) {
-        const data = await response.json();
+      // 2. Fetch Transit Route if requested
+      const transitPromise = shouldFetchTransit
+        ? fetch(GOOGLE_ROUTES_ENDPOINT, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Goog-Api-Key': apiKey,
+              'X-Goog-FieldMask': 'routes.duration,routes.legs.duration,routes.legs.steps.staticDuration,routes.legs.steps.travelMode,routes.legs.steps.transitDetails',
+            },
+            body: JSON.stringify({
+              origin: { location: { latLng: { latitude: originLat, longitude: originLng } } },
+              destination: { location: { latLng: { latitude: destinationLat, longitude: destinationLng } } },
+              travelMode: 'TRANSIT',
+              departureTime,
+              computeAlternativeRoutes: false,
+              transitPreferences: {
+                routingPreference: 'FEWER_TRANSFERS',
+              },
+            }),
+          }).then(async (res) => (res.ok ? res.json() : null)).catch(() => null)
+        : Promise.resolve(null);
 
-        if (isDebug && debugDetails) {
-          debugDetails.routesCount = Array.isArray(data.routes) ? data.routes.length : 0;
-          debugDetails.firstRouteDuration = data.routes?.[0]?.duration;
+      const [driveData, transitData] = await Promise.all([drivePromise, transitPromise]);
+
+      // Parse Drive results
+      if (driveData?.routes?.[0]) {
+        const driveRoute = driveData.routes[0];
+        let distMeters = driveRoute.distanceMeters;
+        if (typeof distMeters !== 'number' && Array.isArray(driveRoute.legs)) {
+          distMeters = driveRoute.legs.reduce((acc: number, leg: { distanceMeters?: number }) => acc + (leg.distanceMeters || 0), 0);
+        }
+        if (typeof distMeters === 'number' && distMeters > 0) {
+          drivingDistanceMeters = distMeters;
+          drivingDistanceKm = Math.round((distMeters / 1000) * 10) / 10;
         }
 
-        const route = data.routes?.[0];
-        if (route) {
-          // 1. Total route-level duration (includes waiting time, pedestrian transfers)
-          let totalSeconds = 0;
-          if (route.duration) {
-            totalSeconds = parseDurationSeconds(route.duration);
+        let durSeconds = parseDurationSeconds(driveRoute.duration);
+        if (durSeconds === 0 && Array.isArray(driveRoute.legs)) {
+          for (const leg of driveRoute.legs) {
+            durSeconds += parseDurationSeconds(leg.duration);
           }
-          if (totalSeconds === 0 && Array.isArray(route.legs)) {
-            for (const leg of route.legs) {
-              totalSeconds += parseDurationSeconds(leg.duration);
-            }
+        }
+        if (durSeconds > 0) {
+          drivingDurationMins = Math.round(durSeconds / 60);
+        }
+      }
+
+      // Parse Transit results
+      if (transitData?.routes?.[0]) {
+        const route = transitData.routes[0];
+        let totalSeconds = 0;
+        if (route.duration) {
+          totalSeconds = parseDurationSeconds(route.duration);
+        }
+        if (totalSeconds === 0 && Array.isArray(route.legs)) {
+          for (const leg of route.legs) {
+            totalSeconds += parseDurationSeconds(leg.duration);
           }
+        }
 
-          // 2. Extract and sum ALL transit steps (in-vehicle ride time)
-          let totalTransitSeconds = 0;
-          let totalTransitMins = 0;
-          const transitSteps: TransitStepDetail[] = [];
-          const transitLines: string[] = [];
+        let totalTransitSeconds = 0;
+        let totalTransitMins = 0;
 
-          if (Array.isArray(route.legs)) {
-            for (const leg of route.legs) {
-              if (Array.isArray(leg.steps)) {
-                for (const step of leg.steps) {
-                  if (step.travelMode === 'TRANSIT') {
-                    // Raw duration string from Google (e.g. "1860s")
-                    const rawDuration = step.staticDuration;
-                    const stepSeconds = parseDurationSeconds(rawDuration);
-                    // Convert to minutes via Math.round(parseInt(d.replace('s', '')) / 60)
-                    const stepMins = rawDuration
-                      ? Math.round(parseInt(rawDuration.replace('s', ''), 10) / 60)
-                      : 0;
+        if (Array.isArray(route.legs)) {
+          for (const leg of route.legs) {
+            if (Array.isArray(leg.steps)) {
+              for (const step of leg.steps) {
+                if (step.travelMode === 'TRANSIT') {
+                  const rawDuration = step.staticDuration;
+                  const stepSeconds = parseDurationSeconds(rawDuration);
+                  const stepMins = rawDuration
+                    ? Math.round(parseInt(rawDuration.replace('s', ''), 10) / 60)
+                    : 0;
 
-                    // CRITICAL: Ensure ALL transit steps are summed together (duration += stepDuration),
-                    // rather than overwriting a variable in a loop where the last step (e.g. 5 mins on OuterLink)
-                    // replaces earlier legs (e.g. 31 mins on 25B).
-                    totalTransitSeconds += stepSeconds;
-                    totalTransitMins += stepMins;
+                  totalTransitSeconds += stepSeconds;
+                  totalTransitMins += stepMins;
 
-                    const lineName =
-                      step.transitDetails?.transitLine?.nameShort ||
-                      step.transitDetails?.transitLine?.shortName ||
-                      step.transitDetails?.transitLine?.name ||
-                      step.transitDetails?.headsign ||
-                      'Transit';
+                  const lineName =
+                    step.transitDetails?.transitLine?.nameShort ||
+                    step.transitDetails?.transitLine?.shortName ||
+                    step.transitDetails?.transitLine?.name ||
+                    step.transitDetails?.headsign ||
+                    'Transit';
 
-                    if (lineName && !transitLines.includes(lineName)) {
-                      transitLines.push(lineName);
-                    }
-
-                    transitSteps.push({
-                      line: lineName,
-                      durationMins: stepMins,
-                      departureStop: step.transitDetails?.stopDetails?.departureStop?.name,
-                      arrivalStop: step.transitDetails?.stopDetails?.arrivalStop?.name,
-                    });
+                  if (lineName && !transitLines.includes(lineName)) {
+                    transitLines.push(lineName);
                   }
+
+                  transitSteps.push({
+                    line: lineName,
+                    durationMins: stepMins,
+                    departureStop: step.transitDetails?.stopDetails?.departureStop?.name,
+                    arrivalStop: step.transitDetails?.stopDetails?.arrivalStop?.name,
+                  });
                 }
               }
             }
           }
-
-          // Pure in-vehicle transit duration: sum of all transit steps
-          const pureTransitMins = totalTransitMins > 0
-            ? totalTransitMins
-            : (totalTransitSeconds > 0 ? Math.round(totalTransitSeconds / 60) : null);
-
-          // Total door-to-door duration
-          const totalDurationMins = totalSeconds > 0
-            ? Math.max(5, Math.round(totalSeconds / 60))
-            : pureTransitMins;
-
-          // For transitDurationMins, return pure transit duration if transit steps exist,
-          // otherwise fall back to total duration
-          const transitDurationMins = pureTransitMins ?? totalDurationMins;
-
-          const legCount = transitSteps.length > 0
-            ? transitSteps.length
-            : (Array.isArray(route.legs) ? route.legs.length : 1);
-
-          const result: GoogleRoutesTransitResponse = {
-            transitDurationMins,
-            totalDurationMins,
-            transitSteps,
-            transitLines,
-            legCount,
-            source: 'google_routes_api',
-            departureTime,
-            ...(isDebug ? { debug: debugDetails } : {}),
-          };
-
-          return NextResponse.json(result, {
-            headers: { 'Cache-Control': 'public, max-age=3600, stale-while-revalidate=7200' },
-          });
         }
-      } else {
-        const errText = await response.text().catch(() => 'unknown');
-        console.warn(`[US-21] Google Routes API returned ${response.status}: ${errText}`);
-        if (isDebug && debugDetails) {
-          debugDetails.googleError = errText;
+
+        const pureTransitMins = totalTransitMins > 0
+          ? totalTransitMins
+          : (totalTransitSeconds > 0 ? Math.round(totalTransitSeconds / 60) : null);
+
+        totalDurationMins = totalSeconds > 0
+          ? Math.max(5, Math.round(totalSeconds / 60))
+          : pureTransitMins;
+
+        transitDurationMins = pureTransitMins ?? totalDurationMins;
+
+        legCount = transitSteps.length > 0
+          ? transitSteps.length
+          : (Array.isArray(route.legs) ? route.legs.length : 1);
+      }
+
+      // If at least one requested route returned valid data, return success
+      if (drivingDistanceKm !== null || transitDurationMins !== null) {
+        // If driving was requested but failed upstream, use harbour-aware road distance fallback
+        if (shouldFetchDrive && drivingDistanceKm === null) {
+          const fallbackMetrics = estimateRoadMetrics([originLng, originLat], [destinationLng, destinationLat]);
+          drivingDistanceKm = fallbackMetrics.distanceKm;
+          drivingDistanceMeters = Math.round(fallbackMetrics.distanceKm * 1000);
+          drivingDurationMins = fallbackMetrics.durationMins;
         }
+
+        const result: GoogleRoutesResponse = {
+          transitDurationMins,
+          totalDurationMins,
+          transitSteps,
+          transitLines,
+          legCount,
+          drivingDistanceMeters,
+          drivingDistanceKm,
+          drivingDurationMins,
+          source: 'google_routes_api',
+          departureTime,
+          ...(isDebug ? { debug: debugDetails } : {}),
+        };
+
+        return NextResponse.json(result, {
+          headers: { 'Cache-Control': 'public, max-age=3600, stale-while-revalidate=7200' },
+        });
       }
     } catch (err) {
-      console.warn('[US-21] Google Routes API call failed, falling back:', err);
+      console.warn('[US-35] Google Routes API call failed, falling back:', err);
       if (isDebug && debugDetails) {
         debugDetails.caughtException = String(err);
       }
@@ -225,10 +270,16 @@ export async function GET(request: Request) {
   }
 
   // Graceful fallback: no API key or API call failed
-  const result: GoogleRoutesTransitResponse = {
+  // Compute realistic road metrics (incorporating harbour-crossing bridge detour if applicable)
+  const fallbackRoadMetrics = estimateRoadMetrics([originLng, originLat], [destinationLng, destinationLat]);
+
+  const result: GoogleRoutesResponse = {
     transitDurationMins: null,
     totalDurationMins: null,
     legCount: 0,
+    drivingDistanceMeters: Math.round(fallbackRoadMetrics.distanceKm * 1000),
+    drivingDistanceKm: fallbackRoadMetrics.distanceKm,
+    drivingDurationMins: fallbackRoadMetrics.durationMins,
     source: 'fallback_none',
     ...(isDebug ? { debug: debugDetails } : {}),
   };
@@ -241,17 +292,14 @@ export async function GET(request: Request) {
  */
 function parseDurationSeconds(duration: string | undefined): number {
   if (!duration) return 0;
-  // Format is like "1800s"
   const match = duration.match(/^(\d+)s$/);
   if (match) return parseInt(match[1], 10);
-  // Fallback: only accept pure numeric strings (e.g. "2400") — reject mixed like "30m"
   if (/^\d+$/.test(duration)) return parseInt(duration, 10);
   return 0;
 }
 
 /**
  * Returns an ISO-8601 timestamp for the next weekday Monday at 08:00 Auckland time (UTC+12).
- * Used as a stable default departure time for transit routing.
  */
 function getNextWeekdayMorningISO(): string {
   const now = new Date();
@@ -265,3 +313,4 @@ function getNextWeekdayMorningISO(): string {
   }
   return sundayBefore.toISOString();
 }
+
