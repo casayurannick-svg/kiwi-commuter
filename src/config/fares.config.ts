@@ -152,39 +152,50 @@ export const NZTA_RUC_RATES: Record<VehicleType, { ratePerKm: number; descriptio
 
 /**
  * Auckland Transport (AT HOP) Zonal Fare Tables
- * Official zonal fare structure across bus, train, and inner harbour ferries.
+ * Official zonal fare structure across bus and train services.
+ * Updated to reflect February 2026 price changes.
  */
 export const AT_HOP_ZONE_FARES: Record<number, number> = {
-  1: 2.60,
-  2: 4.45,
-  3: 6.00,
-  4: 7.70,
-  5: 9.40,
+  1: 3.00,
+  2: 4.90,
+  3: 6.60,
+  4: 8.50,
+  5: 10.30,
 };
 
 export const AT_HOP_ZONE_FARES_BY_CONCESSION: Record<FareConcession, Record<number, number>> = {
   ADULT: {
-    1: 2.60,
-    2: 4.45,
-    3: 6.00,
-    4: 7.70,
-    5: 9.40,
+    1: 3.00,
+    2: 4.90,
+    3: 6.60,
+    4: 8.50,
+    5: 10.30,
   },
   TERTIARY: {
-    1: 2.08,
-    2: 3.56,
-    3: 4.80,
-    4: 6.16,
-    5: 7.52,
+    1: 2.40,
+    2: 3.92,
+    3: 5.28,
+    4: 6.80,
+    5: 8.24,
   },
   CHILD: {
-    1: 1.30,
-    2: 2.23,
-    3: 3.00,
-    4: 3.85,
-    5: 4.70,
+    1: 1.50,
+    2: 2.45,
+    3: 3.30,
+    4: 4.25,
+    5: 5.15,
   },
 };
+
+/**
+ * Auckland Transport Inner Harbour Ferry Fares
+ * (Devonport, Bayswater, Birkenhead, Te Onewa Northcote Point)
+ * Effective February 2026: Flat rate of $7.80 per trip (standard adult HOP).
+ * Under AT integrated fares, transferring between ferry and connecting bus within 30 minutes charges no additional zone fare.
+ * Eligible for the AT $50 7-day rolling fare cap.
+ */
+export const INNER_HARBOUR_FERRY_FARE = 7.80;
+export const AT_INNER_HARBOUR_FERRY_FARE = 7.80;
 
 /**
  * Auckland Transport 7-Day Fare Cap

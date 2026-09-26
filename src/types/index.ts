@@ -108,6 +108,8 @@ export interface TransitStepDetail {
   durationSeconds?: number;
   departureStop?: string;
   arrivalStop?: string;
+  travelMode?: string;
+  vehicleType?: string;
 }
 
 export type EVChargingSource = 'HOME_OFFPEAK' | 'HOME_FLAT' | 'PUBLIC_DC' | 'CUSTOM';

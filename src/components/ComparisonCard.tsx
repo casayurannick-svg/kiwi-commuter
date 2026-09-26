@@ -10,6 +10,7 @@ import {
   Leaf,
   ParkingCircle,
   ShieldCheck,
+  Ship,
   TrendingDown,
   TrendingUp,
   Zap,
@@ -258,13 +259,19 @@ export default function ComparisonCard({ arbitrage, input }: ComparisonCardProps
                   <div className="p-1.5 bg-emerald-950/60 text-emerald-400 rounded-lg border border-emerald-500/30">
                     {transit.primaryMode === 'E-Bike' ? (
                       <span className="text-sm">🚲</span>
+                    ) : transit.primaryMode === 'Ferry' ? (
+                      <Ship className="w-4 h-4" />
                     ) : (
                       <Bus className="w-4 h-4" />
                     )}
                   </div>
                   <div>
                     <span className="text-xs font-bold text-white block">
-                      {transit.primaryMode === 'E-Bike' ? 'E-Bike' : 'AT HOP Transit'}
+                      {transit.primaryMode === 'E-Bike'
+                        ? 'E-Bike'
+                        : transit.primaryMode === 'Ferry'
+                        ? 'AT HOP Ferry'
+                        : 'AT HOP Transit'}
                     </span>
                     <span className="text-[10px] text-slate-400">
                       {oneWayTransit} mins one-way • {transit.primaryMode === 'E-Bike' ? 'Active Commute' : `${transit.primaryMode}`}
@@ -382,12 +389,18 @@ export default function ComparisonCard({ arbitrage, input }: ComparisonCardProps
               <div className="p-1.5 bg-emerald-950/60 text-emerald-400 rounded-lg border border-emerald-500/30">
                 {transit.primaryMode === 'E-Bike' ? (
                   <span className="text-sm">🚲</span>
+                ) : transit.primaryMode === 'Ferry' ? (
+                  <Ship className="w-4 h-4" />
                 ) : (
                   <Bus className="w-4 h-4" />
                 )}
               </div>
               <span className="text-sm font-bold text-white">
-                {transit.primaryMode === 'E-Bike' ? 'E-Bike' : 'AT HOP Transit'}
+                {transit.primaryMode === 'E-Bike'
+                  ? 'E-Bike'
+                  : transit.primaryMode === 'Ferry'
+                  ? 'AT HOP Ferry'
+                  : 'AT HOP Transit'}
               </span>
             </div>
             <div className="text-right">
@@ -431,7 +444,9 @@ export default function ComparisonCard({ arbitrage, input }: ComparisonCardProps
             <div className="flex items-center justify-between">
               <span className="text-slate-400">Corridor:</span>
               <span className="font-semibold text-slate-300 truncate max-w-[140px]">
-                Zone {transit.zoneCount} • {transit.primaryMode}
+                {transit.primaryMode === 'Ferry'
+                  ? (input.isWaihekeRoute || input.originSuburbId === 'waiheke' ? 'Waiheke Ferry' : 'Inner Harbour Ferry')
+                  : `Zone ${transit.zoneCount} • ${transit.primaryMode}`}
               </span>
             </div>
           )}

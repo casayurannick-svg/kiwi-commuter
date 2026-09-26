@@ -32,9 +32,9 @@ describe('Kiwi Commuter Cost & Arbitrage Math Engine', () => {
     });
 
     assert.strictEqual(result.transit.zoneCount, 4);
-    assert.strictEqual(result.transit.singleTripStandardFare, 7.70);
-    assert.strictEqual(result.transit.dailyFare, 15.40);
-    assert.strictEqual(result.transit.uncappedWeeklyFare, 77.00);
+    assert.strictEqual(result.transit.singleTripStandardFare, 8.50);
+    assert.strictEqual(result.transit.dailyFare, 17.00);
+    assert.strictEqual(result.transit.uncappedWeeklyFare, 85.00);
     assert.strictEqual(result.transit.isHopCapApplied, true);
     assert.strictEqual(result.transit.hopCappedWeeklyFare, AT_HOP_7_DAY_CAP);
     assert.strictEqual(result.transit.weeklyTotal, 50.00);
@@ -45,8 +45,8 @@ describe('Kiwi Commuter Cost & Arbitrage Math Engine', () => {
   });
 
   it('does NOT apply the 7-day cap when weekly transit cost is below $50', () => {
-    // Newmarket (Zone 1) to CBD (Zone 1) - 1 zone ($2.60 single trip)
-    // 2 days * 2 trips = 4 trips -> 4 * $2.60 = $10.40
+    // Newmarket (Zone 1) to CBD (Zone 1) - 1 zone ($3.00 single trip)
+    // 2 days * 2 trips = 4 trips -> 4 * $3.00 = $12.00
     const result = calculateArbitrage({
       originSuburbId: 'newmarket',
       destinationSuburbId: 'cbd',
@@ -60,11 +60,11 @@ describe('Kiwi Commuter Cost & Arbitrage Math Engine', () => {
     });
 
     assert.strictEqual(result.transit.zoneCount, 1);
-    assert.strictEqual(result.transit.singleTripStandardFare, 2.60);
-    assert.strictEqual(result.transit.uncappedWeeklyFare, 10.40);
+    assert.strictEqual(result.transit.singleTripStandardFare, 3.00);
+    assert.strictEqual(result.transit.uncappedWeeklyFare, 12.00);
     assert.strictEqual(result.transit.isHopCapApplied, false);
-    assert.strictEqual(result.transit.hopCappedWeeklyFare, 10.40);
-    assert.strictEqual(result.transit.weeklyTotal, 10.40);
+    assert.strictEqual(result.transit.hopCappedWeeklyFare, 12.00);
+    assert.strictEqual(result.transit.weeklyTotal, 12.00);
   });
 
   it('correctly applies NZTA Road User Charges (RUC) by vehicle drivetrain', () => {
@@ -186,11 +186,11 @@ describe('Step 2: Static Configuration & Regulatory Rate Tables', () => {
       }
     }
 
-    assert.strictEqual(AT_HOP_ZONE_FARES_BY_CONCESSION.ADULT[1], 2.60);
-    assert.strictEqual(AT_HOP_ZONE_FARES_BY_CONCESSION.ADULT[2], 4.45);
-    assert.strictEqual(AT_HOP_ZONE_FARES_BY_CONCESSION.ADULT[3], 6.00);
-    assert.strictEqual(AT_HOP_ZONE_FARES_BY_CONCESSION.ADULT[4], 7.70);
-    assert.strictEqual(AT_HOP_ZONE_FARES_BY_CONCESSION.ADULT[5], 9.40);
+    assert.strictEqual(AT_HOP_ZONE_FARES_BY_CONCESSION.ADULT[1], 3.00);
+    assert.strictEqual(AT_HOP_ZONE_FARES_BY_CONCESSION.ADULT[2], 4.90);
+    assert.strictEqual(AT_HOP_ZONE_FARES_BY_CONCESSION.ADULT[3], 6.60);
+    assert.strictEqual(AT_HOP_ZONE_FARES_BY_CONCESSION.ADULT[4], 8.50);
+    assert.strictEqual(AT_HOP_ZONE_FARES_BY_CONCESSION.ADULT[5], 10.30);
 
     assert.strictEqual(AT_HOP_7_DAY_CAP, 50.00);
   });
@@ -359,10 +359,10 @@ describe('Step 5: Next.js API Layer & Interactive Frontend Dashboard UI', () => 
     });
 
     assert.strictEqual(result.transit.zoneCount, 1);
-    assert.strictEqual(result.transit.singleTripStandardFare, 2.60);
-    assert.strictEqual(result.transit.dailyFare, 5.20);
-    // 3 days * $5.20 = $15.60/wk (under $50 cap)
-    assert.strictEqual(result.transit.weeklyTotal, 15.60);
+    assert.strictEqual(result.transit.singleTripStandardFare, 3.00);
+    assert.strictEqual(result.transit.dailyFare, 6.00);
+    // 3 days * $6.00 = $18.00/wk (under $50 cap)
+    assert.strictEqual(result.transit.weeklyTotal, 18.00);
     assert.strictEqual(result.transit.isHopCapApplied, false);
 
     // Driving includes fuel, $0 RUC, $22/day parking, and maintenance

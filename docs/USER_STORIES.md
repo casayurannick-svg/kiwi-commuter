@@ -13,7 +13,7 @@
 | **US-07** | Carpool & Multi-Passenger Split Engine | **DONE** | [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts), [`src/components/CommuteForm.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/CommuteForm.tsx) | 1–4 passenger selector dividing fuel, RUC, parking, and maintenance expenses. |
 | **US-08** | Greater Wellington / Metlink Expansion | **PENDING** | Backlog (`src/config/suburbs.ts`) | Suburbs and fares currently scoped to Greater Auckland (AT HOP zones 1–5). |
 | **US-09** | EV Public Charging vs. Home Off-Peak Rate Arbitrage | **DONE** | [`src/types/index.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/types/index.ts), [`src/config/fares.config.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/config/fares.config.ts), [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts), [`src/components/CommuteForm.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/CommuteForm.tsx), [`src/lib/urlParams.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/urlParams.ts) | 4 presets: Home Off-Peak ($0.18), Flat ($0.30), Public DC ($0.85), Custom; decoupled invariant RUC; `chargeSource` URL param persistence. |
-| **US-10** | AT Concession Profiles (Tertiary, Youth, Community Connect) | **DONE** | [`src/config/fares.config.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/config/fares.config.ts), [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts) | Full concession schedule: Tertiary (20% off), Youth/Community (50% off), SuperGold. |
+| **US-10** | 2026 AT Fare Update & Ferry Pricing Fix | **DONE** | [`src/config/fares.config.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/config/fares.config.ts), [`src/lib/fares.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/fares.ts), [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts) | February 2026 AT HOP price hike (1-zone $3.00, 2-zone $4.90, etc.), concession tiers, and $7.80 Inner Harbour ferry classification fix. |
 | **US-11** | E-Bike Mode & Payback Timeline | **DONE** | [`src/types/index.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/types/index.ts), [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts), [`src/components/CommuteForm.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/CommuteForm.tsx), [`src/components/MiniReceipt.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/MiniReceipt.tsx) | 'EBIKE' in TransitMode, zeroed parking/RUC, distance * ebikeCostPerKm, Upfront Setup Cost, and MiniReceipt Breakeven Alert box. |
 | **US-12** | Park & Ride Multimodal Hybrid Route | **PENDING** | Backlog (`src/config/suburbs.ts`) | Station parking + rail transfer multi-leg route calculations not yet modeled. |
 | **US-13** | Monetized Travel Time & Opportunity Cost | **DONE** | [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts), [`src/components/CommuteForm.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/CommuteForm.tsx), [`src/components/ComparisonCard.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/ComparisonCard.tsx), [`src/lib/urlParams.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/urlParams.ts), [`src/lib/__tests__/calculator.test.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/__tests__/calculator.test.ts) | Fully implemented with UI controls (Off, $20/hr, $50/hr, Custom), URL state persistence (`timeRate`), ComparisonCard sublines/badges, and unit tests. |
@@ -161,17 +161,28 @@
 
 ---
 
-### US-10: Auckland Transport Concession Profiles (Tertiary, Youth, Community Connect)
-**As a** tertiary student, youth, or Community Services Card holder,  
-**I want to** select my eligible fare concession category,  
-**So that** my transit fares reflect statutory discounts against driving.
+### US-10: 2026 AT Fare Update & Ferry Pricing Fix
+**As a** public transport commuter in Auckland,  
+**I want** transit fares to reflect the February 2026 price hike and proper Inner Harbour ferry rates,  
+**So that** my transit calculations match real-world AT HOP charges for both buses/trains and ferries (like Devonport to Parnell).
 
 * **Acceptance Criteria:**
-  - **Given** concession selector in Custom Rates,
-  - **When** selecting **Tertiary Student**, apply a 20% discount against standard adult fares ($2.08 / $3.56 / $4.80 / $6.16 / $7.52 across zones 1–5).
-  - **When** selecting **Community Connect** or **Youth 13–24**, apply a 50% statutory discount ($1.30 / $2.23 / $3.00 / $3.85 / $4.70 across zones 1–5).
-  - **When** selecting **SuperGold**, calculate free off-peak travel.
-  - **And** weekly total continues to respect the statutory `$50.00` 7-day fare cap.
+  - **Given** base AT HOP zonal fare tables,
+  - **When** calculating standard adult transit trips, apply the February 2026 price hike:
+    - Zone 1: $3.00 (was $2.60)
+    - Zone 2: $4.90 (was $4.45)
+    - Zone 3: $6.60 (was $6.00)
+    - Zone 4: $8.50 (was $7.70)
+    - Zone 5: $10.30 (was $9.40)
+  - **And** apply statutory concession discounts against 2026 base rates:
+    - **Tertiary Student**: 20% off ($2.40 / $3.92 / $5.28 / $6.80 / $8.24 across zones 1–5).
+    - **Community Connect / Youth 13–24**: 50% off ($1.50 / $2.45 / $3.30 / $4.25 / $5.15 across zones 1–5).
+    - **SuperGold**: Free off-peak travel.
+  - **Given** an Inner Harbour ferry route (e.g., Devonport, Bayswater, Birkenhead, Te Onewa Northcote Point) or a Google Routes API payload with `travelMode: 'FERRY'` or route name implying a ferry (e.g., `DEV`, `Devonport Ferry`),
+  - **Then** bypass standard bus zonal fares and apply the flat Inner Harbour ferry rate of **$7.80** ($6.24 for Tertiary, $3.90 for Youth/Child).
+  - **And** under AT integrated fares, transferring between ferry and connecting bus/walk (e.g. Devonport to Parnell) within 30 minutes incurs no additional zone fare.
+  - **And** Inner Harbour ferry travel remains eligible for the statutory AT HOP `$50.00` 7-day rolling fare cap (e.g., 5 days/wk uncapped $78.00 caps at $50.00; 3 days/wk is $46.80).
+  - **And** the Hero Summary transit card and Side-by-Side Breakdown display the `$7.80` single fare, `$15.60` daily return, `$50/wk applied` cap badge, and `'Inner Harbour Ferry'` corridor label.
 
 ---
 

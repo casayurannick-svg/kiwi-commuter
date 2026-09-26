@@ -8,8 +8,11 @@ const GOOGLE_ROUTES_ENDPOINT = 'https://routes.googleapis.com/directions/v2:comp
 export interface TransitStepDetail {
   line: string;
   durationMins: number;
+  durationSeconds?: number;
   departureStop?: string;
   arrivalStop?: string;
+  travelMode?: string;
+  vehicleType?: string;
 }
 
 export interface GoogleRoutesResponse {
@@ -185,7 +188,7 @@ export async function GET(request: Request) {
           for (const leg of route.legs) {
             if (Array.isArray(leg.steps)) {
               for (const step of leg.steps) {
-                if (step.travelMode === 'TRANSIT') {
+                if (step.travelMode === 'TRANSIT' || step.travelMode === 'FERRY') {
                   const rawDuration = step.staticDuration;
                   const stepSeconds = parseDurationSeconds(rawDuration);
                   const stepMins = rawDuration
@@ -202,6 +205,18 @@ export async function GET(request: Request) {
                     step.transitDetails?.headsign ||
                     'Transit';
 
+                  const vehicleType = step.transitDetails?.transitLine?.vehicle?.type;
+                  const depStop = step.transitDetails?.stopDetails?.departureStop?.name;
+                  const arrStop = step.transitDetails?.stopDetails?.arrivalStop?.name;
+
+                  const isFerryStep =
+                    step.travelMode === 'FERRY' ||
+                    vehicleType === 'FERRY' ||
+                    lineName.toLowerCase().includes('ferry') ||
+                    lineName.toUpperCase() === 'DEV' ||
+                    (depStop && depStop.toLowerCase().includes('ferry')) ||
+                    (arrStop && arrStop.toLowerCase().includes('ferry'));
+
                   if (lineName && !transitLines.includes(lineName)) {
                     transitLines.push(lineName);
                   }
@@ -209,8 +224,11 @@ export async function GET(request: Request) {
                   transitSteps.push({
                     line: lineName,
                     durationMins: stepMins,
-                    departureStop: step.transitDetails?.stopDetails?.departureStop?.name,
-                    arrivalStop: step.transitDetails?.stopDetails?.arrivalStop?.name,
+                    durationSeconds: stepSeconds,
+                    departureStop: depStop,
+                    arrivalStop: arrStop,
+                    travelMode: isFerryStep ? 'FERRY' : (step.travelMode || 'TRANSIT'),
+                    vehicleType: vehicleType || (isFerryStep ? 'FERRY' : undefined),
                   });
                 }
               }

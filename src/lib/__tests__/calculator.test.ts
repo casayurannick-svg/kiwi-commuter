@@ -43,7 +43,7 @@ describe('src/lib/calculator.ts - calculateCommuteArbitrage', () => {
     );
 
     // Transit relationships
-    assert.strictEqual(result.transit.uncappedWeeklyFare, 77.00);
+    assert.strictEqual(result.transit.uncappedWeeklyFare, 85.00);
     assert.strictEqual(result.transit.isHopCapApplied, true);
     assert.strictEqual(result.transit.weeklyTotal, 50.00);
     assert.strictEqual(
@@ -68,7 +68,7 @@ describe('src/lib/calculator.ts - calculateCommuteArbitrage', () => {
 
   describe('Auckland Transport $50 7-Day Fare Cap', () => {
     it('applies the $50 cap when weekly transit cost exceeds $50', () => {
-      // 5-day commute across 4 zones: daily return = $15.40, 5 days = $77.00
+      // 5-day commute across 4 zones: daily return = $17.00, 5 days = $85.00
       const result = calculateCommuteArbitrage({
         originSuburbId: 'albany',
         destinationSuburbId: 'cbd',
@@ -81,14 +81,14 @@ describe('src/lib/calculator.ts - calculateCommuteArbitrage', () => {
         carpoolPassengers: 1,
       });
 
-      assert.strictEqual(result.transit.uncappedWeeklyFare, 77.00);
+      assert.strictEqual(result.transit.uncappedWeeklyFare, 85.00);
       assert.strictEqual(result.transit.isHopCapApplied, true);
       assert.strictEqual(result.transit.hopCappedWeeklyFare, AT_HOP_7_DAY_CAP);
       assert.strictEqual(result.transit.weeklyTotal, 50.00);
     });
 
     it('does not apply the cap when weekly transit cost is under $50', () => {
-      // 2-day commute in Zone 1: daily return = $5.20, 2 days = $10.40
+      // 2-day commute in Zone 1: daily return = $6.00, 2 days = $12.00
       const result = calculateCommuteArbitrage({
         originSuburbId: 'newmarket',
         destinationSuburbId: 'cbd',
@@ -101,16 +101,15 @@ describe('src/lib/calculator.ts - calculateCommuteArbitrage', () => {
         carpoolPassengers: 1,
       });
 
-      assert.strictEqual(result.transit.uncappedWeeklyFare, 10.40);
+      assert.strictEqual(result.transit.uncappedWeeklyFare, 12.00);
       assert.strictEqual(result.transit.isHopCapApplied, false);
-      assert.strictEqual(result.transit.hopCappedWeeklyFare, 10.40);
-      assert.strictEqual(result.transit.weeklyTotal, 10.40);
+      assert.strictEqual(result.transit.hopCappedWeeklyFare, 12.00);
+      assert.strictEqual(result.transit.weeklyTotal, 12.00);
     });
 
-    it('US-20: Devonport ferry respects the AT $50 7-day cap', () => {
-      // Devonport to CBD: Zone 2 ($4.45 adult one-way, $8.90 daily return)
-      // 5 days per week: 5 * $8.90 = $44.50 uncapped
-      // With 6 days: 6 * $8.90 = $53.40 -> capped at $50.00
+    it('US-20 & US-10: Devonport ferry respects the AT $50 7-day cap at $7.80 inner harbour rate', () => {
+      // Devonport to CBD: Inner Harbour Ferry ($7.80 adult one-way, $15.60 daily return)
+      // 6 days per week: 6 * $15.60 = $93.60 uncapped -> capped at $50.00
       const result = calculateCommuteArbitrage({
         originSuburbId: 'devonport',
         destinationSuburbId: 'cbd',
@@ -124,7 +123,9 @@ describe('src/lib/calculator.ts - calculateCommuteArbitrage', () => {
         carpoolPassengers: 1,
       });
 
-      assert.strictEqual(result.transit.uncappedWeeklyFare, 53.40);
+      assert.strictEqual(result.transit.singleTripStandardFare, 7.80);
+      assert.strictEqual(result.transit.dailyFare, 15.60);
+      assert.strictEqual(result.transit.uncappedWeeklyFare, 93.60);
       assert.strictEqual(result.transit.isHopCapApplied, true);
       assert.strictEqual(result.transit.hopCappedWeeklyFare, AT_HOP_7_DAY_CAP);
       assert.strictEqual(result.transit.weeklyTotal, 50.00);
@@ -364,8 +365,8 @@ describe('src/lib/calculator.ts - calculateCommuteArbitrage', () => {
         carpoolPassengers: 1,
       });
 
-      assert.strictEqual(adult.transit.singleTripStandardFare, 6.00); // 3 zones
-      assert.strictEqual(tertiary.transit.singleTripConcessionFare, 4.80); // 20% off
+      assert.strictEqual(adult.transit.singleTripStandardFare, 6.60); // 3 zones
+      assert.strictEqual(tertiary.transit.singleTripConcessionFare, 5.28); // 20% off
     });
   });
 
@@ -838,7 +839,7 @@ describe('src/lib/calculator.ts - calculateCommuteArbitrage', () => {
 
       assert.strictEqual(transitLeg.type, 'TRANSIT');
       assert.strictEqual(transitLeg.originName, 'Albany Busway Station');
-      assert.strictEqual(transitLeg.cost, 7.70); // 4-zone standard adult fare ($7.70)
+      assert.strictEqual(transitLeg.cost, 8.50); // 4-zone standard adult fare ($8.50)
 
       assert.strictEqual(lastLeg.type, 'LAST_MILE');
       assert.strictEqual(lastLeg.mode, 'WALK');
@@ -868,6 +869,119 @@ describe('src/lib/calculator.ts - calculateCommuteArbitrage', () => {
       assert.ok(result.journeyLegs);
       assert.strictEqual(result.journeyLegs[0].mode, 'WALK');
       assert.strictEqual(result.journeyLegs[0].cost, 0);
+    });
+  });
+
+  describe('US-10: 2026 AT Fare Update & Ferry Pricing Fix', () => {
+    it('calculates Devonport to Parnell with $7.80 Inner Harbour ferry base fare and $50/wk cap', () => {
+      const input: CommuteInput = {
+        originSuburbId: 'devonport',
+        destinationSuburbId: 'parnell',
+        daysPerWeek: 5,
+        vehicleType: 'petrol91',
+        concession: 'adult',
+        parkingDailyRate: 0,
+        parkingDaysPerWeek: 0,
+        includeMaintenanceWear: false,
+        carpoolPassengers: 1,
+      };
+
+      const result = calculateCommuteArbitrage(input);
+      // Devonport to Parnell uses Inner Harbour Ferry
+      assert.strictEqual(result.transit.singleTripStandardFare, 7.80, 'Must use $7.80 inner harbour ferry base fare');
+      assert.strictEqual(result.transit.singleTripConcessionFare, 7.80);
+      assert.strictEqual(result.transit.dailyFare, 15.60, 'Daily return fare is 2 * $7.80 = $15.60');
+      assert.strictEqual(result.transit.uncappedWeeklyFare, 78.00, '5 days * $15.60 = $78.00');
+      assert.strictEqual(result.transit.isHopCapApplied, true, '5 days ($78) exceeds $50 AT HOP cap');
+      assert.strictEqual(result.transit.weeklyTotal, 50.00, 'Capped at $50.00/wk');
+      assert.strictEqual(result.transit.primaryMode, 'Ferry');
+    });
+
+    it('calculates 3-day commute Devonport to Parnell under the $50 cap ($46.80/wk)', () => {
+      const input: CommuteInput = {
+        originSuburbId: 'devonport',
+        destinationSuburbId: 'parnell',
+        daysPerWeek: 3,
+        vehicleType: 'petrol91',
+        concession: 'adult',
+        parkingDailyRate: 0,
+        parkingDaysPerWeek: 0,
+        includeMaintenanceWear: false,
+        carpoolPassengers: 1,
+      };
+
+      const result = calculateCommuteArbitrage(input);
+      assert.strictEqual(result.transit.singleTripStandardFare, 7.80);
+      assert.strictEqual(result.transit.dailyFare, 15.60);
+      assert.strictEqual(result.transit.uncappedWeeklyFare, 46.80);
+      assert.strictEqual(result.transit.isHopCapApplied, false, '3 days ($46.80) is under $50 cap');
+      assert.strictEqual(result.transit.weeklyTotal, 46.80);
+    });
+
+    it('applies ferry classification when Google Routes API step specifies travelMode: FERRY', () => {
+      const input: CommuteInput = {
+        originSuburbId: 'takapuna',
+        destinationSuburbId: 'cbd',
+        daysPerWeek: 4,
+        vehicleType: 'petrol91',
+        concession: 'adult',
+        parkingDailyRate: 0,
+        parkingDaysPerWeek: 0,
+        includeMaintenanceWear: false,
+        carpoolPassengers: 1,
+        transitSteps: [
+          { line: 'DEV', durationMins: 12, travelMode: 'FERRY' },
+          { line: 'InnerLink', durationMins: 8, travelMode: 'TRANSIT' },
+        ],
+      };
+
+      const result = calculateCommuteArbitrage(input);
+      assert.strictEqual(result.transit.singleTripStandardFare, 7.80, 'Must detect ferry from transitSteps travelMode');
+      assert.strictEqual(result.transit.dailyFare, 15.60);
+      assert.strictEqual(result.transit.uncappedWeeklyFare, 62.40);
+      assert.strictEqual(result.transit.isHopCapApplied, true);
+      assert.strictEqual(result.transit.weeklyTotal, 50.00);
+      assert.strictEqual(result.transit.primaryMode, 'Ferry');
+    });
+
+    it('applies concession rates (Tertiary & Youth/Child) to Inner Harbour ferry fares', () => {
+      const tertiaryInput: CommuteInput = {
+        originSuburbId: 'devonport',
+        destinationSuburbId: 'parnell',
+        daysPerWeek: 3,
+        vehicleType: 'petrol91',
+        concession: 'tertiary',
+        fareConcession: 'TERTIARY',
+        parkingDailyRate: 0,
+        parkingDaysPerWeek: 0,
+        includeMaintenanceWear: false,
+        carpoolPassengers: 1,
+      };
+
+      const tertiaryResult = calculateCommuteArbitrage(tertiaryInput);
+      assert.strictEqual(tertiaryResult.transit.singleTripStandardFare, 7.80);
+      assert.strictEqual(tertiaryResult.transit.singleTripConcessionFare, 6.24, 'Tertiary gets 20% off ($6.24)');
+      assert.strictEqual(tertiaryResult.transit.dailyFare, 12.48);
+      assert.strictEqual(tertiaryResult.transit.weeklyTotal, 37.44);
+
+      const childInput: CommuteInput = {
+        originSuburbId: 'devonport',
+        destinationSuburbId: 'parnell',
+        daysPerWeek: 3,
+        vehicleType: 'petrol91',
+        concession: 'youth',
+        fareConcession: 'CHILD',
+        parkingDailyRate: 0,
+        parkingDaysPerWeek: 0,
+        includeMaintenanceWear: false,
+        carpoolPassengers: 1,
+      };
+
+      const childResult = calculateCommuteArbitrage(childInput);
+      assert.strictEqual(childResult.transit.singleTripStandardFare, 7.80);
+      assert.strictEqual(childResult.transit.singleTripConcessionFare, 3.90, 'Youth/Child gets 50% off ($3.90)');
+      assert.strictEqual(childResult.transit.dailyFare, 7.80);
+      assert.strictEqual(childResult.transit.weeklyTotal, 23.40);
     });
   });
 });

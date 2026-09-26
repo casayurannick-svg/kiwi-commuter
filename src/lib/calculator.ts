@@ -6,6 +6,7 @@ import {
   CONCESSION_MULTIPLIERS,
   DEFAULT_FUEL_RATE,
   EV_CHARGING_PRESETS,
+  INNER_HARBOUR_FERRY_FARE,
   NZ_AA_MAINTENANCE_PER_KM,
   NZ_EV_CHARGING_RATES,
   NZTA_RUC_RATES,
@@ -224,17 +225,50 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
       input.transitMode === 'Scooter & Ride' ||
       input.transitMode === 'Scooter & Transit');
 
+  // US-10: Ferry Classification & Pricing Fix
+  const hasFerryStep = Boolean(
+    input.transitSteps?.some(
+      (s) =>
+        s.travelMode === 'FERRY' ||
+        s.vehicleType === 'FERRY' ||
+        s.line?.toLowerCase().includes('ferry') ||
+        s.line?.toUpperCase() === 'DEV' ||
+        s.departureStop?.toLowerCase().includes('ferry') ||
+        s.arrivalStop?.toLowerCase().includes('ferry') ||
+        s.departureStop?.toLowerCase().includes('wharf') ||
+        s.arrivalStop?.toLowerCase().includes('wharf')
+    )
+  );
+
+  const hasFerryLine = Boolean(
+    input.transitLines?.some(
+      (l) => l.toLowerCase().includes('ferry') || l.toUpperCase() === 'DEV'
+    )
+  );
+
   const isFerry =
     !isEbike &&
     !isMicromobility &&
-    (input.transitMode === 'FERRY' ||
+    (hasFerryStep ||
+      hasFerryLine ||
+      input.transitMode === 'FERRY' ||
       input.transitMode === 'Ferry' ||
-      (!input.transitMode && origin.primaryTransitMode === 'Ferry'));
+      (!input.transitMode &&
+        (origin.primaryTransitMode === 'Ferry' ||
+          destination.primaryTransitMode === 'Ferry' ||
+          input.originSuburbId === 'devonport' ||
+          input.destinationSuburbId === 'devonport' ||
+          input.originSuburbId === 'bayswater' ||
+          input.destinationSuburbId === 'bayswater' ||
+          input.originSuburbId === 'birkenhead' ||
+          input.destinationSuburbId === 'birkenhead')));
 
   const isWaiheke = Boolean(
     input.isWaihekeRoute ||
     (isFerry && (input.originSuburbId === 'waiheke' || input.destinationSuburbId === 'waiheke'))
   );
+
+  const isInnerHarbourFerry = isFerry && !isWaiheke;
 
   const zoneCount = route.zonesTraveled;
 
@@ -298,9 +332,43 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
         ? WAIHEKE_FERRY_FARES.monthlyPass
         : rawMonthly;
     hopFareMonthly = monthlyTransitTotal;
+  } else if (isInnerHarbourFerry) {
+    // US-10: Inner Harbour Ferry (Devonport, Bayswater, Birkenhead, Northcote Pt)
+    // Bypasses standard bus zones and applies flat $7.80 fare.
+    // Under AT integrated fares, transferring to connecting bus within 30 mins charges no additional fare.
+    singleTripStandardFare = INNER_HARBOUR_FERRY_FARE;
+
+    if (input.fareConcession && AT_HOP_ZONE_FARES_BY_CONCESSION[input.fareConcession]) {
+      if (input.fareConcession === 'TERTIARY') {
+        singleTripConcessionFare = round2(singleTripStandardFare * 0.8);
+      } else if (input.fareConcession === 'CHILD') {
+        singleTripConcessionFare = round2(singleTripStandardFare * 0.5);
+      } else {
+        singleTripConcessionFare = singleTripStandardFare;
+      }
+    } else {
+      const concessionInfo =
+        CONCESSION_MULTIPLIERS[input.concession] || CONCESSION_MULTIPLIERS.adult;
+      singleTripConcessionFare = round2(singleTripStandardFare * concessionInfo.multiplier);
+    }
+
+    const baseDailyHopFare = round2(singleTripConcessionFare * 2);
+    const baseUncappedWeeklyFare = round2(baseDailyHopFare * input.daysPerWeek);
+
+    // Inner Harbour Ferries ARE eligible for the AT HOP 7-day $50 cap
+    isHopCapApplied = baseUncappedWeeklyFare > AT_HOP_7_DAY_CAP;
+    hopCappedWeeklyFare = isHopCapApplied ? AT_HOP_7_DAY_CAP : baseUncappedWeeklyFare;
+    const baseWeeklyHopFare = round2(hopCappedWeeklyFare);
+    const baseMonthlyHopFare = round2(baseWeeklyHopFare * WEEKS_PER_MONTH);
+    hopFareMonthly = baseMonthlyHopFare;
+
+    dailyTransitFare = baseDailyHopFare;
+    uncappedWeeklyFare = baseUncappedWeeklyFare;
+    weeklyTransitTotal = baseWeeklyHopFare;
+    monthlyTransitTotal = baseMonthlyHopFare;
   } else {
-    // Standard AT HOP Zonal Fares (Devonport, Birkenhead, Hobsonville ferries & bus/train)
-    singleTripStandardFare = AT_HOP_ZONE_FARES[zoneCount] || 2.60;
+    // Standard AT HOP Zonal Fares (bus and train)
+    singleTripStandardFare = AT_HOP_ZONE_FARES[zoneCount] || 3.00;
 
     // Concession calculation
     if (input.fareConcession && AT_HOP_ZONE_FARES_BY_CONCESSION[input.fareConcession]) {
@@ -583,7 +651,7 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
     const transitRideMode =
       origin.primaryTransitMode === 'Train'
         ? 'TRAIN'
-        : origin.primaryTransitMode === 'Ferry'
+        : origin.primaryTransitMode === 'Ferry' || isFerry
         ? 'FERRY'
         : 'BUS';
     const transitDist = Math.max(1, round1(distanceOneWayKm - effectiveFirstMileDist));
@@ -600,16 +668,19 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
         : Math.max(5, Math.round(adjustedTransitTimeMins - effectiveFirstMileDuration - 8));
 
     // Compose dynamic title and notes reflecting multi-leg transit routes
+    const isTransitFerry = isFerry || transitRideMode === 'FERRY';
     const transitTitle =
       input.transitLines && input.transitLines.length > 0
-        ? `Bus ${input.transitLines.join(' + ')} Ride`
-        : `${transitBreakdown.primaryMode || 'Transit'} Ride`;
+        ? `${isTransitFerry ? 'Ferry' : 'Bus'} ${input.transitLines.join(' + ')} Ride`
+        : `${transitBreakdown.primaryMode || (isTransitFerry ? 'Ferry' : 'Transit')} Ride`;
 
     const transitNotes =
       input.transitSteps && input.transitSteps.length > 1
         ? input.transitSteps.map((s) => `${s.line} (${s.durationMins}m)`).join(' → ')
         : isHopCapApplied
         ? 'Covered by AT $50 Weekly Cap'
+        : isInnerHarbourFerry
+        ? 'Inner Harbour Ferry Fare ($7.80)'
         : `${zoneCount}-Zone AT HOP Fare`;
 
     journeyLegs.push({
