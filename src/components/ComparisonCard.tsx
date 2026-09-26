@@ -33,7 +33,7 @@ export default function ComparisonCard({ arbitrage, input }: ComparisonCardProps
   let headline = 'Costs are roughly identical';
   let subline = 'Both commute options cost about the same each month.';
   let headlineColor = 'text-zinc-100';
-  const badgeLabel = 'MONTHLY VERDICT';
+  const badgeLabel = 'MONTHLY SUMMARY';
   let badgeColor = 'text-zinc-400 bg-zinc-800/60 border-zinc-700';
 
   if (isTransitCheaper && !isBreakEven) {

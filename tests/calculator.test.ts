@@ -659,13 +659,13 @@ describe('US-15: Privacy-Friendly Traffic & Web Analytics Integration', () => {
 });
 
 describe('US-14: Plain-Language Financial Verdicts', () => {
-  it('verifies ComparisonCard source uses natural plain-language verdict copy and MONTHLY VERDICT badge', () => {
+  it('verifies ComparisonCard source uses natural plain-language verdict copy and MONTHLY SUMMARY badge', () => {
     const cardPath = path.resolve(process.cwd(), 'src/components/ComparisonCard.tsx');
     const content = fs.readFileSync(cardPath, 'utf-8');
 
     // Verify replacement of abstract Monthly Arbitrage badge
     assert.ok(!content.includes('Monthly Arbitrage'), 'Must eliminate abstract "Monthly Arbitrage" copy');
-    assert.ok(content.includes('MONTHLY VERDICT'), 'Must display plain-language "MONTHLY VERDICT" badge');
+    assert.ok(content.includes('MONTHLY SUMMARY'), 'Must display plain-language "MONTHLY SUMMARY" badge');
 
     // Verify plain-language savings headline and subline formats
     assert.ok(

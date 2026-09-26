@@ -179,5 +179,22 @@ describe('src/components/ComparisonCard.tsx - US-16 Mini-Receipt Time Valuation'
       'Corridor label should not appear for E‑Bike'
     );
   });
+
+  it('renders the MONTHLY SUMMARY badge with uppercase styling and icon', () => {
+    const input: CommuteInput = {
+      ...defaultInput,
+    };
+    const arbitrage = createMockArbitrage();
+    const html = renderToStaticMarkup(
+      React.createElement(ComparisonCard, { arbitrage, input })
+    );
+
+    assert.ok(html.includes('MONTHLY SUMMARY'), 'Must display "MONTHLY SUMMARY" badge');
+    assert.ok(
+      html.includes('uppercase tracking-wider'),
+      'Must preserve uppercase tracking-wider badge styling'
+    );
+  });
 });
+
 
