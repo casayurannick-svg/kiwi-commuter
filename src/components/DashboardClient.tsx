@@ -4,6 +4,7 @@ import CommuteForm from '@/components/CommuteForm';
 import ComparisonCard from '@/components/ComparisonCard';
 import DonationButton from '@/components/DonationButton';
 import FuelRadarWidget from '@/components/FuelRadarWidget';
+import JourneyTimeline from '@/components/JourneyTimeline';
 import MonthlySavingsChart from '@/components/MonthlySavingsChart';
 import RouteMap from '@/components/RouteMap';
 import { getSuburbById } from '@/config/suburbs';
@@ -165,12 +166,21 @@ export default function DashboardClient({ initialFuelPrices }: DashboardClientPr
             </div>
           </div>
 
-          {/* Right Column (Desktop cols 6..12: ComparisonCard + RouteMap + MonthlySavingsChart) */}
+          {/* Right Column (Desktop cols 6..12: ComparisonCard + JourneyTimeline + RouteMap + MonthlySavingsChart) */}
           <div className="contents lg:flex lg:flex-col lg:col-span-7 lg:gap-4 w-full">
             <div className="order-2 w-full">
               <ComparisonCard arbitrage={arbitrage} input={commuteInput} />
             </div>
             <div className="order-3 w-full">
+              <JourneyTimeline
+                arbitrage={arbitrage}
+                input={commuteInput}
+                onFirstMileModeChange={(mode) =>
+                  setCommuteInput((prev) => ({ ...prev, firstMileMode: mode }))
+                }
+              />
+            </div>
+            <div className="order-4 w-full">
               <RouteMap
                 origin={origin}
                 destination={destination}
@@ -179,7 +189,7 @@ export default function DashboardClient({ initialFuelPrices }: DashboardClientPr
                 transitTimeMins={arbitrage.transitTimeMins}
               />
             </div>
-            <div className="order-4 w-full">
+            <div className="order-5 w-full">
               <MonthlySavingsChart arbitrage={arbitrage} />
             </div>
           </div>

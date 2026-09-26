@@ -19,11 +19,13 @@ import {
   CommuteComparisonResult,
   CommuteInput,
   DrivingCostBreakdown,
+  JourneyLeg,
   TimeMetrics,
   TransitCostBreakdown,
   VehiclePowertrain,
   VehicleType,
 } from '@/types';
+import { findNearestTransitStation } from './stations';
 
 export const WEEKS_PER_MONTH = 52 / 12; // 4.33333333
 
@@ -325,6 +327,73 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
     }
   }
 
+  // --- US-28: First-Mile Running Cost & Spatial Nearest Station Search ---
+  const originCoords: [number, number] | undefined = input.originCoordinates;
+  const nearestStation = originCoords ? findNearestTransitStation(originCoords) : undefined;
+  const firstMileMode = input.firstMileMode ?? (input.originCoordinates ? 'DRIVE' : undefined);
+  const firstMileDistanceKm =
+    typeof input.firstMileDistanceKm === 'number'
+      ? input.firstMileDistanceKm
+      : nearestStation
+      ? nearestStation.distanceKm
+      : 0;
+
+  let firstMileDailyCost = 0;
+  let firstMileWeeklyCost = 0;
+  let firstMileMonthlyCost = 0;
+  let firstMileDurationMins = 0;
+
+  if (!isEbike && firstMileDistanceKm > 0 && firstMileMode) {
+    if (firstMileMode === 'DRIVE') {
+      const firstMileRoundTripKm = firstMileDistanceKm * 2;
+      let firstMileFuelCost = 0;
+      if (effectiveVehicleType === 'bev') {
+        const evRate = resolveEvKwhRate();
+        const consumptionRoundTrip = (consumption / 100) * firstMileRoundTripKm;
+        firstMileFuelCost = round2((consumptionRoundTrip * evRate) / passengers);
+      } else if (effectiveVehicleType === 'phev') {
+        const evRate = resolveEvKwhRate();
+        const phevEvEfficiency = 16.5;
+        const consumptionRoundTrip = (phevEvEfficiency / 100) * firstMileRoundTripKm;
+        firstMileFuelCost = round2((consumptionRoundTrip * evRate) / passengers);
+      } else {
+        const rawPrice = input.customFuelPricePerL ?? input.fuelPriceOverride;
+        const fuelPrice =
+          typeof rawPrice === 'number' && !isNaN(rawPrice) && rawPrice > 0
+            ? rawPrice
+            : vehicle.defaultFuelPrice || DEFAULT_FUEL_RATE;
+        const consumptionRoundTrip = (consumption / 100) * firstMileRoundTripKm;
+        firstMileFuelCost = round2((consumptionRoundTrip * fuelPrice) / passengers);
+      }
+      const firstMileRucCost = round2((firstMileRoundTripKm * rucRate) / passengers);
+      const firstMileMaintenanceCost = round2((firstMileRoundTripKm * maintenanceRate) / passengers);
+      firstMileDailyCost = round2(firstMileFuelCost + firstMileRucCost + firstMileMaintenanceCost);
+      firstMileWeeklyCost = round2(firstMileDailyCost * input.daysPerWeek);
+      firstMileMonthlyCost = round2(firstMileWeeklyCost * WEEKS_PER_MONTH);
+      firstMileDurationMins = Math.max(3, Math.round(firstMileDistanceKm * 2.5));
+    } else if (firstMileMode === 'SCOOTER') {
+      firstMileDurationMins = round1((firstMileDistanceKm / 15) * 60);
+      if (input.scooterOwnership === 'RENTAL') {
+        const costPerLeg = 1.00 + (firstMileDurationMins * 0.45);
+        firstMileDailyCost = round2(costPerLeg * 2);
+        firstMileWeeklyCost = round2(firstMileDailyCost * input.daysPerWeek);
+        firstMileMonthlyCost = round2(firstMileWeeklyCost * WEEKS_PER_MONTH);
+      }
+    } else {
+      // WALK
+      firstMileDurationMins = Math.round((firstMileDistanceKm / 5) * 60);
+      firstMileDailyCost = 0;
+      firstMileWeeklyCost = 0;
+      firstMileMonthlyCost = 0;
+    }
+  }
+
+  // Aggregate first-mile running costs with transit totals
+  dailyTransitFare = round2(dailyTransitFare + firstMileDailyCost);
+  uncappedWeeklyFare = round2(uncappedWeeklyFare + firstMileWeeklyCost);
+  weeklyTransitTotal = round2(weeklyTransitTotal + firstMileWeeklyCost);
+  monthlyTransitTotal = round2(monthlyTransitTotal + firstMileMonthlyCost);
+
   const annualTransitTotal = round2(monthlyTransitTotal * 12);
 
   // Monthly CO2 for transit (kg)
@@ -354,7 +423,13 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
     scooterRentalFeesDaily: isMicromobility && input.scooterOwnership === 'RENTAL' ? scooterRentalFeesDaily : undefined,
     scooterRentalFeesMonthly: isMicromobility && input.scooterOwnership === 'RENTAL' ? scooterRentalFeesMonthly : undefined,
     scooterDurationMins: isMicromobility ? scooterDurationMinsPerLeg : undefined,
-    hopFareMonthly: isMicromobility ? hopFareMonthly : undefined,
+    hopFareMonthly: hopFareMonthly,
+    firstMileDailyCost: firstMileDailyCost > 0 ? firstMileDailyCost : undefined,
+    firstMileMonthlyCost: firstMileMonthlyCost > 0 ? firstMileMonthlyCost : undefined,
+    firstMileDistanceKm: firstMileDistanceKm > 0 ? round1(firstMileDistanceKm) : undefined,
+    firstMileDurationMins: firstMileDurationMins > 0 ? firstMileDurationMins : undefined,
+    firstMileMode: isEbike ? undefined : firstMileMode,
+    nearestStationName: nearestStation?.name,
   };
 
   // --- Financial Arbitrage Deltas ---
@@ -450,6 +525,83 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
     generalizedMonthlySavings,
   };
 
+  // --- US-28: Segmented Journey Legs (First-Mile, Transit, Last-Mile) ---
+  const journeyLegs: JourneyLeg[] = [];
+  if (isEbike) {
+    journeyLegs.push({
+      id: 'leg-ebike',
+      title: 'E-Bike Commute',
+      type: 'TRANSIT',
+      mode: 'EBIKE',
+      originName: input.originAddress || origin.name,
+      destinationName: input.destinationAddress || destination.name,
+      distanceKm: round1(distanceOneWayKm),
+      durationMins: Math.round((distanceOneWayKm / 20) * 60),
+      cost: round2(dailyTransitFare / 2),
+      costFormatted: `$${(dailyTransitFare / 2).toFixed(2)}`,
+      iconName: 'Bike',
+      notes: 'Direct active commute via cycleways',
+    });
+  } else {
+    const stationName = nearestStation ? nearestStation.name : `${origin.name} Station`;
+    const fMode: 'DRIVE' | 'WALK' | 'SCOOTER' = firstMileMode || 'DRIVE';
+    const effectiveFirstMileDist = firstMileDistanceKm > 0 ? firstMileDistanceKm : (nearestStation ? nearestStation.distanceKm : 2.5);
+    const effectiveFirstMileDuration = firstMileDurationMins > 0 ? firstMileDurationMins : (fMode === 'DRIVE' ? Math.max(3, Math.round(effectiveFirstMileDist * 2.5)) : Math.round(effectiveFirstMileDist * 12));
+
+    journeyLegs.push({
+      id: 'leg-first-mile',
+      title: fMode === 'DRIVE' ? 'Drive to Station' : fMode === 'SCOOTER' ? 'Scooter to Station' : 'Walk to Station',
+      type: 'FIRST_MILE',
+      mode: fMode,
+      originName: input.originAddress || origin.name,
+      destinationName: stationName,
+      distanceKm: round1(effectiveFirstMileDist),
+      durationMins: effectiveFirstMileDuration,
+      cost: round2(firstMileDailyCost / 2),
+      costFormatted: (firstMileDailyCost / 2) > 0 ? `$${(firstMileDailyCost / 2).toFixed(2)}` : 'Free',
+      iconName: fMode === 'DRIVE' ? 'Car' : fMode === 'SCOOTER' ? 'Zap' : 'Footprints',
+      notes: nearestStation?.hasParkAndRide ? 'Park & Ride Available' : undefined,
+    });
+
+    const transitRideMode =
+      origin.primaryTransitMode === 'Train'
+        ? 'TRAIN'
+        : origin.primaryTransitMode === 'Ferry'
+        ? 'FERRY'
+        : 'BUS';
+    const transitDist = Math.max(1, round1(distanceOneWayKm - effectiveFirstMileDist));
+    const transitMins = Math.max(5, Math.round(adjustedTransitTimeMins - effectiveFirstMileDuration - 8));
+    journeyLegs.push({
+      id: 'leg-transit',
+      title: `${transitBreakdown.primaryMode || 'Transit'} Ride`,
+      type: 'TRANSIT',
+      mode: transitRideMode,
+      originName: stationName,
+      destinationName: input.destinationAddress ? input.destinationAddress.split(',')[0] : `${destination.name} Hub`,
+      distanceKm: transitDist,
+      durationMins: transitMins,
+      cost: singleTripConcessionFare,
+      costFormatted: `$${singleTripConcessionFare.toFixed(2)}`,
+      iconName: transitRideMode === 'TRAIN' ? 'Train' : transitRideMode === 'FERRY' ? 'Ship' : 'Bus',
+      notes: isHopCapApplied ? 'Covered by AT $50 Weekly Cap' : `${zoneCount}-Zone AT HOP Fare`,
+    });
+
+    journeyLegs.push({
+      id: 'leg-last-mile',
+      title: 'Walk to Desk',
+      type: 'LAST_MILE',
+      mode: 'WALK',
+      originName: input.destinationAddress ? input.destinationAddress.split(',')[0] : `${destination.name} Hub`,
+      destinationName: input.destinationAddress || destination.name,
+      distanceKm: 0.6,
+      durationMins: 8,
+      cost: 0,
+      costFormatted: 'Free',
+      iconName: 'Building',
+      notes: 'Final walking stretch to office',
+    });
+  }
+
   return {
     driving: drivingBreakdown,
     transit: transitBreakdown,
@@ -468,6 +620,8 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
     timeMetrics,
     paybackMonths,
     scooterOwnership: input.scooterOwnership,
+    journeyLegs,
+    nearestStation,
   };
 }
 

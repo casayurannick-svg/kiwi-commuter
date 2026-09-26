@@ -89,10 +89,42 @@ export interface CommuteInput {
   scooterOwnership?: 'OWNED' | 'RENTAL'; // US-23: Micro-mobility scooter ownership model
   scooterCapitalCost?: number; // US-23: Upfront capital purchase cost for owned scooter
   walkDistanceKm?: number; // US-23: First/last mile walk distance to transit station in km
+  originAddress?: string; // US-28: Geocoded origin address text
+  destinationAddress?: string; // US-28: Geocoded destination address text
+  originCoordinates?: [number, number]; // US-28: [lng, lat] geocoded coordinates
+  destinationCoordinates?: [number, number]; // US-28: [lng, lat] geocoded coordinates
+  firstMileMode?: 'DRIVE' | 'WALK' | 'SCOOTER'; // US-28: Mode used to reach nearest station
+  firstMileDistanceKm?: number; // US-28: Distance to nearest transit station in km
 }
 
 export type EVChargingSource = 'HOME_OFFPEAK' | 'HOME_FLAT' | 'PUBLIC_DC' | 'CUSTOM';
 export type EvChargingMode = 'home_offpeak' | 'home_flat' | 'public_dc' | 'custom';
+
+export interface TransitStation {
+  id: string;
+  name: string;
+  mode: string;
+  zone: number;
+  region: string;
+  hasParkAndRide: boolean;
+  coordinates: [number, number];
+  distanceKm: number;
+}
+
+export interface JourneyLeg {
+  id: string;
+  title: string;
+  type: 'FIRST_MILE' | 'TRANSIT' | 'LAST_MILE';
+  mode: 'DRIVE' | 'WALK' | 'TRAIN' | 'BUS' | 'FERRY' | 'SCOOTER' | 'EBIKE';
+  originName: string;
+  destinationName: string;
+  distanceKm: number;
+  durationMins: number;
+  cost: number;
+  costFormatted: string;
+  iconName: string;
+  notes?: string;
+}
 
 export interface TimeMetrics {
   oneWayDriveMinutes: number;
@@ -145,6 +177,12 @@ export interface TransitCostBreakdown {
   scooterRentalFeesMonthly?: number;
   scooterDurationMins?: number;
   hopFareMonthly?: number;
+  firstMileDailyCost?: number;
+  firstMileMonthlyCost?: number;
+  firstMileDistanceKm?: number;
+  firstMileDurationMins?: number;
+  firstMileMode?: 'DRIVE' | 'WALK' | 'SCOOTER';
+  nearestStationName?: string;
 }
 
 export interface CommuteComparisonResult {
@@ -165,6 +203,8 @@ export interface CommuteComparisonResult {
   timeMetrics?: TimeMetrics;
   paybackMonths?: number | null;
   scooterOwnership?: 'OWNED' | 'RENTAL';
+  journeyLegs?: JourneyLeg[];
+  nearestStation?: TransitStation;
 }
 
 export type ArbitrageResult = CommuteComparisonResult;

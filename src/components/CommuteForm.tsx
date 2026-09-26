@@ -1,7 +1,8 @@
 'use client';
 
 import { NZ_EV_CHARGING_RATES, VEHICLE_PRESETS } from '@/config/fares.config';
-import { AUCKLAND_SUBURBS } from '@/config/suburbs';
+import { AUCKLAND_SUBURBS, SUBURB_CENTROIDS } from '@/config/suburbs';
+import { searchAucklandAddresses, GeocodingResult } from '@/lib/mapbox';
 import { CommuteInput, ConcessionType, EVChargingSource, EvChargingMode, ParkingTier, TransitMode, VehiclePowertrain, VehicleType } from '@/types';
 import {
   Bus,
@@ -10,11 +11,14 @@ import {
   Clock,
   CreditCard,
   Info,
+  Loader2,
   MapPin,
+  Search,
   Settings2,
   Ship,
   Users,
   Wrench,
+  X,
   Zap,
 } from 'lucide-react';
 import React, { useState } from 'react';
@@ -156,11 +160,116 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
     // If 'custom', retain current or default to 30
   };
 
+  // US-28: Address Geocoding autocomplete states
+  const [originQuery, setOriginQuery] = useState(input.originAddress || '');
+  const [originSuggestions, setOriginSuggestions] = useState<GeocodingResult[]>([]);
+  const [isOriginLoading, setIsOriginLoading] = useState(false);
+  const [showOriginDropdown, setShowOriginDropdown] = useState(false);
+
+  const [destQuery, setDestQuery] = useState(input.destinationAddress || '');
+  const [destSuggestions, setDestSuggestions] = useState<GeocodingResult[]>([]);
+  const [isDestLoading, setIsDestLoading] = useState(false);
+  const [showDestDropdown, setShowDestDropdown] = useState(false);
+
+  const handleOriginSearch = async (val: string) => {
+    setOriginQuery(val);
+    if (val.trim().length >= 2) {
+      setIsOriginLoading(true);
+      setShowOriginDropdown(true);
+      try {
+        const results = await searchAucklandAddresses(val);
+        setOriginSuggestions(results);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setIsOriginLoading(false);
+      }
+    } else {
+      setOriginSuggestions([]);
+      setShowOriginDropdown(false);
+    }
+  };
+
+  const handleSelectOriginAddress = (item: GeocodingResult) => {
+    setOriginQuery(item.placeName);
+    setShowOriginDropdown(false);
+
+    let closestSuburbId = input.originSuburbId;
+    let minDistance = Infinity;
+    for (const sub of SUBURB_CENTROIDS) {
+      const d = Math.hypot(sub.coordinates[0] - item.coordinates[0], sub.coordinates[1] - item.coordinates[1]);
+      if (d < minDistance) {
+        minDistance = d;
+        closestSuburbId = sub.id;
+      }
+    }
+
+    const isWaiheke = closestSuburbId === 'waiheke' || input.destinationSuburbId === 'waiheke';
+    const updated: CommuteInput = {
+      ...input,
+      originAddress: item.placeName,
+      originCoordinates: item.coordinates,
+      originSuburbId: closestSuburbId,
+      isWaihekeRoute: isWaiheke,
+      transitMode: isWaiheke ? 'FERRY' : input.transitMode,
+    };
+    notifyChange(updated);
+  };
+
+  const handleDestSearch = async (val: string) => {
+    setDestQuery(val);
+    if (val.trim().length >= 2) {
+      setIsDestLoading(true);
+      setShowDestDropdown(true);
+      try {
+        const results = await searchAucklandAddresses(val);
+        setDestSuggestions(results);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setIsDestLoading(false);
+      }
+    } else {
+      setDestSuggestions([]);
+      setShowDestDropdown(false);
+    }
+  };
+
+  const handleSelectDestAddress = (item: GeocodingResult) => {
+    setDestQuery(item.placeName);
+    setShowDestDropdown(false);
+
+    let closestSuburbId = input.destinationSuburbId;
+    let minDistance = Infinity;
+    for (const sub of SUBURB_CENTROIDS) {
+      const d = Math.hypot(sub.coordinates[0] - item.coordinates[0], sub.coordinates[1] - item.coordinates[1]);
+      if (d < minDistance) {
+        minDistance = d;
+        closestSuburbId = sub.id;
+      }
+    }
+
+    const isWaiheke = input.originSuburbId === 'waiheke' || closestSuburbId === 'waiheke';
+    const updated: CommuteInput = {
+      ...input,
+      destinationAddress: item.placeName,
+      destinationCoordinates: item.coordinates,
+      destinationSuburbId: closestSuburbId,
+      isWaihekeRoute: isWaiheke,
+      transitMode: isWaiheke ? 'FERRY' : input.transitMode,
+    };
+    notifyChange(updated);
+  };
+
   const handleOriginChange = (originId: string) => {
     const isWaiheke = originId === 'waiheke' || input.destinationSuburbId === 'waiheke';
+    const sub = SUBURB_CENTROIDS.find((s) => s.id === originId);
+    if (sub) setOriginQuery(sub.name);
     const updated: CommuteInput = {
       ...input,
       originSuburbId: originId,
+      originAddress: sub ? `${sub.name}, Auckland` : undefined,
+      originCoordinates: sub ? sub.coordinates : undefined,
       isWaihekeRoute: isWaiheke,
       transitMode: isWaiheke ? 'FERRY' : input.transitMode,
     };
@@ -169,9 +278,13 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
 
   const handleDestinationChange = (destId: string) => {
     const isWaiheke = input.originSuburbId === 'waiheke' || destId === 'waiheke';
+    const sub = SUBURB_CENTROIDS.find((s) => s.id === destId);
+    if (sub) setDestQuery(sub.name);
     const updated: CommuteInput = {
       ...input,
       destinationSuburbId: destId,
+      destinationAddress: sub ? `${sub.name}, Auckland` : undefined,
+      destinationCoordinates: sub ? sub.coordinates : undefined,
       isWaihekeRoute: isWaiheke,
       transitMode: isWaiheke ? 'FERRY' : input.transitMode,
     };
@@ -217,19 +330,78 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
         </h2>
       </div>
 
-      {/* Origin & Destination */}
+      {/* Origin & Destination (US-28 Address Geocoding & Suburb Presets) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {/* Origin */}
-        <div className="space-y-1">
-          <label className="text-xs font-semibold text-slate-300 flex items-center gap-1">
-            <MapPin className="w-3.5 h-3.5 text-emerald-400" />
-            Origin
-          </label>
+        <div className="space-y-1.5 relative">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-semibold text-slate-300 flex items-center gap-1">
+              <MapPin className="w-3.5 h-3.5 text-emerald-400" />
+              From (Origin Address)
+            </label>
+            {input.originCoordinates && (
+              <span className="text-[10px] text-emerald-400 font-mono">
+                {input.originCoordinates[0].toFixed(2)}, {input.originCoordinates[1].toFixed(2)}
+              </span>
+            )}
+          </div>
+
+          {/* Autocomplete Input */}
+          <div className="relative">
+            <div className="relative flex items-center">
+              <input
+                type="text"
+                data-testid="origin-address-input"
+                aria-label="From (Origin Address)"
+                placeholder="Search street or landmark..."
+                value={originQuery}
+                onChange={(e) => handleOriginSearch(e.target.value)}
+                onFocus={() => {
+                  if (originSuggestions.length > 0) setShowOriginDropdown(true);
+                }}
+                className="w-full bg-slate-900 border border-slate-700/80 rounded-xl pl-9 pr-8 py-2 text-sm text-slate-100 placeholder-slate-500 focus:ring-2 focus:ring-emerald-500 focus:outline-none transition"
+              />
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 pointer-events-none" />
+              {isOriginLoading ? (
+                <Loader2 className="w-4 h-4 text-emerald-400 absolute right-3 animate-spin" />
+              ) : originQuery ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOriginQuery('');
+                    setShowOriginDropdown(false);
+                  }}
+                  className="absolute right-2.5 p-1 text-slate-400 hover:text-white"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              ) : null}
+            </div>
+
+            {/* Suggestions Dropdown */}
+            {showOriginDropdown && originSuggestions.length > 0 && (
+              <div className="absolute z-50 left-0 right-0 mt-1 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl max-h-56 overflow-y-auto divide-y divide-slate-800">
+                {originSuggestions.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => handleSelectOriginAddress(item)}
+                    className="w-full text-left px-3 py-2.5 hover:bg-slate-800/80 transition flex flex-col gap-0.5"
+                  >
+                    <span className="text-xs font-semibold text-white">{item.text}</span>
+                    <span className="text-[11px] text-slate-400 truncate">{item.placeName}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Suburb Preset Fallback Selector */}
           <div className="relative">
             <select
               value={input.originSuburbId}
               onChange={(e) => handleOriginChange(e.target.value)}
-              className="w-full min-h-[44px] bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2 text-sm text-slate-100 font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-none transition appearance-none cursor-pointer"
+              className="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-400 focus:ring-1 focus:ring-emerald-500 focus:outline-none transition appearance-none cursor-pointer"
             >
               {AUCKLAND_SUBURBS.map((suburb) => (
                 <option key={suburb.id} value={suburb.id}>
@@ -237,21 +409,80 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
                 </option>
               ))}
             </select>
-            <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-3.5 pointer-events-none" />
+            <ChevronDown className="w-3.5 h-3.5 text-slate-500 absolute right-2.5 top-2 pointer-events-none" />
           </div>
         </div>
 
         {/* Destination */}
-        <div className="space-y-1">
-          <label className="text-xs font-semibold text-slate-300 flex items-center gap-1">
-            <MapPin className="w-3.5 h-3.5 text-sky-400" />
-            Destination
-          </label>
+        <div className="space-y-1.5 relative">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-semibold text-slate-300 flex items-center gap-1">
+              <MapPin className="w-3.5 h-3.5 text-sky-400" />
+              To (Destination Address)
+            </label>
+            {input.destinationCoordinates && (
+              <span className="text-[10px] text-sky-400 font-mono">
+                {input.destinationCoordinates[0].toFixed(2)}, {input.destinationCoordinates[1].toFixed(2)}
+              </span>
+            )}
+          </div>
+
+          {/* Autocomplete Input */}
+          <div className="relative">
+            <div className="relative flex items-center">
+              <input
+                type="text"
+                data-testid="destination-address-input"
+                aria-label="To (Destination Address)"
+                placeholder="Search street or workplace..."
+                value={destQuery}
+                onChange={(e) => handleDestSearch(e.target.value)}
+                onFocus={() => {
+                  if (destSuggestions.length > 0) setShowDestDropdown(true);
+                }}
+                className="w-full bg-slate-900 border border-slate-700/80 rounded-xl pl-9 pr-8 py-2 text-sm text-slate-100 placeholder-slate-500 focus:ring-2 focus:ring-sky-500 focus:outline-none transition"
+              />
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 pointer-events-none" />
+              {isDestLoading ? (
+                <Loader2 className="w-4 h-4 text-sky-400 absolute right-3 animate-spin" />
+              ) : destQuery ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDestQuery('');
+                    setShowDestDropdown(false);
+                  }}
+                  className="absolute right-2.5 p-1 text-slate-400 hover:text-white"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              ) : null}
+            </div>
+
+            {/* Suggestions Dropdown */}
+            {showDestDropdown && destSuggestions.length > 0 && (
+              <div className="absolute z-50 left-0 right-0 mt-1 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl max-h-56 overflow-y-auto divide-y divide-slate-800">
+                {destSuggestions.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => handleSelectDestAddress(item)}
+                    className="w-full text-left px-3 py-2.5 hover:bg-slate-800/80 transition flex flex-col gap-0.5"
+                  >
+                    <span className="text-xs font-semibold text-white">{item.text}</span>
+                    <span className="text-[11px] text-slate-400 truncate">{item.placeName}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Suburb Preset Fallback Selector */}
           <div className="relative">
             <select
               value={input.destinationSuburbId}
               onChange={(e) => handleDestinationChange(e.target.value)}
-              className="w-full min-h-[44px] bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2 text-sm text-slate-100 font-medium focus:ring-2 focus:ring-sky-500 focus:outline-none transition appearance-none cursor-pointer"
+              className="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-400 focus:ring-1 focus:ring-sky-500 focus:outline-none transition appearance-none cursor-pointer"
             >
               {AUCKLAND_SUBURBS.map((suburb) => (
                 <option key={suburb.id} value={suburb.id}>
@@ -259,7 +490,7 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
                 </option>
               ))}
             </select>
-            <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-3.5 pointer-events-none" />
+            <ChevronDown className="w-3.5 h-3.5 text-slate-500 absolute right-2.5 top-2 pointer-events-none" />
           </div>
         </div>
       </div>

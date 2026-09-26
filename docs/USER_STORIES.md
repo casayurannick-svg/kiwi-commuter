@@ -30,6 +30,7 @@
 | **US-25** | Fix E-Bike Verdict Copy & Remove Leaked Transit Metadata | **DONE** | [`src/components/ComparisonCard.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/ComparisonCard.tsx), [`src/components/__tests__/ComparisonCard.test.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/__tests__/ComparisonCard.test.tsx), [`tests/calculator.test.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/tests/calculator.test.ts) | Dynamic verdict headline ("on an E-Bike" vs "on public transport"), AT HOP Cap/Corridor/badge hidden for E-Bike, footer shows "E-Bike energy cost" instead of cap text. |
 | **US-26** | Conventional Hybrid (HEV) Powertrain Option | **DONE** | [`src/types/index.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/types/index.ts), [`src/components/CommuteForm.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/CommuteForm.tsx), [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts), [`src/lib/__tests__/calculator.test.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/__tests__/calculator.test.ts) | HEV in Powertrain enum, 'Hybrid (Non-Plug-in)' in CommuteForm with 4.5 L/100km default efficiency, $0.00/km RUC rate with standard petrol pricing. |
 | **US-27** | 'Buy Me a Coffee' Donation Button (Revolut.me) | **DONE** | [`src/components/DonationButton.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/DonationButton.tsx), [`src/components/DashboardClient.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/DashboardClient.tsx), [`src/components/__tests__/DonationButton.test.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/__tests__/DonationButton.test.tsx) | Reusable DonationButton with 'header' (subtle minimal icon/text) and 'footer' (full text with ☕) variants, linking to NEXT_PUBLIC_DONATION_URL with target="_blank" and rel="noopener noreferrer". |
+| **US-28** | Address Geocoding & Nearest Station Spatial Search with Segmented Timeline UI | **DONE** | [`src/components/CommuteForm.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/CommuteForm.tsx), [`src/data/at-stations.json`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/data/at-stations.json), [`src/lib/stations.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/stations.ts), [`src/components/JourneyTimeline.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/JourneyTimeline.tsx), [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts) | Mapbox Geocoding autocomplete on To/From inputs, 45 AT stations GeoJSON, @turf/nearest-point spatial search, JourneyTimeline component with segmented nodes (Drive to Station, Transit Ride, Walk to Desk), decoupled first-mile running costs aggregated with AT HOP fares. |
 
 ---
 
@@ -398,6 +399,22 @@
   - Rendered `'header'` variant in the main navigation bar and `'footer'` variant in the application footer (`src/components/DashboardClient.tsx`).
   - Unit tests in `src/components/__tests__/DonationButton.test.tsx` verify anchor tag properties, both variants, and URL/fallback handling.
   - Verification via `npx vitest run` and `npm run build` succeeds with zero errors.
+
+---
+
+### US-28: Address Geocoding & Nearest Station Spatial Search with Segmented Timeline UI
+**As an** Auckland commuter traveling from a specific street address,  
+**I want to** type my origin and destination addresses with autocomplete, discover my nearest rapid transit station automatically, and view a visual timeline of my commute legs,  
+**So that** I understand the exact time, distance, and running costs for each segment (driving to the station, public transit, and walking to my desk).
+
+* **Acceptance Criteria:**
+  - Integrated Mapbox Geocoding API into the "To" and "From" inputs in `src/components/CommuteForm.tsx` with autocomplete dropdowns, storing geocoded `[lng, lat]` coordinates and address text in state.
+  - Created a static GeoJSON dataset at `src/data/at-stations.json` containing 45 major Auckland Transport hubs (Train stations, Northern Busway stations, Ferry terminals, and major bus interchanges) with metadata (Park & Ride availability, zone, region).
+  - Implemented client-side spatial search in `src/lib/stations.ts` using `@turf/nearest-point` to calculate the closest transit station and distance in kilometers to the commuter's origin coordinates.
+  - Built `src/components/JourneyTimeline.tsx` for the results panel in `src/components/DashboardClient.tsx`, visually breaking down the commute into segmented nodes (e.g. Drive to Station, Transit Ride, Walk to Desk) with leg times, distances, and costs.
+  - Updated `src/lib/calculator.ts` to compute first-mile running costs (fuel/energy, RUC, wear & tear) and AT HOP fares separately, aggregating them into the final daily, weekly, monthly, and annual transit totals without breaking baseline test suites.
+  - Comprehensive unit test suites in `src/lib/__tests__/calculator.test.ts`, `src/lib/__tests__/stations.test.ts`, `src/components/__tests__/JourneyTimeline.test.tsx`, and `src/components/__tests__/CommuteForm.test.tsx`.
+  - All 89 test suites pass and Next.js production build (`npm run build`) compiles with zero errors.
 
 ---
 

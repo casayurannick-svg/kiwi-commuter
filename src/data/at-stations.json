@@ -1,0 +1,725 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "id": "waitemata-britomart",
+      "properties": {
+        "id": "waitemata-britomart",
+        "name": "Waitematā (Britomart)",
+        "mode": "Train",
+        "zone": 1,
+        "region": "Auckland Central",
+        "hasParkAndRide": false
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [174.7675, -36.8442]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "newmarket-station",
+      "properties": {
+        "id": "newmarket-station",
+        "name": "Newmarket Station",
+        "mode": "Train",
+        "zone": 1,
+        "region": "Auckland Central",
+        "hasParkAndRide": false
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [174.7788, -36.8690]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "grafton-station",
+      "properties": {
+        "id": "grafton-station",
+        "name": "Grafton Station",
+        "mode": "Train",
+        "zone": 1,
+        "region": "Auckland Central",
+        "hasParkAndRide": false
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [174.7678, -36.8665]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "maungawhau-mt-eden",
+      "properties": {
+        "id": "maungawhau-mt-eden",
+        "name": "Maungawhau (Mt Eden)",
+        "mode": "Train",
+        "zone": 1,
+        "region": "Auckland Central",
+        "hasParkAndRide": false
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [174.7600, -36.8680]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "kingsland-station",
+      "properties": {
+        "id": "kingsland-station",
+        "name": "Kingsland Station",
+        "mode": "Train",
+        "zone": 1,
+        "region": "Auckland Central",
+        "hasParkAndRide": false
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [174.7439, -36.8722]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "morningside-station",
+      "properties": {
+        "id": "morningside-station",
+        "name": "Morningside Station",
+        "mode": "Train",
+        "zone": 1,
+        "region": "Auckland Central",
+        "hasParkAndRide": false
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [174.7335, -36.8745]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "mount-albert-station",
+      "properties": {
+        "id": "mount-albert-station",
+        "name": "Mount Albert Station",
+        "mode": "Train",
+        "zone": 1,
+        "region": "Auckland Central",
+        "hasParkAndRide": false
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [174.7120, -36.8845]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "avondale-station",
+      "properties": {
+        "id": "avondale-station",
+        "name": "Avondale Station",
+        "mode": "Train",
+        "zone": 2,
+        "region": "West Auckland",
+        "hasParkAndRide": false
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [174.6970, -36.8970]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "new-lynn-transport-centre",
+      "properties": {
+        "id": "new-lynn-transport-centre",
+        "name": "New Lynn Transport Centre",
+        "mode": "Train",
+        "zone": 2,
+        "region": "West Auckland",
+        "hasParkAndRide": true
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [174.6850, -36.9100]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "glen-eden-station",
+      "properties": {
+        "id": "glen-eden-station",
+        "name": "Glen Eden Station",
+        "mode": "Train",
+        "zone": 2,
+        "region": "West Auckland",
+        "hasParkAndRide": true
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [174.6550, -36.9080]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "henderson-station",
+      "properties": {
+        "id": "henderson-station",
+        "name": "Henderson Transport Centre",
+        "mode": "Train",
+        "zone": 3,
+        "region": "West Auckland",
+        "hasParkAndRide": true
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [174.6320, -36.8810]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "sturges-road-station",
+      "properties": {
+        "id": "sturges-road-station",
+        "name": "Sturges Road Station",
+        "mode": "Train",
+        "zone": 3,
+        "region": "West Auckland",
+        "hasParkAndRide": true
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [174.6180, -36.8740]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "swanson-station",
+      "properties": {
+        "id": "swanson-station",
+        "name": "Swanson Station",
+        "mode": "Train",
+        "zone": 3,
+        "region": "West Auckland",
+        "hasParkAndRide": true
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [174.5720, -36.8520]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "remuera-station",
+      "properties": {
+        "id": "remuera-station",
+        "name": "Remuera Station",
+        "mode": "Train",
+        "zone": 1,
+        "region": "Auckland Central",
+        "hasParkAndRide": false
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [174.7895, -36.8790]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "greenlane-station",
+      "properties": {
+        "id": "greenlane-station",
+        "name": "Greenlane Station",
+        "mode": "Train",
+        "zone": 1,
+        "region": "Auckland Central",
+        "hasParkAndRide": false
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [174.8010, -36.8900]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "ellerslie-station",
+      "properties": {
+        "id": "ellerslie-station",
+        "name": "Ellerslie Station",
+        "mode": "Train",
+        "zone": 1,
+        "region": "Auckland Central",
+        "hasParkAndRide": false
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [174.8120, -36.8995]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "penrose-station",
+      "properties": {
+        "id": "penrose-station",
+        "name": "Penrose Station",
+        "mode": "Train",
+        "zone": 1,
+        "region": "Auckland Central",
+        "hasParkAndRide": false
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [174.8210, -36.9110]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "onehunga-station",
+      "properties": {
+        "id": "onehunga-station",
+        "name": "Onehunga Station",
+        "mode": "Train",
+        "zone": 1,
+        "region": "Auckland Central",
+        "hasParkAndRide": true
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [174.7910, -36.9240]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "otahuhu-station",
+      "properties": {
+        "id": "otahuhu-station",
+        "name": "Otahuhu Transport Hub",
+        "mode": "Train",
+        "zone": 2,
+        "region": "South Auckland",
+        "hasParkAndRide": true
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [174.8430, -36.9440]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "middlemore-station",
+      "properties": {
+        "id": "middlemore-station",
+        "name": "Middlemore Station",
+        "mode": "Train",
+        "zone": 2,
+        "region": "South Auckland",
+        "hasParkAndRide": false
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [174.8420, -36.9635]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "papatoetoe-station",
+      "properties": {
+        "id": "papatoetoe-station",
+        "name": "Papatoetoe Station",
+        "mode": "Train",
+        "zone": 2,
+        "region": "South Auckland",
+        "hasParkAndRide": true
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [174.8510, -36.9790]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "puhinui-station",
+      "properties": {
+        "id": "puhinui-station",
+        "name": "Puhinui Station (Airport Interchange)",
+        "mode": "Train",
+        "zone": 2,
+        "region": "South Auckland",
+        "hasParkAndRide": false
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [174.8580, -36.9940]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "manukau-station",
+      "properties": {
+        "id": "manukau-station",
+        "name": "Manukau Station",
+        "mode": "Train",
+        "zone": 2,
+        "region": "South Auckland",
+        "hasParkAndRide": false
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [174.8770, -36.9930]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "manurewa-station",
+      "properties": {
+        "id": "manurewa-station",
+        "name": "Manurewa Station",
+        "mode": "Train",
+        "zone": 3,
+        "region": "South Auckland",
+        "hasParkAndRide": true
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [174.8970, -37.0250]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "takanini-station",
+      "properties": {
+        "id": "takanini-station",
+        "name": "Takanini Station",
+        "mode": "Train",
+        "zone": 3,
+        "region": "South Auckland",
+        "hasParkAndRide": true
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [174.9220, -37.0520]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "papakura-station",
+      "properties": {
+        "id": "papakura-station",
+        "name": "Papakura Station",
+        "mode": "Train",
+        "zone": 4,
+        "region": "South Auckland",
+        "hasParkAndRide": true
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [174.9450, -37.0650]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "pukekohe-station",
+      "properties": {
+        "id": "pukekohe-station",
+        "name": "Pukekohe Station",
+        "mode": "Train",
+        "zone": 5,
+        "region": "South Auckland",
+        "hasParkAndRide": true
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [174.9080, -37.2020]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "orakei-station",
+      "properties": {
+        "id": "orakei-station",
+        "name": "Orakei Station",
+        "mode": "Train",
+        "zone": 1,
+        "region": "Auckland Central",
+        "hasParkAndRide": true
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [174.8120, -36.8610]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "meadowbank-station",
+      "properties": {
+        "id": "meadowbank-station",
+        "name": "Meadowbank Station",
+        "mode": "Train",
+        "zone": 1,
+        "region": "East Auckland",
+        "hasParkAndRide": true
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [174.8290, -36.8690]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "glen-innes-station",
+      "properties": {
+        "id": "glen-innes-station",
+        "name": "Glen Innes Station",
+        "mode": "Train",
+        "zone": 2,
+        "region": "East Auckland",
+        "hasParkAndRide": true
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [174.8550, -36.8790]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "panmure-station",
+      "properties": {
+        "id": "panmure-station",
+        "name": "Panmure Interchange",
+        "mode": "Train",
+        "zone": 2,
+        "region": "East Auckland",
+        "hasParkAndRide": true
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [174.8510, -36.8980]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "sylvia-park-station",
+      "properties": {
+        "id": "sylvia-park-station",
+        "name": "Sylvia Park Station",
+        "mode": "Train",
+        "zone": 2,
+        "region": "East Auckland",
+        "hasParkAndRide": false
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [174.8410, -36.9150]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "akoranga-station",
+      "properties": {
+        "id": "akoranga-station",
+        "name": "Akoranga Busway Station",
+        "mode": "Northern Busway",
+        "zone": 2,
+        "region": "North Shore",
+        "hasParkAndRide": false
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [174.7600, -36.7970]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "smales-farm-station",
+      "properties": {
+        "id": "smales-farm-station",
+        "name": "Smales Farm Busway Station",
+        "mode": "Northern Busway",
+        "zone": 2,
+        "region": "North Shore",
+        "hasParkAndRide": false
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [174.7550, -36.7820]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "sunnynook-station",
+      "properties": {
+        "id": "sunnynook-station",
+        "name": "Sunnynook Busway Station",
+        "mode": "Northern Busway",
+        "zone": 2,
+        "region": "North Shore",
+        "hasParkAndRide": false
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [174.7480, -36.7650]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "constellation-station",
+      "properties": {
+        "id": "constellation-station",
+        "name": "Constellation Busway Station",
+        "mode": "Northern Busway",
+        "zone": 3,
+        "region": "North Shore",
+        "hasParkAndRide": true
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [174.7400, -36.7480]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "rosedale-station",
+      "properties": {
+        "id": "rosedale-station",
+        "name": "Rosedale Busway Station",
+        "mode": "Northern Busway",
+        "zone": 3,
+        "region": "North Shore",
+        "hasParkAndRide": false
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [174.7330, -36.7350]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "albany-station",
+      "properties": {
+        "id": "albany-station",
+        "name": "Albany Busway Station",
+        "mode": "Northern Busway",
+        "zone": 4,
+        "region": "North Shore",
+        "hasParkAndRide": true
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [174.7110, -36.7230]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "hibiscus-coast-station",
+      "properties": {
+        "id": "hibiscus-coast-station",
+        "name": "Hibiscus Coast Station",
+        "mode": "Northern Busway",
+        "zone": 5,
+        "region": "North Shore",
+        "hasParkAndRide": true
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [174.6750, -36.6340]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "downtown-ferry-terminal",
+      "properties": {
+        "id": "downtown-ferry-terminal",
+        "name": "Downtown Ferry Terminal",
+        "mode": "Ferry",
+        "zone": 1,
+        "region": "Auckland Central",
+        "hasParkAndRide": false
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [174.7660, -36.8430]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "devonport-ferry-terminal",
+      "properties": {
+        "id": "devonport-ferry-terminal",
+        "name": "Devonport Ferry Terminal",
+        "mode": "Ferry",
+        "zone": 1,
+        "region": "North Shore",
+        "hasParkAndRide": false
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [174.7960, -36.8330]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "birkenhead-ferry-terminal",
+      "properties": {
+        "id": "birkenhead-ferry-terminal",
+        "name": "Birkenhead Ferry Terminal",
+        "mode": "Ferry",
+        "zone": 2,
+        "region": "North Shore",
+        "hasParkAndRide": true
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [174.7350, -36.8280]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "half-moon-bay-ferry",
+      "properties": {
+        "id": "half-moon-bay-ferry",
+        "name": "Half Moon Bay Ferry Terminal",
+        "mode": "Ferry",
+        "zone": 3,
+        "region": "East Auckland",
+        "hasParkAndRide": true
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [174.9020, -36.8830]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "hobsonville-point-ferry",
+      "properties": {
+        "id": "hobsonville-point-ferry",
+        "name": "Hobsonville Point Ferry Terminal",
+        "mode": "Ferry",
+        "zone": 3,
+        "region": "West Auckland",
+        "hasParkAndRide": true
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [174.6680, -36.7980]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "botany-town-centre",
+      "properties": {
+        "id": "botany-town-centre",
+        "name": "Botany Town Centre Bus Hub",
+        "mode": "Bus",
+        "zone": 3,
+        "region": "East Auckland",
+        "hasParkAndRide": false
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [174.9120, -36.9320]
+      }
+    }
+  ]
+}

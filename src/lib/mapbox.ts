@@ -1,5 +1,5 @@
 import { RouteGeometry, Suburb } from '@/types';
-import { estimateRouteMetrics } from '@/config/suburbs';
+import { estimateRouteMetrics, SUBURB_CENTROIDS } from '@/config/suburbs';
 
 export function normalizeMapboxToken(token: string): string {
   const clean = (token || '').trim().replace(/^["']|["']$/g, '');
@@ -8,6 +8,75 @@ export function normalizeMapboxToken(token: string): string {
 }
 
 const MAPBOX_TOKEN = normalizeMapboxToken(process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '');
+
+export interface GeocodingResult {
+  id: string;
+  placeName: string;
+  text: string;
+  coordinates: [number, number]; // [lng, lat]
+  suburbName?: string;
+}
+
+/**
+ * Searches Auckland addresses using Mapbox Geocoding API with Auckland bounding box
+ * Falls back to SUBURB_CENTROIDS when offline or without token
+ */
+export async function searchAucklandAddresses(
+  query: string,
+  proximity: [number, number] = [174.7645, -36.8485]
+): Promise<GeocodingResult[]> {
+  const cleanQuery = query.trim();
+  if (!cleanQuery || cleanQuery.length < 2) return [];
+
+  // Try Mapbox Geocoding API if token is configured
+  if (MAPBOX_TOKEN && MAPBOX_TOKEN.startsWith('pk.')) {
+    try {
+      const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(cleanQuery)}.json?country=nz&bbox=174.3,-37.4,175.3,-36.4&proximity=${proximity[0]},${proximity[1]}&types=address,poi,neighborhood,locality,place&limit=6&access_token=${MAPBOX_TOKEN}`;
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+interface MapboxFeatureContext {
+  id: string;
+  text: string;
+}
+
+interface MapboxFeatureItem {
+  id: string;
+  place_name: string;
+  text: string;
+  center: [number, number];
+  context?: MapboxFeatureContext[];
+}
+
+        if (Array.isArray(data.features) && data.features.length > 0) {
+          return (data.features as MapboxFeatureItem[]).map((f) => ({
+            id: f.id,
+            placeName: f.place_name,
+            text: f.text,
+            coordinates: f.center,
+            suburbName:
+              f.context?.find(
+                (c) => c.id.startsWith('locality') || c.id.startsWith('neighborhood')
+              )?.text || f.text,
+          }));
+        }
+      }
+    } catch (e) {
+      console.warn('Mapbox Geocoding API failed, using fallback:', e);
+    }
+  }
+
+  // Fallback: match against Auckland suburb centroids
+  const lower = cleanQuery.toLowerCase();
+  const matched = SUBURB_CENTROIDS.filter((s) => s.name.toLowerCase().includes(lower));
+  return matched.slice(0, 6).map((s) => ({
+    id: `suburb-${s.id}`,
+    placeName: `${s.name}, Auckland`,
+    text: s.name,
+    coordinates: s.coordinates,
+    suburbName: s.name,
+  }));
+}
 
 export interface RouteGeometryResponse {
   coordinates: [number, number][]; // LineString coords [lng, lat]

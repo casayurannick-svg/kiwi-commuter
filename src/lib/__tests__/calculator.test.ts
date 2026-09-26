@@ -711,5 +711,92 @@ describe('src/lib/calculator.ts - calculateCommuteArbitrage', () => {
       assert.strictEqual(customResult.driving.dailyRucCost, 0);
     });
   });
+
+  describe('US-28: Address Geocoding & Nearest Station Spatial Search with First-Mile Running Costs', () => {
+    it('finds the closest transit station to origin coordinates and computes first-mile driving costs separately', () => {
+      // Albany coordinates: [174.7082, -36.7295]
+      // Albany Busway Station is right there
+      const input: CommuteInput = {
+        originSuburbId: 'albany',
+        destinationSuburbId: 'cbd',
+        originAddress: '120 Dairy Flat Highway, Albany',
+        destinationAddress: '188 Quay St, CBD',
+        originCoordinates: [174.7082, -36.7295],
+        destinationCoordinates: [174.7645, -36.8485],
+        daysPerWeek: 5,
+        vehicleType: 'petrol91',
+        firstMileMode: 'DRIVE',
+        parkingDailyRate: 0,
+        parkingDaysPerWeek: 0,
+        concession: 'adult',
+        includeMaintenanceWear: false,
+        carpoolPassengers: 1,
+      };
+
+      const result = calculateCommuteArbitrage(input);
+
+      // Verify nearest station was resolved
+      assert.ok(result.nearestStation, 'Nearest station must be resolved');
+      assert.strictEqual(result.nearestStation.name, 'Albany Busway Station');
+      assert.strictEqual(result.nearestStation.mode, 'Northern Busway');
+      assert.strictEqual(result.nearestStation.hasParkAndRide, true);
+
+      // Verify first-mile running cost is calculated separately and present
+      assert.ok(result.transit.firstMileDailyCost !== undefined, 'First mile daily cost must be present');
+      assert.strictEqual(result.transit.firstMileMode, 'DRIVE');
+      assert.strictEqual(result.transit.nearestStationName, 'Albany Busway Station');
+
+      // Verify transit total aggregates AT HOP fare and first-mile driving cost
+      // Base AT HOP fare for Albany (Z3) is $6.00 one-way -> $12.00/day uncapped, capped at $50/week ($216.67/mo)
+      // First-mile driving cost is added on top of the AT HOP fare
+      assert.ok(result.transit.firstMileMonthlyCost! > 0, 'First-mile monthly cost should be positive');
+      assert.strictEqual(
+        result.transit.monthlyTotal,
+        Math.round((result.transit.hopFareMonthly! + result.transit.firstMileMonthlyCost!) * 100) / 100
+      );
+
+      // Verify journey legs array is constructed with 3 legs
+      assert.ok(Array.isArray(result.journeyLegs), 'Journey legs must be an array');
+      assert.strictEqual(result.journeyLegs.length, 3, 'Must have First-Mile, Transit, and Last-Mile legs');
+
+      const [firstLeg, transitLeg, lastLeg] = result.journeyLegs;
+      assert.strictEqual(firstLeg.type, 'FIRST_MILE');
+      assert.strictEqual(firstLeg.mode, 'DRIVE');
+      assert.strictEqual(firstLeg.destinationName, 'Albany Busway Station');
+
+      assert.strictEqual(transitLeg.type, 'TRANSIT');
+      assert.strictEqual(transitLeg.originName, 'Albany Busway Station');
+      assert.strictEqual(transitLeg.cost, 7.70); // 4-zone standard adult fare ($7.70)
+
+      assert.strictEqual(lastLeg.type, 'LAST_MILE');
+      assert.strictEqual(lastLeg.mode, 'WALK');
+      assert.strictEqual(lastLeg.title, 'Walk to Desk');
+      assert.strictEqual(lastLeg.cost, 0);
+    });
+
+    it('handles walk mode for first mile with zero first-mile cost', () => {
+      const input: CommuteInput = {
+        originSuburbId: 'remuera',
+        destinationSuburbId: 'cbd',
+        originCoordinates: [174.795, -36.885],
+        daysPerWeek: 5,
+        vehicleType: 'petrol91',
+        firstMileMode: 'WALK',
+        firstMileDistanceKm: 0.8,
+        parkingDailyRate: 0,
+        parkingDaysPerWeek: 0,
+        concession: 'adult',
+        includeMaintenanceWear: false,
+        carpoolPassengers: 1,
+      };
+
+      const result = calculateCommuteArbitrage(input);
+      assert.strictEqual(result.transit.firstMileDailyCost, undefined);
+      assert.strictEqual(result.transit.firstMileMonthlyCost, undefined);
+      assert.ok(result.journeyLegs);
+      assert.strictEqual(result.journeyLegs[0].mode, 'WALK');
+      assert.strictEqual(result.journeyLegs[0].cost, 0);
+    });
+  });
 });
 

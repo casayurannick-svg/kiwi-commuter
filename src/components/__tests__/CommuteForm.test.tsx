@@ -174,6 +174,27 @@ describe('src/components/CommuteForm.tsx - US-19 Wear & Tear Benchmark Tooltip',
     assert.ok(html.includes('Hybrid (Non-Plug-in)'), 'Must render Hybrid (Non-Plug-in) option');
     assert.ok(html.includes('4.5'), 'Must render 4.5 L/100km default consumption for HEV');
   });
+
+  it('renders Address Geocoding autocomplete inputs for Origin and Destination (US-28)', () => {
+    const geoInput: CommuteInput = {
+      ...defaultInput,
+      originAddress: '120 Dairy Flat Highway, Albany',
+      destinationAddress: '188 Quay St, CBD',
+      originCoordinates: [174.7082, -36.7295],
+      destinationCoordinates: [174.7645, -36.8485],
+    };
+
+    const html = renderToStaticMarkup(
+      React.createElement(CommuteForm, { input: geoInput })
+    );
+
+    assert.ok(html.includes('data-testid="origin-address-input"'), 'Must render origin address autocomplete input');
+    assert.ok(html.includes('data-testid="destination-address-input"'), 'Must render destination address autocomplete input');
+    assert.ok(html.includes('From (Origin Address)'), 'Must render From label');
+    assert.ok(html.includes('To (Destination Address)'), 'Must render To label');
+    assert.ok(html.includes('174.71, -36.73'), 'Must render origin coordinates indicator');
+    assert.ok(html.includes('174.76, -36.85'), 'Must render destination coordinates indicator');
+  });
 });
 
 
