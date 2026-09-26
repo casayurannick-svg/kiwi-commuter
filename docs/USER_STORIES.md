@@ -475,7 +475,13 @@
   - The effect is skipped for `EBIKE` transit mode (no AT transit involved) and cleans up on unmount.
   - Updated `src/components/JourneyTimeline.tsx` to display a pulsing `●` indicator labelled "Transit duration sourced from real-world timetable routing" when coordinates are active.
   - Graceful degradation: if `GOOGLE_ROUTES_API_KEY` is not set, the API route returns `source: "fallback_none"` and the dashboard silently retains the static suburb-based transit estimate.
-  - Unit tests in `src/app/api/routes/__tests__/route.test.ts` verify duration parsing, validation logic, file-level contract (TRANSIT travelMode, API key env, fallback source), DashboardClient wiring assertion, and `.env.example` documentation.
+  - **Fix (5-min Discrepancy)**: Resolved issue where the middle transit leg defaulted to 5 minutes by:
+    1. Updating Google Routes API field mask to include `routes.legs.steps.staticDuration,routes.legs.steps.travelMode,routes.legs.steps.transitDetails`.
+    2. Summing all in-vehicle transit step durations (`totalTransitMins += stepMins`) rather than overwriting in a loop.
+    3. Parsing line names via `nameShort`, `shortName`, and `headsign` (e.g. 25B and OUT).
+    4. Prioritizing `transitRideDurationMins` in `src/lib/calculator.ts` so the middle leg displays pure in-vehicle travel time (~30–41 mins for Mt Roskill to Parnell) instead of subtracting walking legs from static estimates.
+    5. Adding step breakdown pills to `src/components/JourneyTimeline.tsx` for multi-leg journeys.
+  - Unit tests in `src/app/api/routes/__tests__/route.test.ts` verify duration parsing, validation logic, file-level contract (TRANSIT travelMode, API key env, fallback source), DashboardClient wiring assertion, multi-step accumulator logic, reproduction test for Mt Roskill to Parnell, and `.env.example` documentation.
   - All Vitest tests pass and Next.js production build succeeds.
 
 ---
