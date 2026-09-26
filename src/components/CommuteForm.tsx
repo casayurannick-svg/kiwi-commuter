@@ -18,6 +18,7 @@ import {
   Plug,
   Search,
   Settings2,
+  ShieldCheck,
   Ship,
   Users,
   Wrench,
@@ -101,6 +102,22 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
       }
     }
   }, [input.vehicleType, input.powertrain, customConsumption]);
+
+  // US-38: Fixed Vehicle Ownership Costs State
+  const [isFixedCostsOpen, setIsFixedCostsOpen] = useState(false);
+  const [customInsuranceInput, setCustomInsuranceInput] = useState<string>(() => {
+    return typeof input.customInsurance === 'number' && !isNaN(input.customInsurance)
+      ? input.customInsurance.toString()
+      : '';
+  });
+
+  useEffect(() => {
+    if (typeof input.customInsurance === 'number' && !isNaN(input.customInsurance)) {
+      setCustomInsuranceInput(input.customInsurance.toString());
+    } else if (input.customInsurance === null || input.customInsurance === undefined) {
+      setCustomInsuranceInput('');
+    }
+  }, [input.customInsurance]);
 
   const notifyChange = (updated: CommuteInput) => {
     if (onInputChange) onInputChange(updated);
@@ -1275,6 +1292,165 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
                     className="w-24 min-h-[44px] bg-slate-900 border border-slate-700 rounded-xl px-3 py-1 text-sm text-slate-100 font-mono"
                   />
                   <span className="text-xs text-slate-400">$/hr</span>
+                </div>
+              )}
+            </div>
+
+            {/* US-38: Fixed Ownership Costs (Annual) Collapsible Section */}
+            <div className="pt-2 border-t border-slate-800/80 space-y-2">
+              <button
+                type="button"
+                data-testid="toggle-fixed-costs-btn"
+                onClick={() => setIsFixedCostsOpen(!isFixedCostsOpen)}
+                className="w-full min-h-[44px] flex items-center justify-between py-1.5 text-xs font-semibold text-slate-300 hover:text-white transition"
+              >
+                <span className="flex items-center gap-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5 text-indigo-400" />
+                  Fixed Ownership Costs (Annual) {isFixedCostsOpen ? '▴' : '▾'}
+                </span>
+                <span className="text-[11px] text-slate-400 font-mono">
+                  ${(
+                    (input.annualWof ?? 85) +
+                    (input.annualRego ?? 173) +
+                    (input.insuranceEnabled !== false
+                      ? (typeof input.customInsurance === 'number' && !isNaN(input.customInsurance)
+                          ? input.customInsurance
+                          : (input.defaultInsurance ?? 1311))
+                      : 0)
+                  ).toLocaleString('en-NZ')}/yr
+                </span>
+              </button>
+
+              {isFixedCostsOpen && (
+                <div className="space-y-3 bg-slate-900/60 p-3 rounded-xl border border-slate-800 text-xs animate-in fade-in duration-150">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* WOF Input */}
+                    <div className="space-y-1">
+                      <label className="text-[11px] text-slate-400">
+                        Annual WOF ($/yr)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="5"
+                        placeholder="85"
+                        value={input.annualWof ?? 85}
+                        onChange={(e) => {
+                          const val = e.target.value === '' ? undefined : Math.max(0, parseFloat(e.target.value) || 0);
+                          handleFieldChange('annualWof', val);
+                        }}
+                        className="w-full min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-sm text-slate-200 font-mono"
+                      />
+                      <span className="text-[10px] text-slate-500">VTNZ/AA annual inspection</span>
+                    </div>
+
+                    {/* Rego Input */}
+                    <div className="space-y-1">
+                      <label className="text-[11px] text-slate-400">
+                        Annual Rego / Licensing ($/yr)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="5"
+                        placeholder="173"
+                        value={input.annualRego ?? 173}
+                        onChange={(e) => {
+                          const val = e.target.value === '' ? undefined : Math.max(0, parseFloat(e.target.value) || 0);
+                          handleFieldChange('annualRego', val);
+                        }}
+                        className="w-full min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-sm text-slate-200 font-mono"
+                      />
+                      <span className="text-[10px] text-slate-500">NZTA private light vehicle licence</span>
+                    </div>
+                  </div>
+
+                  {/* Insurance Section with Mutual Exclusivity */}
+                  <div className="pt-2 border-t border-slate-800 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs text-slate-300 flex items-center gap-2 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={input.insuranceEnabled !== false}
+                          onChange={(e) => handleFieldChange('insuranceEnabled', e.target.checked)}
+                          className="w-4 h-4 rounded text-emerald-500 bg-slate-900 border-slate-700"
+                        />
+                        <span className="font-semibold text-slate-200">Include Comprehensive Insurance</span>
+                      </label>
+                      <span className="text-[10px] font-mono text-indigo-400">
+                        {input.insuranceEnabled === false
+                          ? 'Excluded ($0)'
+                          : typeof input.customInsurance === 'number' && !isNaN(input.customInsurance)
+                          ? `Custom: $${input.customInsurance}/yr`
+                          : `Default: $${input.defaultInsurance ?? 1311}/yr`}
+                      </span>
+                    </div>
+
+                    {input.insuranceEnabled !== false && (
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] text-slate-400">
+                          Custom Insurance Override ($/yr)
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="number"
+                            min="0"
+                            step="25"
+                            placeholder="1311 (Default NZ median)"
+                            value={customInsuranceInput}
+                            onChange={(e) => {
+                              const rawVal = e.target.value;
+                              setCustomInsuranceInput(rawVal);
+                              if (rawVal === '') {
+                                handleFieldChange('customInsurance', null);
+                              } else {
+                                const parsed = parseFloat(rawVal);
+                                if (!isNaN(parsed) && parsed >= 0) {
+                                  handleFieldChange('customInsurance', parsed);
+                                }
+                              }
+                            }}
+                            className="w-full min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-sm text-slate-200 font-mono"
+                          />
+                          {customInsuranceInput !== '' && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setCustomInsuranceInput('');
+                                handleFieldChange('customInsurance', null);
+                              }}
+                              className="min-h-[44px] px-3 py-1.5 rounded-xl border border-slate-700 bg-slate-800 text-xs text-slate-300 hover:text-white transition shrink-0"
+                            >
+                              Reset
+                            </button>
+                          )}
+                        </div>
+                        <p className="text-[10px] text-slate-500">
+                          {typeof input.customInsurance === 'number' && !isNaN(input.customInsurance)
+                            ? `Custom premium of $${input.customInsurance}/yr completely overrides the default $1,311 NZ benchmark.`
+                            : 'Enter your vehicle policy premium (e.g. $1,850 for Isuzu MU-X or $950 for Honda Jazz) to override the $1,311 NZ benchmark.'}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 70% Commute Apportionment Note */}
+                  <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400">
+                    <span>70% Commute Apportionment:</span>
+                    <span className="font-semibold text-emerald-400 font-mono">
+                      ${(
+                        (
+                          (input.annualWof ?? 85) +
+                          (input.annualRego ?? 173) +
+                          (input.insuranceEnabled !== false
+                            ? (typeof input.customInsurance === 'number' && !isNaN(input.customInsurance)
+                                ? input.customInsurance
+                                : (input.defaultInsurance ?? 1311))
+                            : 0)
+                        ) * 0.70 / 12
+                      ).toFixed(0)}/mo
+                    </span>
+                  </div>
                 </div>
               )}
             </div>

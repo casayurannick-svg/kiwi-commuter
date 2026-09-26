@@ -888,5 +888,121 @@ describe('BUG-37: Scale public transport fares by carpool passenger count', () =
     assert.strictEqual(res2.transit.weeklyTotal, 100.00);
     assert.strictEqual(res2.transit.uncappedWeeklyFare, 170.00);
   });
+
+  describe('US-38: Fixed Vehicle Ownership Costs (WOF, Rego, Insurance)', () => {
+    it('verifies baseline scenario with default WOF ($85), Rego ($173), and Insurance ($1,311) amortized with 70% commute apportionment', () => {
+      const baselineInput: CommuteInput = {
+        originSuburbId: 'epsom',
+        destinationSuburbId: 'cbd',
+        daysPerWeek: 5,
+        vehicleType: 'petrol91',
+        parkingDailyRate: 0,
+        parkingDaysPerWeek: 0,
+        concession: 'adult',
+        includeMaintenanceWear: false,
+        carpoolPassengers: 1,
+      };
+
+      const res = calculateArbitrage(baselineInput);
+
+      // Baseline annual: 85 + 173 + 1311 = 1569
+      // 70% commute apportionment: 1569 * 0.70 = 1098.30
+      // Monthly apportioned: 1098.30 / 12 = 91.525
+      // Average commute days (5 days/wk * 52/12): 21.6667
+      // Daily baseline: 91.525 / 21.6667 = 4.2242 -> $4.22/day
+      assert.strictEqual(res.driving.dailyFixedCost, 4.22);
+      assert.strictEqual(res.driving.weeklyFixedCost, 21.10);
+      assert.strictEqual(res.driving.monthlyFixedCost, 91.43);
+      assert.strictEqual(res.driving.annualFixedCost, 1097.16);
+
+      // Verify that dailyTotal and monthlyTotal driving include the fixed cost
+      const fuelDaily = res.driving.dailyFuelCost;
+      assert.strictEqual(res.driving.dailyTotal, Math.round((fuelDaily + 4.22) * 100) / 100);
+    });
+
+    it('verifies mutual exclusivity and custom insurance override for 2016 Isuzu MU-X ($1,850/yr)', () => {
+      const isuzuMuxInput: CommuteInput = {
+        originSuburbId: 'albany',
+        destinationSuburbId: 'cbd',
+        daysPerWeek: 5,
+        vehicleType: 'diesel',
+        parkingDailyRate: 0,
+        parkingDaysPerWeek: 0,
+        concession: 'adult',
+        includeMaintenanceWear: false,
+        carpoolPassengers: 1,
+        annualWof: 85,
+        annualRego: 173,
+        insuranceEnabled: true,
+        defaultInsurance: 1311,
+        customInsurance: 1850, // 2016 Isuzu MU-X custom policy
+      };
+
+      const res = calculateArbitrage(isuzuMuxInput);
+
+      // Total annual: 85 + 173 + 1850 = 2108
+      // 70% commute apportionment: 2108 * 0.70 = 1475.60
+      // Monthly apportioned: 1475.60 / 12 = 122.9667
+      // Daily baseline (5 days/wk): 122.9667 / (5 * 52/12) = 5.675 -> $5.68/day
+      assert.strictEqual(res.driving.dailyFixedCost, 5.68);
+      assert.strictEqual(res.driving.weeklyFixedCost, 28.40);
+      assert.strictEqual(res.driving.monthlyFixedCost, 123.07);
+    });
+
+    it('verifies custom insurance override for 2018 Honda Jazz ($950/yr)', () => {
+      const hondaJazzInput: CommuteInput = {
+        originSuburbId: 'epsom',
+        destinationSuburbId: 'cbd',
+        daysPerWeek: 5,
+        vehicleType: 'petrol91',
+        parkingDailyRate: 0,
+        parkingDaysPerWeek: 0,
+        concession: 'adult',
+        includeMaintenanceWear: false,
+        carpoolPassengers: 1,
+        annualWof: 85,
+        annualRego: 173,
+        insuranceEnabled: true,
+        customInsurance: 950, // 2018 Honda Jazz policy
+      };
+
+      const res = calculateArbitrage(hondaJazzInput);
+
+      // Total annual: 85 + 173 + 950 = 1208
+      // 70% commute apportionment: 1208 * 0.70 = 845.60
+      // Monthly apportioned: 845.60 / 12 = 70.4667
+      // Daily baseline (5 days/wk): 70.4667 / (5 * 52/12) = 3.252 -> $3.25/day
+      assert.strictEqual(res.driving.dailyFixedCost, 3.25);
+      assert.strictEqual(res.driving.weeklyFixedCost, 16.25);
+      assert.strictEqual(res.driving.monthlyFixedCost, 70.42);
+    });
+
+    it('verifies exclusion when insurance is disabled (insuranceEnabled: false)', () => {
+      const noInsuranceInput: CommuteInput = {
+        originSuburbId: 'epsom',
+        destinationSuburbId: 'cbd',
+        daysPerWeek: 5,
+        vehicleType: 'petrol91',
+        parkingDailyRate: 0,
+        parkingDaysPerWeek: 0,
+        concession: 'adult',
+        includeMaintenanceWear: false,
+        carpoolPassengers: 1,
+        annualWof: 85,
+        annualRego: 173,
+        insuranceEnabled: false,
+      };
+
+      const res = calculateArbitrage(noInsuranceInput);
+
+      // Total annual: 85 + 173 = 258
+      // 70% commute apportionment: 258 * 0.70 = 180.60
+      // Monthly apportioned: 180.60 / 12 = 15.05
+      // Daily baseline (5 days/wk): 15.05 / (5 * 52/12) = 0.6946 -> $0.69/day
+      assert.strictEqual(res.driving.dailyFixedCost, 0.69);
+      assert.strictEqual(res.driving.weeklyFixedCost, 3.45);
+      assert.strictEqual(res.driving.monthlyFixedCost, 14.95);
+    });
+  });
 });
 

@@ -101,6 +101,11 @@ export interface CommuteInput {
   transitSteps?: TransitStepDetail[]; // Breakdown of individual transit legs
   transitLines?: string[]; // Transit line names (e.g. ['25B', 'OuterLink'])
   passengerCount?: number; // BUG-37: Alias for carpoolPassengers
+  annualWof?: number; // US-38: Annual Warrant of Fitness (default $85)
+  annualRego?: number; // US-38: Annual Vehicle Registration / Licensing (default $173)
+  insuranceEnabled?: boolean; // US-38: Whether comprehensive vehicle insurance is included (default true)
+  defaultInsurance?: number; // US-38: Default annual insurance premium (default $1,311)
+  customInsurance?: number | null; // US-38: Optional custom annual insurance override (mutually exclusive with defaultInsurance)
 }
 
 export interface TransitStepDetail {
@@ -169,20 +174,28 @@ export interface DrivingCostBreakdown {
   dailyRucCost: number;
   dailyParkingCost: number;
   dailyMaintenanceCost: number;
+  dailyFixedCost?: number;
+  dailyFixedCosts?: number;
   dailyTotal: number;
 
   weeklyFuelCost: number;
   weeklyRucCost: number;
   weeklyParkingCost: number;
   weeklyMaintenanceCost: number;
+  weeklyFixedCost?: number;
+  weeklyFixedCosts?: number;
   weeklyTotal: number;
 
   monthlyFuelCost: number;
   monthlyRucCost: number;
   monthlyParkingCost: number;
   monthlyMaintenanceCost: number;
+  monthlyFixedCost?: number;
+  monthlyFixedCosts?: number;
   monthlyTotal: number;
 
+  annualFixedCost?: number;
+  annualFixedCosts?: number;
   annualTotal: number;
   monthlyCo2Kg: number;
 }

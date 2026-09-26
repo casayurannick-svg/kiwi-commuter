@@ -339,6 +339,23 @@ describe('src/components/ComparisonCard.tsx - US-16 Mini-Receipt Time Valuation'
         'Must state similar cost badge with time difference'
       );
     });
+
+    it('renders Fixed Costs (Ins/Rego/WOF) line item beneath Fuel and RUC when monthlyFixedCosts > 0', () => {
+      const input: CommuteInput = { ...defaultInput };
+      const arbitrage = createMockArbitrage({
+        driving: {
+          ...createMockArbitrage().driving,
+          monthlyFixedCosts: 91.53,
+          monthlyFixedCost: 91.53,
+        },
+      });
+      const html = renderToStaticMarkup(
+        React.createElement(ComparisonCard, { arbitrage, input })
+      );
+
+      assert.ok(html.includes('Fixed Costs (Ins/Rego/WOF):'), 'Must render Fixed Costs label');
+      assert.ok(html.includes('$92/mo'), 'Must render rounded monthly fixed cost ($92/mo)');
+    });
   });
 });
 

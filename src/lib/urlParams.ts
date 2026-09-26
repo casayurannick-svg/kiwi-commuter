@@ -141,6 +141,20 @@ export function serializeCommuteToParams(input: CommuteInput): URLSearchParams {
     params.set('transitTime', input.transitTimeMins.toString());
   }
 
+  // US-38: Fixed Vehicle Ownership Costs Serialization
+  if (input.annualWof !== undefined) {
+    params.set('wof', input.annualWof.toString());
+  }
+  if (input.annualRego !== undefined) {
+    params.set('rego', input.annualRego.toString());
+  }
+  if (input.insuranceEnabled !== undefined) {
+    params.set('ins', input.insuranceEnabled ? '1' : '0');
+  }
+  if (input.customInsurance !== undefined && input.customInsurance !== null) {
+    params.set('customIns', input.customInsurance.toString());
+  }
+
   return params;
 }
 
@@ -374,6 +388,21 @@ export function parseCommuteFromParams(
       params.has('walkKm') && !isNaN(Number(params.get('walkKm')))
         ? Number(params.get('walkKm'))
         : fallback.walkDistanceKm,
+    annualWof:
+      params.has('wof') && !isNaN(Number(params.get('wof')))
+        ? Number(params.get('wof'))
+        : fallback.annualWof,
+    annualRego:
+      params.has('rego') && !isNaN(Number(params.get('rego')))
+        ? Number(params.get('rego'))
+        : fallback.annualRego,
+    insuranceEnabled: params.has('ins')
+      ? params.get('ins') === '1' || params.get('ins') === 'true'
+      : fallback.insuranceEnabled,
+    customInsurance:
+      params.has('customIns') && !isNaN(Number(params.get('customIns')))
+        ? Number(params.get('customIns'))
+        : fallback.customInsurance,
   };
 }
 

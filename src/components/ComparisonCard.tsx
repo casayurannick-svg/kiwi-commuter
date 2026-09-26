@@ -243,6 +243,9 @@ export default function ComparisonCard({ arbitrage, input }: ComparisonCardProps
                 {driving.monthlyRucCost > 0 && (
                   <span className="truncate">RUC: ${driving.monthlyRucCost.toFixed(0)}</span>
                 )}
+                {((driving.monthlyFixedCosts ?? driving.monthlyFixedCost ?? 0) > 0) && (
+                  <span className="truncate">Fixed: ${(driving.monthlyFixedCosts ?? driving.monthlyFixedCost ?? 0).toFixed(0)}</span>
+                )}
                 <span>${driving.weeklyTotal.toFixed(0)}/wk</span>
               </div>
             </div>
@@ -358,6 +361,19 @@ export default function ComparisonCard({ arbitrage, input }: ComparisonCardProps
                 {driving.monthlyRucCost > 0 ? `$${driving.monthlyRucCost.toFixed(0)}/mo` : '$0'}
               </span>
             </div>
+
+            {/* US-38: Fixed Ownership Costs (WOF, Rego, Insurance) */}
+            {((driving.monthlyFixedCosts ?? driving.monthlyFixedCost ?? 0) > 0) && (
+              <div className="flex items-center justify-between" data-testid="fixed-costs-line-item">
+                <span className="text-slate-400 flex items-center gap-1.5">
+                  <ShieldCheck className="w-3 h-3 text-indigo-400" />
+                  Fixed Costs (Ins/Rego/WOF):
+                </span>
+                <span className="font-semibold text-slate-200 tabular-nums">
+                  ${(driving.monthlyFixedCosts ?? driving.monthlyFixedCost ?? 0).toFixed(0)}/mo
+                </span>
+              </div>
+            )}
 
             <div className="flex items-center justify-between">
               <span className="text-slate-400 flex items-center gap-1.5">

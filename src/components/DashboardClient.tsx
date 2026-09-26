@@ -38,6 +38,10 @@ export default function DashboardClient({ initialFuelPrices }: DashboardClientPr
       includeMaintenanceWear: true,
       carpoolPassengers: 1,
       fuelPriceOverride: initialFuelPrices?.regular_91,
+      annualWof: 85,
+      annualRego: 173,
+      insuranceEnabled: true,
+      defaultInsurance: 1311,
     };
     if (searchParams && searchParams.toString()) {
       return parseCommuteFromParams(searchParams, base);

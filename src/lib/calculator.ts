@@ -5,6 +5,10 @@ import {
   CO2_FACTORS,
   CONCESSION_MULTIPLIERS,
   DEFAULT_FUEL_RATE,
+  DEFAULT_ANNUAL_WOF,
+  DEFAULT_ANNUAL_REGO,
+  DEFAULT_ANNUAL_INSURANCE,
+  FIXED_COST_COMMUTE_APPORTIONMENT,
   EV_CHARGING_PRESETS,
   INNER_HARBOUR_FERRY_FARE,
   NZ_AA_MAINTENANCE_PER_KM,
@@ -181,15 +185,56 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
   const weeklyParkingCost = round2((effectiveParkingRate * effectiveParkingDays) / passengers);
   const dailyParkingCost = input.daysPerWeek > 0 ? round2(weeklyParkingCost / input.daysPerWeek) : 0;
 
+  // US-38: Fixed Vehicle Ownership Costs (WOF, Rego, Insurance)
+  const annualWof =
+    typeof input.annualWof === 'number' && !isNaN(input.annualWof)
+      ? input.annualWof
+      : DEFAULT_ANNUAL_WOF;
+  const annualRego =
+    typeof input.annualRego === 'number' && !isNaN(input.annualRego)
+      ? input.annualRego
+      : DEFAULT_ANNUAL_REGO;
+  const isInsuranceActive = input.insuranceEnabled !== false;
+
+  // Mutual exclusivity for insurance: if a user inputs a custom value in the text box, it must completely override the default $1,311 value
+  let activeInsurance = 0;
+  if (isInsuranceActive) {
+    if (
+      typeof input.customInsurance === 'number' &&
+      !isNaN(input.customInsurance) &&
+      input.customInsurance >= 0
+    ) {
+      activeInsurance = input.customInsurance;
+    } else {
+      activeInsurance =
+        typeof input.defaultInsurance === 'number' && !isNaN(input.defaultInsurance)
+          ? input.defaultInsurance
+          : DEFAULT_ANNUAL_INSURANCE;
+    }
+  }
+
+  const totalAnnualFixedCosts = annualWof + annualRego + activeInsurance;
+  const annualCommuteFixedCosts = totalAnnualFixedCosts * FIXED_COST_COMMUTE_APPORTIONMENT;
+  const monthlyFixedApportioned = annualCommuteFixedCosts / 12;
+
+  // Divide monthly commute apportioned sum by average commute days to establish daily fixed baseline
+  const averageCommuteDaysPerMonth = input.daysPerWeek > 0 ? input.daysPerWeek * WEEKS_PER_MONTH : 1;
+  const dailyFixedBaseline = input.daysPerWeek > 0 ? monthlyFixedApportioned / averageCommuteDaysPerMonth : 0;
+
+  const dailyFixedCost = round2(dailyFixedBaseline / passengers);
+  const weeklyFixedCost = round2(dailyFixedCost * input.daysPerWeek);
+  const monthlyFixedCost = round2(weeklyFixedCost * WEEKS_PER_MONTH);
+  const annualFixedCost = round2(monthlyFixedCost * 12);
+
   const dailyTotalDriving = round2(
-    dailyFuelCost + dailyRucCost + dailyParkingCost + dailyMaintenanceCost
+    dailyFuelCost + dailyRucCost + dailyParkingCost + dailyMaintenanceCost + dailyFixedCost
   );
 
   const weeklyFuelCost = round2(dailyFuelCost * input.daysPerWeek);
   const weeklyRucCost = round2(dailyRucCost * input.daysPerWeek);
   const weeklyMaintenanceCost = round2(dailyMaintenanceCost * input.daysPerWeek);
   const weeklyTotalDriving = round2(
-    weeklyFuelCost + weeklyRucCost + weeklyParkingCost + weeklyMaintenanceCost
+    weeklyFuelCost + weeklyRucCost + weeklyParkingCost + weeklyMaintenanceCost + weeklyFixedCost
   );
 
   const monthlyFuelCost = round2(weeklyFuelCost * WEEKS_PER_MONTH);
@@ -207,20 +252,28 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
     dailyRucCost,
     dailyParkingCost,
     dailyMaintenanceCost,
+    dailyFixedCost,
+    dailyFixedCosts: dailyFixedCost,
     dailyTotal: dailyTotalDriving,
 
     weeklyFuelCost,
     weeklyRucCost,
     weeklyParkingCost,
     weeklyMaintenanceCost,
+    weeklyFixedCost,
+    weeklyFixedCosts: weeklyFixedCost,
     weeklyTotal: weeklyTotalDriving,
 
     monthlyFuelCost,
     monthlyRucCost,
     monthlyParkingCost,
     monthlyMaintenanceCost,
+    monthlyFixedCost,
+    monthlyFixedCosts: monthlyFixedCost,
     monthlyTotal: monthlyTotalDriving,
 
+    annualFixedCost,
+    annualFixedCosts: annualFixedCost,
     annualTotal: annualTotalDriving,
     monthlyCo2Kg: round1(monthlyCo2KgDriving),
   };
@@ -557,7 +610,7 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
   let breakEvenDaysPerWeek = 1;
   for (let d = 1; d <= 7; d++) {
     const dDriveWeekly =
-      (dailyFuelCost + dailyRucCost + dailyMaintenanceCost) * d +
+      (dailyFuelCost + dailyRucCost + dailyMaintenanceCost + dailyFixedCost) * d +
       (effectiveParkingRate * Math.min(input.parkingDaysPerWeek, d)) / passengers;
     const perCommuterTransitDaily = (dailyTransitFare - firstMileDailyCost) / passengers;
     const perCommuterFirstMileDaily = firstMileDailyCost / passengers;

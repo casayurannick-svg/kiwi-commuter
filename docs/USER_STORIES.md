@@ -38,6 +38,7 @@
 | **US-35** | Harbour-Separated Corridor Driving Road Distance & Routing | **DONE** | [`src/app/api/routes/route.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/app/api/routes/route.ts), [`src/config/suburbs.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/config/suburbs.ts), [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts), [`src/components/DashboardClient.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/DashboardClient.tsx), [`src/app/api/routes/__tests__/route.test.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/app/api/routes/__tests__/route.test.ts) | Replaced straight-line/Haversine water-crossing distances for harbour-separated corridors (e.g. Devonport to Parnell) with Google Routes API driving road distance (~17-18 km one-way, ~35 km/day roundtrip) via Harbour Bridge, recalculating fuel, RUC, and duration deltas. |
 | **US-36** | Share Link State Serialization & Share Button CTA | **DONE** | [`src/components/ShareButton.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/ShareButton.tsx), [`src/lib/urlParams.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/urlParams.ts), [`src/components/DashboardClient.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/DashboardClient.tsx), [`src/components/CommuteForm.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/CommuteForm.tsx) | Complete URL parameter serialization of exact origin/destination addresses, geocoded coordinates, powertrain, and route metrics; dedicated accessible ShareButton with polite toast confirmation; automatic hydration on fresh session loads. |
 | **BUG-37** | Scale Public Transport Fares by Carpool Passenger Count | **DONE** | [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts), [`src/components/JourneyTimeline.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/JourneyTimeline.tsx), [`src/components/ComparisonCard.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/ComparisonCard.tsx) | Extracted passenger count from carpool settings; multiplied single trip, daily return, and monthly transit fares by passengers across bus, train, ferry, e-bike, and scooter modes; scaled AT HOP $50 weekly cap per commuter (`$50 * pax`); updated UI with clear `(X pax)` indicators. |
+| **US-38** | Fixed Vehicle Ownership Costs (WOF, Rego, Insurance) | **DONE** | [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts), [`src/components/CommuteForm.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/CommuteForm.tsx), [`src/components/ComparisonCard.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/ComparisonCard.tsx) | Models annual WOF ($85), Rego ($173), and Insurance ($1,311) amortized to monthly values with 70% commute apportionment; provides collapsible Custom Rates section with mutual exclusivity for custom insurance overrides; displays Fixed Costs line item beneath Fuel and RUC. |
 
 ---
 
@@ -591,6 +592,31 @@
     2. Inner Harbour Ferry (Devonport to Parnell) doubles from $7.80 one-way / $15.60 return to $15.60 one-way / $31.20 return for 2 passengers, and formats `$15.60 total (2 pax)` in JourneyLeg.
     3. Rolling fare cap ($50/wk) scales to $100/wk for 2 passengers.
     4. Single-passenger defaults remain completely unaffected with zero regression.
+
+---
+
+### US-38: Fixed Vehicle Ownership Costs (WOF, Rego, Insurance)
+**As a** private vehicle commuter,  
+**I want** the calculator to incorporate annual fixed ownership costs (WOF inspection, NZTA Rego licence, and Comprehensive Insurance) with a 70% commute apportionment into the Private Vehicle cost analysis,  
+**So that** my side-by-side cost arbitrage reflects the true total cost of vehicle ownership dedicated to commuting rather than marginal fuel and parking alone.
+
+* **Acceptance Criteria:**
+  - **Given** an active commute analysis for a private vehicle,
+  - **When** the financial calculation engine runs in `src/lib/calculator.ts`:
+    - Default annual fixed benchmarks are established: WOF ($85/yr), NZTA Rego ($173/yr), and Comprehensive Insurance ($1,311/yr median NZ premium).
+    - Mutual exclusivity for insurance: if a user inputs a custom value in the text box (`customInsurance`), it completely overrides the default $1,311 value. If insurance is toggled off (`insuranceEnabled: false`), insurance is $0.
+    - Total annual active fixed costs are amortized to a monthly value, a 70% commute apportionment is applied (`(annualSum * 0.70) / 12`), and divided by average commute days (`daysPerWeek * (52 / 12)`) to establish the daily fixed baseline.
+    - Daily, weekly, monthly, and annual fixed costs are added to the Private Vehicle's total cost (`dailyTotal`, `weeklyTotal`, `monthlyTotal`, `annualTotal`) and factored into the break-even days per week calculation.
+  - **And** the UI provides controls and feedback:
+    - `src/components/CommuteForm.tsx`: Custom Rates panel features a new "Fixed Ownership Costs (Annual)" collapsible section with WOF, Rego, insurance toggle, and custom insurance override input with reset button and 70% commute apportionment summary.
+    - `src/components/ComparisonCard.tsx`: Displays a new line item `Fixed Costs (Ins/Rego/WOF): $X/mo` directly beneath Fuel and RUC metrics on the Private Vehicle card, and includes `Fixed: $X` in the hero summary quick cost drivers.
+    - `src/lib/urlParams.ts`: Parameters `wof`, `rego`, `ins`, and `customIns` are serialized and parsed for sharing and state preservation.
+  - Unit tests in `tests/calculator.test.ts`, `src/lib/__tests__/calculator.test.ts`, and `src/components/__tests__/ComparisonCard.test.tsx` verify:
+    1. Baseline scenario ($85 WOF + $173 Rego + $1,311 Ins = $1,569/yr -> $1,098.30 commute share -> $91.43/mo fixed cost and $4.22/day for 5 days/wk).
+    2. Mutual exclusivity and custom insurance override for 2016 Isuzu MU-X ($1,850/yr custom insurance -> $123.07/mo fixed cost, $5.68/day).
+    3. Custom insurance override for 2018 Honda Jazz ($950/yr custom insurance -> $70.42/mo fixed cost, $3.25/day).
+    4. Insurance disabled scenario (`insuranceEnabled: false` -> $14.95/mo fixed cost, $0.69/day).
+    5. ComparisonCard rendering of the `Fixed Costs (Ins/Rego/WOF): $X/mo` line item.
 
 ---
 

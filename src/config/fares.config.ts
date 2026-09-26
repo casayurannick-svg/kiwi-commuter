@@ -371,3 +371,16 @@ export const CO2_FACTORS = {
   nzElectricityPerKwh: 0.09, // NZ grid has ~85% renewables, ~90g CO2/kWh
   ptPerPassengerKm: 0.038, // Average Auckland bus/train per passenger km
 };
+
+/**
+ * US-38: NZ Fixed Vehicle Ownership Costs Benchmarks (Annual)
+ * - WOF: ~$85/yr inspection (AA / VTNZ)
+ * - Rego: ~$173/yr NZTA vehicle licensing for private petrol/diesel light vehicle
+ * - Insurance: ~$1,311/yr median NZ comprehensive vehicle insurance premium
+ * - Commute Apportionment: 70% of vehicle ownership allocated to commute travel
+ */
+export const DEFAULT_ANNUAL_WOF = 85;
+export const DEFAULT_ANNUAL_REGO = 173;
+export const DEFAULT_ANNUAL_INSURANCE = 1311;
+export const FIXED_COST_COMMUTE_APPORTIONMENT = 0.70;
+
