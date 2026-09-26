@@ -350,13 +350,13 @@ export default function RouteMap({
 
       {/* Footer Info Strip */}
       <div className="absolute bottom-3 left-3 right-3 z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-slate-900/90 backdrop-blur-md px-3 py-2 rounded-xl border border-slate-700/80 text-xs">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
           {origin.primaryTransitMode === 'Train' ? (
             <Train className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
           ) : (
             <Bus className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
           )}
-          <span className="text-slate-300 font-medium truncate">
+          <span className="text-slate-300 font-medium truncate block min-w-0">
             Transit: <strong className="text-emerald-400">{origin.primaryTransitMode}</strong>
             <span className="text-slate-500 font-normal"> ({origin.transitRouteNotes})</span>
           </span>

@@ -41,6 +41,8 @@
 | **US-38** | Fixed Vehicle Ownership Costs (WOF, Rego, Insurance) | **DONE** | [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts), [`src/components/CommuteForm.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/CommuteForm.tsx), [`src/components/ComparisonCard.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/ComparisonCard.tsx) | Models annual WOF ($85), Rego ($173), and Insurance ($1,311) amortized to monthly values with 70% commute apportionment; provides collapsible Custom Rates section with mutual exclusivity for custom insurance overrides; displays Fixed Costs line item beneath Fuel and RUC. |
 | **BUG-40** | Resolve Diesel RUC Exemption Error | **DONE** | [`src/types/index.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/types/index.ts), [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts), [`src/components/ComparisonCard.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/ComparisonCard.tsx), [`src/lib/urlParams.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/urlParams.ts) | Resolved root cause where DIESEL powertrain/power parameter failed lookup and defaulted to Petrol 91 ($0 RUC exemption); applies statutory New Zealand light vehicle RUC rate of $76.00 per 1,000 km ($0.076/km) applied to total distance; updates ComparisonCard UI to display calculated RUC value (e.g. $64/mo) and $0.076/km rate badge. |
 | **CI-01** | Intelligent CI/CD Regression Test Suite & GitHub Actions Workflow | **DONE** | [`.github/workflows/regression.yml`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/.github/workflows/regression.yml), [`src/lib/calculator.test.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.test.ts), [`playwright.config.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/playwright.config.ts), [`tests/ui.spec.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/tests/ui.spec.ts) | Scaffolded GitHub Actions regression workflow triggered on PR, push to main, and dispatch; path-triggered critical alert for calculator.ts / fares.ts; Vitest Private Vehicle Math suite verifying BUG-40 fix; Playwright 375px mobile viewport UI regression suite. |
+| **BUG-39** | Micromobility Tile Mismatch (Dynamic E-Bike vs Scooter State) | **DONE** | [`src/components/MiniReceipt.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/MiniReceipt.tsx), [`src/components/__tests__/MiniReceipt.test.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/__tests__/MiniReceipt.test.tsx) | Fixed breakeven card component to dynamically interpolate "OWNED E-BIKE" with 🚲 icon for E-Bike mode, and "OWNED SCOOTER" with 🛴 icon for Scooter mode. |
+| **BUG-41** | Mobile Viewport Tooltip Overflow & Collision Avoidance | **DONE** | [`src/components/Tooltip.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/Tooltip.tsx), [`src/components/ui/Tooltip.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/ui/Tooltip.tsx), [`src/app/layout.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/app/layout.tsx), [`src/components/RouteMap.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/RouteMap.tsx), [`tests/ui.spec.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/tests/ui.spec.ts) | Replaced inline tooltips with global collision-aware Tooltip component; enforced `max-w-[90vw]`, text wrapping, dynamic client viewport clamping, and `overflow-x-hidden` on html/body; verified 100% containment within 375px mobile viewport. |
 
 ---
 
@@ -669,8 +671,54 @@
     - Implemented mobile viewport test (width 375px, height 667px).
     - Designed test assertions to inspect tooltip elements (`[role="tooltip"]`) for horizontal bounding box containment within the 375px viewport to catch BUG-41 tooltip overflow.
   - **Verification**:
-    - Vitest execution (`npx vitest run`) executes 13 test files and 155 unit tests with 100% pass rate.
+    - Vitest execution (`npx vitest run`) executes 14 test files and 157 unit tests with 100% pass rate.
     - Next.js production build (`npm run build`) compiles cleanly with zero TypeScript/ESLint errors.
+
+---
+
+### BUG-39: Micromobility Tile Mismatch (Dynamic E-Bike vs Scooter State)
+**As an** e-bike or micromobility commuter,  
+**I want** the breakeven card in the Mini-Receipt to accurately reflect my chosen mode ("OWNED E-BIKE" with 🚲 icon for E-Bikes, and "OWNED SCOOTER" with 🛴 icon for Scooters),  
+**So that** I don't see mismatched scooter badges when analyzing my e-bike purchase payback timeline.
+
+* **Acceptance Criteria:**
+  - **Dynamic State Interpolation**:
+    - In `src/components/MiniReceipt.tsx`, eliminated the hardcoded `"OWNED SCOOTER"` title and static `🛴` icon.
+    - Implemented reactive mode detection:
+      - `isEbikeMode`: checks if `input.transitMode === 'EBIKE'` or `'E-Bike'` or `transit.primaryMode === 'E-Bike'`.
+      - `isScooterMode`: checks for scooter transit modes or `scooterOwnership === 'OWNED'` when not in e-bike mode.
+    - Dynamically interpolates:
+      - Title: `"OWNED E-BIKE"` vs `"OWNED SCOOTER"`
+      - Icon: `🚲` for E-Bike vs `🛴` for Scooter
+      - Noun: `"E-Bike"` vs `"scooter"` in the payback copy (`"Your $X E-Bike pays for itself..."`).
+  - **Testing**:
+    - Created unit tests in `src/components/__tests__/MiniReceipt.test.tsx` verifying:
+      1. Selecting E-Bike mode renders `"OWNED E-BIKE"` and `🚲` icon in the breakeven tile.
+      2. Selecting Scooter mode renders `"OWNED SCOOTER"` and `🛴` icon in the breakeven tile.
+    - All tests pass with Vitest.
+
+---
+
+### BUG-41: Mobile Viewport Tooltip Overflow & Collision Avoidance
+**As a** mobile commuter viewing the dashboard on a 375px or 390px viewport,  
+**I want** informational tooltips ("Value of Your Time", "AA Wear & Tires", Powertrain benchmark info) to automatically detect viewport collisions and shift away from screen boundaries without expanding horizontal scroll width,  
+**So that** tooltips remain completely legible and the page maintains a clean mobile layout without horizontal overflow.
+
+* **Acceptance Criteria:**
+  - **Global Collision-Aware Tooltip Component ([`src/components/Tooltip.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/Tooltip.tsx))**:
+    - Built reusable `<Tooltip>` component with `avoidCollisions={true}` (enabled by default).
+    - Enforced CSS constraints: `max-w-[90vw]`, `whitespace-normal`, and `break-words`.
+    - Computed true client visual viewport width via `Math.min(window.visualViewport?.width, document.documentElement.clientWidth, window.innerWidth)` to prevent false overflow offsets in mobile emulators.
+    - Implemented synchronous transform clamping (`translateX`) so tooltip edges are strictly bounded within `[margin, viewportWidth - margin]` (12px margin from screen boundaries).
+    - Added reactive collision recalculation on window resize, scroll, mouse enter, pointer enter, and focus.
+  - **Viewport Overflow Prevention**:
+    - Applied `overflow-x-hidden` to `<html>` and `<body>` in `src/app/layout.tsx`.
+    - Updated `src/components/RouteMap.tsx` footer strip with `min-w-0 flex-1` and `truncate block min-w-0` to prevent long transit corridor notes from expanding mobile card width.
+  - **Automated E2E Testing ([`tests/ui.spec.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/tests/ui.spec.ts))**:
+    - Playwright test validates 375px mobile viewport has `scrollWidth <= clientWidth + 1` (zero horizontal overflow).
+    - Playwright test iterates all tooltip buttons (`aria-label*="info"`, `aria-label*="benchmark"`), hovers/focuses them, and asserts `box.x >= -5` and `box.x + box.width <= viewportWidth + 5`.
+    - Specific test for Powertrain HEV tooltip containment on mobile viewport.
+    - Verified 9/9 tests passing across Mobile Chrome (375px), Mobile Safari (iPhone 12 - 390px), and Desktop Chrome.
 
 ---
 

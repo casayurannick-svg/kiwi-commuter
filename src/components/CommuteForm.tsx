@@ -26,6 +26,7 @@ import {
   Zap,
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
+import Tooltip from './Tooltip';
 
 interface CommuteFormProps {
   input: CommuteInput;
@@ -864,7 +865,10 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
           <div className="space-y-1.5">
             <div className="flex items-center gap-1.5">
               <label className="text-xs font-semibold text-slate-300">Powertrain</label>
-              <div className="relative inline-flex items-center group">
+              <Tooltip
+                avoidCollisions={true}
+                content="Default values are based on national averages. For a more accurate calculation, enter your vehicle's exact L/100km rating."
+              >
                 <button
                   type="button"
                   aria-label="Powertrain benchmark info"
@@ -872,13 +876,7 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
                 >
                   <Info className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-200 transition-colors" />
                 </button>
-                <div
-                  role="tooltip"
-                  className="pointer-events-none absolute bottom-full left-0 mb-2 w-64 sm:w-72 max-w-[calc(100vw-3rem)] p-2.5 bg-slate-900/95 border border-slate-700 rounded-lg text-[11px] text-slate-200 leading-snug shadow-xl backdrop-blur-md opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-150 z-50"
-                >
-                  Default values are based on national averages. For a more accurate calculation, enter your vehicle&apos;s exact L/100km rating.
-                </div>
-              </div>
+              </Tooltip>
             </div>
             {/* Powertrain 2x3 Icon Grid */}
             <div className="grid grid-cols-3 gap-2">
@@ -913,7 +911,7 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
                       {buttonContent}
                       <div
                         role="tooltip"
-                        className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2.5 py-1 bg-slate-900/95 border border-slate-700 rounded-lg text-[11px] text-slate-200 whitespace-nowrap shadow-xl backdrop-blur-md opacity-0 group-hover/hev:opacity-100 group-focus-within/hev:opacity-100 transition-opacity duration-150 z-50 pointer-events-none"
+                        className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2.5 py-1 max-w-[90vw] bg-slate-900/95 border border-slate-700 rounded-lg text-[11px] text-slate-200 whitespace-nowrap shadow-xl backdrop-blur-md opacity-0 group-hover/hev:opacity-100 group-focus-within/hev:opacity-100 transition-opacity duration-150 z-50 pointer-events-none"
                       >
                         {opt.tooltip}
                       </div>
@@ -1203,7 +1201,11 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
                     AA Wear & Tires ($0.18/km)
                   </span>
                 </label>
-                <div className="relative inline-flex items-center ml-1.5 group">
+                <Tooltip
+                  avoidCollisions={true}
+                  align="end"
+                  content="AA/IRD annual benchmark: $0.18/km covers the average cost of tires, brake pads, and routine servicing for a typical NZ vehicle."
+                >
                   <button
                     type="button"
                     aria-label="Wear & Tear benchmark info"
@@ -1211,13 +1213,7 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
                   >
                     <Info className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-200 transition-colors" />
                   </button>
-                  <div
-                    role="tooltip"
-                    className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 sm:left-0 sm:translate-x-0 mb-2 w-64 p-2.5 bg-slate-900/95 border border-slate-700 rounded-lg text-[11px] text-slate-200 leading-snug shadow-xl backdrop-blur-md opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-150 z-50 pointer-events-none"
-                  >
-                    AA/IRD annual benchmark: $0.18/km covers the average cost of tires, brake pads, and routine servicing for a typical NZ vehicle.
-                  </div>
-                </div>
+                </Tooltip>
               </div>
             </div>
 
@@ -1229,7 +1225,11 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
                     <Clock className="w-3.5 h-3.5 text-sky-400" />
                     Value of Your Time
                   </label>
-                  <div className="relative inline-flex items-center group">
+                  <Tooltip
+                    avoidCollisions={true}
+                    align="start"
+                    content="The monetary value of your free time. We multiply this hourly rate by your total transit duration to reveal the 'hidden cost' of your commute."
+                  >
                     <button
                       type="button"
                       aria-label="Value of Your Time info"
@@ -1237,13 +1237,7 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
                     >
                       <Info className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-200 transition-colors" />
                     </button>
-                    <div
-                      role="tooltip"
-                      className="pointer-events-none absolute bottom-full left-0 mb-2 w-64 sm:w-72 max-w-[calc(100vw-3rem)] p-2.5 bg-slate-900/95 border border-slate-700 rounded-lg text-[11px] text-slate-200 leading-snug shadow-xl backdrop-blur-md opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-150 z-50"
-                    >
-                      The monetary value of your free time. We multiply this hourly rate by your total transit duration to reveal the &apos;hidden cost&apos; of your commute.
-                    </div>
-                  </div>
+                  </Tooltip>
                 </div>
                 <span className="text-[11px] font-bold text-sky-400 font-mono">
                   {(input.hourlyTimeValue ?? 0) > 0 ? `$${input.hourlyTimeValue}/hr` : 'Off ($0/hr)'}

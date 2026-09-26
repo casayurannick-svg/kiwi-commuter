@@ -47,11 +47,22 @@ export default function MiniReceipt({ arbitrage, input }: MiniReceiptProps) {
   const hasPaybackTimeline = paybackMonths !== null && paybackMonths !== undefined && paybackMonths > 0;
   const hasScooterRentalFees =
     (transit.scooterRentalFeesMonthly ?? 0) > 0;
+  const isEbikeMode =
+    input.transitMode === 'EBIKE' ||
+    input.transitMode === 'E-Bike' ||
+    transit.primaryMode === 'E-Bike';
+
   const isScooterMode =
-    input.transitMode === 'MICROMOBILITY_TRANSIT' ||
-    input.transitMode === 'Scooter & Ride' ||
-    input.transitMode === 'Scooter & Transit' ||
-    arbitrage.scooterOwnership !== undefined;
+    !isEbikeMode &&
+    (input.transitMode === 'MICROMOBILITY_TRANSIT' ||
+      input.transitMode === 'Scooter & Ride' ||
+      input.transitMode === 'Scooter & Transit' ||
+      transit.primaryMode === 'Scooter & Transit' ||
+      (input.scooterOwnership === 'OWNED' && !isEbikeMode));
+
+  const micromobilityTitle = isScooterMode ? 'OWNED SCOOTER' : 'OWNED E-BIKE';
+  const micromobilityIcon = isScooterMode ? '🛴' : '🚲';
+  const micromobilityNoun = isScooterMode ? 'scooter' : 'E-Bike';
 
   if (!hasTimeValuation && !hasPaybackTimeline && !hasScooterRentalFees) {
     return null;
@@ -141,17 +152,25 @@ export default function MiniReceipt({ arbitrage, input }: MiniReceiptProps) {
         </div>
       )}
 
-      {/* US-11 & US-23: Breakeven Alert Box (E-Bike or Owned Scooter) */}
+      {/* US-11, US-23 & BUG-39: Breakeven Alert Box (Dynamic E-Bike or Owned Scooter) */}
       {hasPaybackTimeline && (
-        <div className="p-3 bg-emerald-950/40 border border-emerald-500/40 rounded-lg text-sm flex items-center justify-between">
+        <div
+          data-testid="breakeven-tile"
+          className="p-3 bg-emerald-950/40 border border-emerald-500/40 rounded-lg text-sm flex items-center justify-between"
+        >
           <div className="flex items-center gap-2.5">
-            <span className="text-xl">{isScooterMode ? '🛴' : '🚲'}</span>
+            <span className="text-xl" role="img" aria-label={micromobilityNoun} data-testid="breakeven-icon">
+              {micromobilityIcon}
+            </span>
             <div>
-              <div className="text-xs font-bold uppercase tracking-wider text-emerald-400">
-                {isScooterMode ? 'Owned Scooter Breakeven' : 'E-Bike Breakeven Timeline'}
+              <div
+                data-testid="breakeven-title"
+                className="text-xs font-bold uppercase tracking-wider text-emerald-400"
+              >
+                {micromobilityTitle}
               </div>
               <div className="text-xs text-slate-300">
-                At current driving costs, your {isScooterMode ? 'scooter' : 'E-Bike'} pays for itself in{' '}
+                At current driving costs, your {micromobilityNoun} pays for itself in{' '}
                 <strong className="text-white font-bold">{paybackMonths} months</strong>.
               </div>
             </div>
