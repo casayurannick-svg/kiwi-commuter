@@ -39,17 +39,17 @@ jobs:
               - 'src/lib/calculator.ts'
               - 'src/lib/fares.ts'
 
-      # Step output required by acceptance criteria
+     # Step output required by acceptance criteria
       - name: Critical Path Modification Alert
         if: steps.filter.outputs.critical == 'true'
-        run: echo "⚠️ CRITICAL PATH MODIFIED: Enforcing full calculation regression suite."
+        run: echo "[WARNING] CRITICAL PATH MODIFIED: Enforcing full calculation regression suite."
 
       # Fallback git diff verification for critical calculation paths
       - name: Fallback Git Diff Critical Path Check
         run: |
           CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || true)
           if echo "$CHANGED_FILES" | grep -qE '^(src/lib/calculator\.ts|src/lib/fares\.ts)$'; then
-            echo "⚠️ CRITICAL PATH MODIFIED: Enforcing full calculation regression suite."
+            echo "[WARNING] CRITICAL PATH MODIFIED: Enforcing full calculation regression suite."
           fi
 
       - name: Run Calculation Regression Suite (Vitest)
