@@ -7,7 +7,6 @@ import { CommuteInput, ConcessionType, EVChargingSource, EvChargingMode, Parking
 import {
   Bus,
   Car,
-  ChevronDown,
   Clock,
   CreditCard,
   Fuel,
@@ -84,6 +83,10 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
   const isPureEv = input.vehicleType === 'bev' || input.powertrain === 'BEV';
   const isFuelConsuming = !isPureEv;
 
+  // US-42: Inferred AT HOP Zone Metadata
+  const originSuburb = AUCKLAND_SUBURBS.find((s) => s.id === input.originSuburbId);
+  const destSuburb = AUCKLAND_SUBURBS.find((s) => s.id === input.destinationSuburbId);
+
   // US-24: Store fuelCost as a string in local state so clearing the field doesn't snap back immediately
   const [fuelCost, setFuelCost] = useState<string>(() => {
     const initial = input.fuelPriceOverride ?? currentVehicle.defaultFuelPrice;
@@ -136,10 +139,8 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
 
   const handleFuelPriceChange = (valStr: string) => {
     setFuelCost(valStr);
-    // Parse the string to a number, applying DEFAULT_FUEL_RATE only when the calculation is executed and the input is empty or NaN
     const trimmed = valStr.trim();
     if (trimmed === '') {
-      // Do not revert the string input to default, keep fuelPriceOverride undefined so calculation engine applies DEFAULT_FUEL_RATE
       handleFieldChange('fuelPriceOverride', undefined);
     } else {
       const parsed = parseFloat(trimmed);
@@ -174,7 +175,6 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
       setFuelCost(newVehicle.defaultFuelPrice.toString());
     }
 
-    // US-26: Clear custom consumption state if pure EV is selected to prevent stale data
     let nextConsumptionOverride: number | undefined = undefined;
     if (isPureEv) {
       setCustomConsumption('');
@@ -234,7 +234,6 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
     } else if (mode === '50') {
       handleFieldChange('hourlyTimeValue', 50);
     }
-    // If 'custom', retain current or default to 30
   };
 
   // US-28 & US-36: Address Geocoding autocomplete states
@@ -248,7 +247,6 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
   const [isDestLoading, setIsDestLoading] = useState(false);
   const [showDestDropdown, setShowDestDropdown] = useState(false);
 
-  // US-36: Synchronize address inputs when hydrated from URL or updated from parent
   useEffect(() => {
     if (input.originAddress !== undefined) {
       setOriginQuery((prev) => (prev !== input.originAddress ? input.originAddress! : prev));
@@ -353,36 +351,6 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
     notifyChange(updated);
   };
 
-  const handleOriginChange = (originId: string) => {
-    const isWaiheke = originId === 'waiheke' || input.destinationSuburbId === 'waiheke';
-    const sub = SUBURB_CENTROIDS.find((s) => s.id === originId);
-    if (sub) setOriginQuery(sub.name);
-    const updated: CommuteInput = {
-      ...input,
-      originSuburbId: originId,
-      originAddress: sub ? `${sub.name}, Auckland` : undefined,
-      originCoordinates: sub ? sub.coordinates : undefined,
-      isWaihekeRoute: isWaiheke,
-      transitMode: isWaiheke ? 'FERRY' : input.transitMode,
-    };
-    notifyChange(updated);
-  };
-
-  const handleDestinationChange = (destId: string) => {
-    const isWaiheke = input.originSuburbId === 'waiheke' || destId === 'waiheke';
-    const sub = SUBURB_CENTROIDS.find((s) => s.id === destId);
-    if (sub) setDestQuery(sub.name);
-    const updated: CommuteInput = {
-      ...input,
-      destinationSuburbId: destId,
-      destinationAddress: sub ? `${sub.name}, Auckland` : undefined,
-      destinationCoordinates: sub ? sub.coordinates : undefined,
-      isWaihekeRoute: isWaiheke,
-      transitMode: isWaiheke ? 'FERRY' : input.transitMode,
-    };
-    notifyChange(updated);
-  };
-
   const handleTransitModeSelect = (mode: TransitMode) => {
     const isWaiheke =
       mode !== 'EBIKE' &&
@@ -422,7 +390,7 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
         </h2>
       </div>
 
-      {/* Origin & Destination (US-28 Address Geocoding & Suburb Presets) */}
+      {/* Origin & Destination (US-28 & US-42 Inferred Zone Badges) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {/* Origin */}
         <div className="space-y-1.5 relative">
@@ -431,11 +399,18 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
               <MapPin className="w-3.5 h-3.5 text-emerald-400" />
               From (Origin Address)
             </label>
-            {input.originCoordinates && (
-              <span className="text-[10px] text-emerald-400 font-mono">
-                {input.originCoordinates[0].toFixed(2)}, {input.originCoordinates[1].toFixed(2)}
-              </span>
-            )}
+            <div className="flex items-center gap-1.5">
+              {originSuburb && (
+                <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-medium text-emerald-300">
+                  Z{originSuburb.zone} · {originSuburb.name}
+                </span>
+              )}
+              {input.originCoordinates && (
+                <span className="text-[10px] text-emerald-400/80 font-mono">
+                  {input.originCoordinates[0].toFixed(2)}, {input.originCoordinates[1].toFixed(2)}
+                </span>
+              )}
+            </div>
           </div>
 
           {/* Autocomplete Input */}
@@ -493,22 +468,6 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
               </div>
             )}
           </div>
-
-          {/* Suburb Preset Fallback Selector */}
-          <div className="relative">
-            <select
-              value={input.originSuburbId}
-              onChange={(e) => handleOriginChange(e.target.value)}
-              className="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-400 focus:ring-1 focus:ring-emerald-500 focus:outline-none transition appearance-none cursor-pointer"
-            >
-              {AUCKLAND_SUBURBS.map((suburb) => (
-                <option key={suburb.id} value={suburb.id}>
-                  {suburb.name} (Z{suburb.zone} · {suburb.region})
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="w-3.5 h-3.5 text-slate-500 absolute right-2.5 top-2 pointer-events-none" />
-          </div>
         </div>
 
         {/* Destination */}
@@ -518,11 +477,18 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
               <MapPin className="w-3.5 h-3.5 text-sky-400" />
               To (Destination Address)
             </label>
-            {input.destinationCoordinates && (
-              <span className="text-[10px] text-sky-400 font-mono">
-                {input.destinationCoordinates[0].toFixed(2)}, {input.destinationCoordinates[1].toFixed(2)}
-              </span>
-            )}
+            <div className="flex items-center gap-1.5">
+              {destSuburb && (
+                <span className="px-1.5 py-0.5 rounded bg-sky-500/10 border border-sky-500/20 text-[10px] font-medium text-sky-300">
+                  Z{destSuburb.zone} · {destSuburb.name}
+                </span>
+              )}
+              {input.destinationCoordinates && (
+                <span className="text-[10px] text-sky-400/80 font-mono">
+                  {input.destinationCoordinates[0].toFixed(2)}, {input.destinationCoordinates[1].toFixed(2)}
+                </span>
+              )}
+            </div>
           </div>
 
           {/* Autocomplete Input */}
@@ -579,22 +545,6 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
                 ))}
               </div>
             )}
-          </div>
-
-          {/* Suburb Preset Fallback Selector */}
-          <div className="relative">
-            <select
-              value={input.destinationSuburbId}
-              onChange={(e) => handleDestinationChange(e.target.value)}
-              className="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-400 focus:ring-1 focus:ring-sky-500 focus:outline-none transition appearance-none cursor-pointer"
-            >
-              {AUCKLAND_SUBURBS.map((suburb) => (
-                <option key={suburb.id} value={suburb.id}>
-                  {suburb.name} (Z{suburb.zone} · {suburb.region})
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="w-3.5 h-3.5 text-slate-500 absolute right-2.5 top-2 pointer-events-none" />
           </div>
         </div>
       </div>
@@ -683,7 +633,7 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
         </div>
       </div>
 
-      {/* Days in Office (Segmented Buttons with 44px min-height) */}
+      {/* Days in Office */}
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
           <label className="text-xs font-semibold text-slate-300">Days in Office</label>
@@ -716,7 +666,7 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
         </div>
       </div>
 
-      {/* US-11: If EBIKE is active, hide car fields (Powertrain, RUC, Parking) and show E-Bike inputs */}
+      {/* US-11: E-Bike mode parameters */}
       {isEbikeActive ? (
         <div className="space-y-3 p-3.5 bg-slate-900/60 border border-emerald-500/30 rounded-xl">
           <div className="flex items-center justify-between pb-1.5 border-b border-slate-800">
@@ -726,7 +676,6 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {/* Upfront Setup Cost */}
             <div className="space-y-1">
               <label className="text-xs font-semibold text-slate-300">
                 Upfront Setup Cost
@@ -752,7 +701,6 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
               </span>
             </div>
 
-            {/* Energy Cost/km */}
             <div className="space-y-1">
               <label className="text-xs font-semibold text-slate-300">
                 Energy Cost/km
@@ -791,7 +739,6 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
             <span className="text-[10px] text-slate-400 font-mono">15 km/h cruise</span>
           </div>
 
-          {/* Ownership Toggle (OWNED vs RENTAL) */}
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-slate-300">Scooter Type</label>
             <div className="grid grid-cols-2 gap-2">
@@ -820,7 +767,6 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
             </div>
           </div>
 
-          {/* If RENTAL: display readonly rates ($1 unlock, $0.45/min) */}
           {(input.scooterOwnership ?? 'RENTAL') === 'RENTAL' ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
               <div className="p-2.5 bg-slate-950/60 border border-slate-800 rounded-lg flex items-center justify-between">
@@ -833,7 +779,6 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
               </div>
             </div>
           ) : (
-            /* If OWNED: upfront capital cost input */
             <div className="space-y-1 pt-1">
               <label className="text-xs font-semibold text-slate-300">
                 Scooter Capital Cost ($ NZD)
@@ -860,7 +805,7 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
         </div>
       ) : null}
 
-      {/* BUG-44: Private Vehicle Baseline Settings (Persistent, Independently Collapsible Section) */}
+      {/* Private Vehicle Baseline Settings */}
       <div className="pt-2 border-t border-slate-800">
         <button
           type="button"
@@ -880,7 +825,7 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
 
         {isVehicleBaselineOpen && (
           <div className="mt-2.5 space-y-3.5">
-            {/* Powertrain (Segmented Pills with 44px min-height) */}
+            {/* Powertrain */}
             <div className="space-y-1.5">
               <div className="flex items-center gap-1.5">
                 <label className="text-xs font-semibold text-slate-300">Powertrain</label>
@@ -897,7 +842,6 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
                   </button>
                 </Tooltip>
               </div>
-              {/* Powertrain 2x3 Icon Grid */}
               <div className="grid grid-cols-3 gap-2">
                 {POWERTRAIN_OPTIONS.map((opt) => {
                   const isSelected = input.vehicleType === opt.id || input.powertrain === opt.powertrain;
@@ -942,7 +886,6 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
                 })}
               </div>
 
-              {/* US-26: Dynamically render Custom L/100km numeric input field below powertrain selector for fuel-consuming powertrains */}
               {isFuelConsuming && (
                 <div className="pt-1.5 space-y-1">
                   <div className="flex items-center justify-between">
@@ -1018,7 +961,7 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
         )}
       </div>
 
-      {/* Disclosure: Custom Rates ▾ */}
+      {/* Disclosure: Custom Rates */}
       <div className="pt-1 border-t border-slate-800">
         <button
           type="button"
@@ -1038,7 +981,7 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
 
         {isCustomRatesOpen && (
           <div className="mt-2 pt-3 border-t border-slate-800/80 space-y-3 bg-slate-950/50 p-3.5 rounded-xl text-xs">
-            {/* ⚡ EV Power Source Selector */}
+            {/* EV Power Source Selector */}
             {(input.vehicleType === 'bev' || input.vehicleType === 'phev') && (
               <div className="space-y-1.5 pb-2.5 border-b border-slate-800/80">
                 <div className="flex items-center justify-between">
@@ -1237,7 +1180,7 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
               </div>
             </div>
 
-            {/* Value of Your Time Segmented Control (US-13) */}
+            {/* Value of Your Time */}
             <div className="space-y-1.5 pt-2 border-t border-slate-800/80">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
@@ -1310,7 +1253,7 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
               )}
             </div>
 
-            {/* US-38: Fixed Ownership Costs (Annual) Collapsible Section */}
+            {/* Fixed Ownership Costs */}
             <div className="pt-2 border-t border-slate-800/80 space-y-2">
               <button
                 type="button"
@@ -1338,7 +1281,6 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
               {isFixedCostsOpen && (
                 <div className="space-y-3 bg-slate-900/60 p-3 rounded-xl border border-slate-800 text-xs animate-in fade-in duration-150">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {/* WOF Input */}
                     <div className="space-y-1">
                       <label className="text-[11px] text-slate-400">
                         Annual WOF ($/yr)
@@ -1358,7 +1300,6 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
                       <span className="text-[10px] text-slate-500">VTNZ/AA annual inspection</span>
                     </div>
 
-                    {/* Rego Input */}
                     <div className="space-y-1">
                       <label className="text-[11px] text-slate-400">
                         Annual Rego / Licensing ($/yr)
@@ -1379,7 +1320,6 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
                     </div>
                   </div>
 
-                  {/* Insurance Section with Mutual Exclusivity */}
                   <div className="pt-2 border-t border-slate-800 space-y-2">
                     <div className="flex items-center justify-between">
                       <label className="text-xs text-slate-300 flex items-center gap-2 cursor-pointer select-none">
@@ -1448,7 +1388,6 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
                     )}
                   </div>
 
-                  {/* 70% Commute Apportionment Note */}
                   <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400">
                     <span>70% Commute Apportionment:</span>
                     <span className="font-semibold text-emerald-400 font-mono">
