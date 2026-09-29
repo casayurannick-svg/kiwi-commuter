@@ -160,18 +160,26 @@ export function serializeCommuteToParams(input: CommuteInput): URLSearchParams {
 
 /**
  * Parses URLSearchParams into a CommuteInput, using fallback values for missing keys.
+ * Handles parameter aliases, case normalization, and robust fallbacks.
  */
 export function parseCommuteFromParams(
   params: URLSearchParams,
   fallback: CommuteInput
 ): CommuteInput {
-  const rawPower = params.get('power');
+  // Alias support for power, powertrain, and vehicleType
+  const rawPower =
+    params.get('power') ||
+    params.get('powertrain') ||
+    params.get('vehicleType') ||
+    params.get('vehicle');
+
   let resolvedPowertrain: VehiclePowertrain = fallback.powertrain || 'PETROL_91';
   let resolvedVehicleType: VehicleType = fallback.vehicleType || 'petrol91';
 
   if (rawPower) {
-    const upper = rawPower.toUpperCase() as VehiclePowertrain;
-    const lower = rawPower.toLowerCase() as VehicleType;
+    const trimmed = rawPower.trim();
+    const upper = trimmed.toUpperCase() as VehiclePowertrain;
+    const lower = trimmed.toLowerCase() as VehicleType;
 
     if (POWERTRAIN_TO_VEHICLE_TYPE[upper]) {
       resolvedPowertrain = upper;
@@ -179,28 +187,80 @@ export function parseCommuteFromParams(
     } else if (VEHICLE_TYPE_TO_POWERTRAIN[lower]) {
       resolvedVehicleType = lower;
       resolvedPowertrain = VEHICLE_TYPE_TO_POWERTRAIN[lower];
+    } else if (upper === 'PETROL' as VehiclePowertrain) {
+      resolvedPowertrain = 'PETROL_91';
+      resolvedVehicleType = 'petrol91';
+    } else if (upper === 'DIESEL' as VehiclePowertrain) {
+      resolvedPowertrain = 'DIESEL';
+      resolvedVehicleType = 'diesel';
+    } else if (upper === 'EV' as VehiclePowertrain || upper === 'ELECTRIC' as VehiclePowertrain) {
+      resolvedPowertrain = 'BEV';
+      resolvedVehicleType = 'bev';
+    } else if (upper === 'HYBRID' as VehiclePowertrain) {
+      resolvedPowertrain = 'HEV';
+      resolvedVehicleType = 'hev';
     }
   }
 
-  const econVal = params.has('econ') ? Number(params.get('econ')) : undefined;
-  const parkTierParam = params.get('park') as ParkingTier | undefined;
-  const customParkVal = params.has('customPark') ? Number(params.get('customPark')) : undefined;
-  const kwhRateVal = params.has('kwhRate') ? Number(params.get('kwhRate')) : undefined;
-  const fuelRateVal = params.has('fuelRate') ? Number(params.get('fuelRate')) : undefined;
-  const concVal = params.get('conc') as ConcessionType | undefined;
-  const carpoolVal = params.has('carpool') ? Number(params.get('carpool')) : undefined;
-  const timeVal = params.has('timeRate')
-    ? Number(params.get('timeRate'))
-    : params.has('timeVal')
-    ? Number(params.get('timeVal'))
+  const econVal =
+    params.has('econ') && !isNaN(Number(params.get('econ')))
+      ? Number(params.get('econ'))
+      : params.has('fuelEconomy') && !isNaN(Number(params.get('fuelEconomy')))
+      ? Number(params.get('fuelEconomy'))
+      : undefined;
+
+  const parkTierParam = (params.get('park') || params.get('parkingTier')) as ParkingTier | undefined;
+
+  // Alias support for custom parking daily rate
+  const rawCustomPark =
+    params.get('customPark') ||
+    params.get('parkingDailyRate') ||
+    params.get('parkingDaily') ||
+    params.get('parkRate') ||
+    params.get('dailyParking');
+  const customParkVal =
+    rawCustomPark !== null && !isNaN(Number(rawCustomPark))
+      ? Number(rawCustomPark)
+      : undefined;
+
+  const kwhRateVal = params.has('kwhRate') && !isNaN(Number(params.get('kwhRate')))
+    ? Number(params.get('kwhRate'))
     : undefined;
+
+  const fuelRateVal =
+    params.has('fuelRate') && !isNaN(Number(params.get('fuelRate')))
+      ? Number(params.get('fuelRate'))
+      : params.has('customFuelPricePerL') && !isNaN(Number(params.get('customFuelPricePerL')))
+      ? Number(params.get('customFuelPricePerL'))
+      : undefined;
+
+  const concVal = (params.get('conc') || params.get('concession')) as ConcessionType | undefined;
+
+  const carpoolVal =
+    params.has('carpool') && !isNaN(Number(params.get('carpool')))
+      ? Number(params.get('carpool'))
+      : params.has('carpoolPassengers') && !isNaN(Number(params.get('carpoolPassengers')))
+      ? Number(params.get('carpoolPassengers'))
+      : undefined;
+
+  const timeVal = params.has('timeRate') && !isNaN(Number(params.get('timeRate')))
+    ? Number(params.get('timeRate'))
+    : params.has('timeVal') && !isNaN(Number(params.get('timeVal')))
+    ? Number(params.get('timeVal'))
+    : params.has('hourlyTimeValue') && !isNaN(Number(params.get('hourlyTimeValue')))
+    ? Number(params.get('hourlyTimeValue'))
+    : undefined;
+
   const wearVal = params.has('wear')
     ? params.get('wear') === '1' || params.get('wear') === 'true'
+    : params.has('includeMaintenanceWear')
+    ? params.get('includeMaintenanceWear') === '1' || params.get('includeMaintenanceWear') === 'true'
     : undefined;
-  const rawTransitMode = params.get('transitMode') as TransitMode | undefined;
-  const rawWaiheke = params.get('waiheke');
-  const fromSuburbParam = params.get('from');
-  const toSuburbParam = params.get('to');
+
+  const rawTransitMode = (params.get('transitMode') || params.get('mode')) as TransitMode | undefined;
+  const rawWaiheke = params.get('waiheke') || params.get('isWaihekeRoute');
+  const fromSuburbParam = params.get('from') || params.get('originSuburbId');
+  const toSuburbParam = params.get('to') || params.get('destinationSuburbId');
 
   // US-36: Exact Address & Coordinate Parsing
   const originAddress =
@@ -275,7 +335,7 @@ export function parseCommuteFromParams(
     toSuburb === 'waiheke' ||
     Boolean(fallback.isWaihekeRoute);
 
-  const rawFirstMileMode = params.get('firstMileMode')?.toUpperCase();
+  const rawFirstMileMode = (params.get('firstMileMode') || params.get('fmm'))?.toUpperCase();
   const firstMileMode: 'DRIVE' | 'WALK' | 'SCOOTER' | undefined =
     rawFirstMileMode === 'DRIVE' || rawFirstMileMode === 'WALK' || rawFirstMileMode === 'SCOOTER'
       ? rawFirstMileMode
@@ -284,21 +344,41 @@ export function parseCommuteFromParams(
   const firstMileDistanceKm =
     params.has('firstMileDist') && !isNaN(Number(params.get('firstMileDist')))
       ? Number(params.get('firstMileDist'))
+      : params.has('firstMileDistanceKm') && !isNaN(Number(params.get('firstMileDistanceKm')))
+      ? Number(params.get('firstMileDistanceKm'))
       : fallback.firstMileDistanceKm;
 
+  // Alias support for driving distance
+  const rawDriveDist =
+    params.get('driveDist') ||
+    params.get('drivingDistanceKm') ||
+    params.get('distanceKm') ||
+    params.get('distance') ||
+    params.get('dist');
   const drivingDistanceKm =
-    params.has('driveDist') && !isNaN(Number(params.get('driveDist')))
-      ? Number(params.get('driveDist'))
+    rawDriveDist !== null && !isNaN(Number(rawDriveDist))
+      ? Number(rawDriveDist)
       : fallback.drivingDistanceKm;
 
+  // Alias support for driving duration
+  const rawDriveTime =
+    params.get('driveTime') ||
+    params.get('drivingTimeMins') ||
+    params.get('driveDuration') ||
+    params.get('drivingDuration');
   const drivingTimeMins =
-    params.has('driveTime') && !isNaN(Number(params.get('driveTime')))
-      ? Number(params.get('driveTime'))
+    rawDriveTime !== null && !isNaN(Number(rawDriveTime))
+      ? Number(rawDriveTime)
       : fallback.drivingTimeMins;
 
+  // Alias support for transit duration
+  const rawTransitTime =
+    params.get('transitTime') ||
+    params.get('transitTimeMins') ||
+    params.get('transitDuration');
   const transitTimeMins =
-    params.has('transitTime') && !isNaN(Number(params.get('transitTime')))
-      ? Number(params.get('transitTime'))
+    rawTransitTime !== null && !isNaN(Number(rawTransitTime))
+      ? Number(rawTransitTime)
       : fallback.transitTimeMins;
 
   const rawChargeSource = params.get('chargeSource') || params.get('evChargeMode');
@@ -332,7 +412,19 @@ export function parseCommuteFromParams(
       ? kwhRateVal
       : (defaultKwhRate ?? fallback.homeKWhRate);
 
-  const daysPerWeek = params.has('days') ? Number(params.get('days')) : fallback.daysPerWeek;
+  // Alias support for commute days per week
+  const rawDays =
+    params.get('days') ||
+    params.get('daysPerWeek') ||
+    params.get('commuteDays');
+  const parsedDays =
+    rawDays !== null && !isNaN(Number(rawDays))
+      ? Number(rawDays)
+      : fallback.daysPerWeek;
+  const daysPerWeek =
+    !isNaN(parsedDays) && parsedDays >= 1 && parsedDays <= 7
+      ? parsedDays
+      : fallback.daysPerWeek;
 
   return {
     originSuburbId: fromSuburb,
@@ -341,7 +433,7 @@ export function parseCommuteFromParams(
     destinationAddress,
     originCoordinates,
     destinationCoordinates,
-    daysPerWeek: !isNaN(daysPerWeek) && daysPerWeek >= 1 && daysPerWeek <= 7 ? daysPerWeek : fallback.daysPerWeek,
+    daysPerWeek,
     vehicleType: resolvedVehicleType,
     powertrain: resolvedPowertrain,
     power: resolvedPowertrain,

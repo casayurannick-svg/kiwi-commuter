@@ -15,7 +15,7 @@ import { CommuteInput } from '@/types';
 import ShareButton from '@/components/ShareButton';
 import KiwiPathwayIcon from '@/components/icons/KiwiPathwayIcon';
 import { usePathname, useSearchParams } from 'next/navigation';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 interface DashboardClientProps {
   initialFuelPrices?: FuelBenchmarkDto;
@@ -25,6 +25,12 @@ export default function DashboardClient({ initialFuelPrices }: DashboardClientPr
   const searchParams = useSearchParams();
   const pathname = usePathname();
 
+  // Strict one-way hydration guard & sync refs (BUG-48)
+  const hasHydratedRef = useRef(false);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const isSyncingFromPopstateRef = useRef(false);
+
+  // 1. Initial State Hydration: Parse directly from URL on initial lazy initialization
   const [commuteInput, setCommuteInput] = useState<CommuteInput>(() => {
     const base: CommuteInput = {
       originSuburbId: 'epsom',
@@ -43,6 +49,7 @@ export default function DashboardClient({ initialFuelPrices }: DashboardClientPr
       insuranceEnabled: true,
       defaultInsurance: 1311,
     };
+
     if (searchParams && searchParams.toString()) {
       return parseCommuteFromParams(searchParams, base);
     }
@@ -53,31 +60,58 @@ export default function DashboardClient({ initialFuelPrices }: DashboardClientPr
     return base;
   });
 
-  // US-36: Keep commuteInput in sync if searchParams updates from external navigation / popstate
+  // 2. Mark initial hydration complete on mount
   useEffect(() => {
-    const rawSearch = searchParams?.toString() || (typeof window !== 'undefined' ? window.location.search.replace(/^\?/, '') : '');
-    if (rawSearch) {
-      const currentUrlParams = new URLSearchParams(rawSearch);
-      setCommuteInput((prev) => {
-        const parsed = parseCommuteFromParams(currentUrlParams, prev);
-        const prevParams = serializeCommuteToParams(prev).toString();
-        const nextParams = serializeCommuteToParams(parsed).toString();
-        if (prevParams !== nextParams) {
-          return parsed;
-        }
-        return prev;
-      });
-    }
-  }, [searchParams]);
+    hasHydratedRef.current = true;
+  }, []);
 
-  // Keep browser URL search params synchronized on input changes
+  // 3. Handle browser back/forward navigation (popstate) without feedback loop
   useEffect(() => {
-    const params = serializeCommuteToParams(commuteInput);
-    const queryString = params.toString();
-    const newUrl = queryString ? `${pathname}?${queryString}` : pathname;
-    if (typeof window !== 'undefined' && window.location.search !== (queryString ? `?${queryString}` : '')) {
-      window.history.replaceState(null, '', newUrl);
+    const handlePopState = () => {
+      if (typeof window === 'undefined') return;
+      isSyncingFromPopstateRef.current = true;
+      const currentUrlParams = new URLSearchParams(window.location.search);
+      setCommuteInput((prev) => parseCommuteFromParams(currentUrlParams, prev));
+      setTimeout(() => {
+        isSyncingFromPopstateRef.current = false;
+      }, 50);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  // 4. Debounced synchronization from state to URL on user interaction (BUG-48)
+  useEffect(() => {
+    // Guard: only serialize to URL after initial mount has completed
+    if (!hasHydratedRef.current) return;
+    // Guard: do not echo back to URL when state change originated from browser popstate
+    if (isSyncingFromPopstateRef.current) return;
+
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
     }
+
+    debounceTimerRef.current = setTimeout(() => {
+      if (typeof window === 'undefined') return;
+
+      const params = serializeCommuteToParams(commuteInput);
+      const queryString = params.toString();
+      const newSearch = queryString ? `?${queryString}` : '';
+      const currentSearch = window.location.search;
+
+      // Only invoke history replaceState if query string actually changed
+      if (currentSearch !== newSearch) {
+        const newUrl = `${pathname}${newSearch}`;
+        window.history.replaceState(null, '', newUrl);
+      }
+    }, 300);
+
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
   }, [commuteInput, pathname]);
 
   const origin = useMemo(() => getSuburbById(commuteInput.originSuburbId), [commuteInput.originSuburbId]);
@@ -89,7 +123,6 @@ export default function DashboardClient({ initialFuelPrices }: DashboardClientPr
   const arbitrage = useMemo(() => calculateCommuteArbitrage(commuteInput), [commuteInput]);
 
   // US-21 & US-35: Fetch real-world transit & driving metrics from Google Routes API.
-  // Injects drivingDistanceKm and drivingTimeMins into commuteInput so calculations reflect actual road routing (e.g. ~17-18 km for Devonport to Parnell).
   useEffect(() => {
     const originCoords = commuteInput.originCoordinates || origin?.coordinates;
     const destinationCoords = commuteInput.destinationCoordinates || destination?.coordinates;
