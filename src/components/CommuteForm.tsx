@@ -83,23 +83,23 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
   const isPureEv = input.vehicleType === 'bev' || input.powertrain === 'BEV';
   const isFuelConsuming = !isPureEv;
 
-  // US-42: Inferred AT HOP Zone Metadata
+  // US-42: Inferred AT HOP Zone Metadata[cite: 5]
   const originSuburb = AUCKLAND_SUBURBS.find((s) => s.id === input.originSuburbId);
   const destSuburb = AUCKLAND_SUBURBS.find((s) => s.id === input.destinationSuburbId);
 
-  // US-24: Store fuelCost as a string in local state so clearing the field doesn't snap back immediately
+  // US-24: Store fuelCost as a string in local state so clearing the field doesn't snap back immediately[cite: 5]
   const [fuelCost, setFuelCost] = useState<string>(() => {
     const initial = input.fuelPriceOverride ?? currentVehicle.defaultFuelPrice;
     return initial !== undefined ? initial.toString() : '';
   });
 
-  // US-26: Store custom L/100km override in local state for fuel-consuming powertrains
+  // US-26: Store custom L/100km override in local state for fuel-consuming powertrains[cite: 5]
   const [customConsumption, setCustomConsumption] = useState<string>(() => {
     if (input.vehicleType === 'bev' || input.powertrain === 'BEV') return '';
     return input.consumptionOverride !== undefined ? input.consumptionOverride.toString() : '';
   });
 
-  // US-26: Explicitly clear custom L/100km React state if a pure EV is selected to prevent stale data
+  // US-26: Explicitly clear custom L/100km React state if a pure EV is selected to prevent stale data[cite: 5]
   useEffect(() => {
     if (input.vehicleType === 'bev' || input.powertrain === 'BEV') {
       if (customConsumption !== '') {
@@ -108,7 +108,7 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
     }
   }, [input.vehicleType, input.powertrain, customConsumption]);
 
-  // US-38: Fixed Vehicle Ownership Costs State
+  // US-38: Fixed Vehicle Ownership Costs State[cite: 5]
   const [isFixedCostsOpen, setIsFixedCostsOpen] = useState(false);
   const [customInsuranceInput, setCustomInsuranceInput] = useState<string>(() => {
     return typeof input.customInsurance === 'number' && !isNaN(input.customInsurance)
@@ -236,7 +236,7 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
     }
   };
 
-  // US-28 & US-36: Address Geocoding autocomplete states
+  // US-28 & US-36: Address Geocoding autocomplete states[cite: 5]
   const [originQuery, setOriginQuery] = useState(input.originAddress || '');
   const [originSuggestions, setOriginSuggestions] = useState<GeocodingResult[]>([]);
   const [isOriginLoading, setIsOriginLoading] = useState(false);
@@ -390,23 +390,23 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
         </h2>
       </div>
 
-      {/* Origin & Destination (US-28 & US-42 Inferred Zone Badges) */}
+      {/* Origin & Destination (US-28 & US-42 Inferred Zone Badges with Height Alignment) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {/* Origin */}
         <div className="space-y-1.5 relative">
-          <div className="flex items-center justify-between">
-            <label className="text-xs font-semibold text-slate-300 flex items-center gap-1">
-              <MapPin className="w-3.5 h-3.5 text-emerald-400" />
-              From (Origin Address)
+          <div className="flex items-center justify-between gap-1 min-h-[36px]">
+            <label className="text-xs font-semibold text-slate-300 flex items-center gap-1 shrink min-w-0">
+              <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+              <span className="truncate">From (Origin Address)</span>
             </label>
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 shrink-0">
               {originSuburb && (
-                <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-medium text-emerald-300">
+                <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-medium text-emerald-300 whitespace-nowrap">
                   Z{originSuburb.zone} · {originSuburb.name}
                 </span>
               )}
               {input.originCoordinates && (
-                <span className="text-[10px] text-emerald-400/80 font-mono">
+                <span className="text-[10px] text-emerald-400/80 font-mono whitespace-nowrap">
                   {input.originCoordinates[0].toFixed(2)}, {input.originCoordinates[1].toFixed(2)}
                 </span>
               )}
@@ -472,19 +472,19 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
 
         {/* Destination */}
         <div className="space-y-1.5 relative">
-          <div className="flex items-center justify-between">
-            <label className="text-xs font-semibold text-slate-300 flex items-center gap-1">
-              <MapPin className="w-3.5 h-3.5 text-sky-400" />
-              To (Destination Address)
+          <div className="flex items-center justify-between gap-1 min-h-[36px]">
+            <label className="text-xs font-semibold text-slate-300 flex items-center gap-1 shrink min-w-0">
+              <MapPin className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+              <span className="truncate">To (Destination Address)</span>
             </label>
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 shrink-0">
               {destSuburb && (
-                <span className="px-1.5 py-0.5 rounded bg-sky-500/10 border border-sky-500/20 text-[10px] font-medium text-sky-300">
+                <span className="px-1.5 py-0.5 rounded bg-sky-500/10 border border-sky-500/20 text-[10px] font-medium text-sky-300 whitespace-nowrap">
                   Z{destSuburb.zone} · {destSuburb.name}
                 </span>
               )}
               {input.destinationCoordinates && (
-                <span className="text-[10px] text-sky-400/80 font-mono">
+                <span className="text-[10px] text-sky-400/80 font-mono whitespace-nowrap">
                   {input.destinationCoordinates[0].toFixed(2)}, {input.destinationCoordinates[1].toFixed(2)}
                 </span>
               )}
