@@ -374,7 +374,7 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
 
   const isInnerHarbourFerry = isFerry && !isWaiheke;
 
-  // BUG-47: Auckland Transport fare zones cap out at the maximum standard tier (Zone 4+ is $7.90)
+  // BUG-47: Ensure zoneCount is at least 1
   const zoneCount = Math.max(1, route.zonesTraveled);
 
   // US-23: Micro-mobility calculations
@@ -469,19 +469,13 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
     const baseDailyHopFarePerPerson = round2(perPersonConcession * 2);
     const baseUncappedWeeklyFarePerPerson = round2(baseDailyHopFarePerPerson * input.daysPerWeek);
 
-    // BUG-47: Inner Harbour Ferries are eligible for the AT HOP 7-day $50 cap.
+    // Inner Harbour Ferries ARE eligible for the AT HOP 7-day $50 cap (BUG-37)
     isHopCapApplied = baseUncappedWeeklyFarePerPerson > AT_HOP_7_DAY_CAP;
     const cappedWeeklyPerPerson = isHopCapApplied ? AT_HOP_7_DAY_CAP : baseUncappedWeeklyFarePerPerson;
 
-    // Harmonize effective daily cost with the weekly cap
-    const effectiveDailyPerPerson =
-      isHopCapApplied && input.daysPerWeek > 0
-        ? round2(cappedWeeklyPerPerson / input.daysPerWeek)
-        : baseDailyHopFarePerPerson;
-
     singleTripStandardFare = round2(perPersonStandard * transitPassengers);
     singleTripConcessionFare = round2(perPersonConcession * transitPassengers);
-    dailyTransitFare = round2(effectiveDailyPerPerson * transitPassengers);
+    dailyTransitFare = round2(baseDailyHopFarePerPerson * transitPassengers);
     uncappedWeeklyFare = round2(baseUncappedWeeklyFarePerPerson * transitPassengers);
     hopCappedWeeklyFare = round2(cappedWeeklyPerPerson * transitPassengers);
     const baseWeeklyHopFare = hopCappedWeeklyFare;
@@ -513,19 +507,13 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
     const baseDailyHopFarePerPerson = round2(perPersonConcession * 2);
     const baseUncappedWeeklyFarePerPerson = round2(baseDailyHopFarePerPerson * input.daysPerWeek);
 
-    // BUG-47: Apply AT HOP 7-Day $50 Cap per commuter, then scale by passenger count
+    // Apply AT HOP 7-Day $50 Cap per commuter, then scale by passenger count (BUG-37)
     isHopCapApplied = baseUncappedWeeklyFarePerPerson > AT_HOP_7_DAY_CAP;
     const cappedWeeklyPerPerson = isHopCapApplied ? AT_HOP_7_DAY_CAP : baseUncappedWeeklyFarePerPerson;
 
-    // Harmonize effective daily cost with the weekly cap
-    const effectiveDailyPerPerson =
-      isHopCapApplied && input.daysPerWeek > 0
-        ? round2(cappedWeeklyPerPerson / input.daysPerWeek)
-        : baseDailyHopFarePerPerson;
-
     singleTripStandardFare = round2(perPersonStandard * transitPassengers);
     singleTripConcessionFare = round2(perPersonConcession * transitPassengers);
-    dailyTransitFare = round2(effectiveDailyPerPerson * transitPassengers);
+    dailyTransitFare = round2(baseDailyHopFarePerPerson * transitPassengers);
     uncappedWeeklyFare = round2(baseUncappedWeeklyFarePerPerson * transitPassengers);
     hopCappedWeeklyFare = round2(cappedWeeklyPerPerson * transitPassengers);
     const baseWeeklyHopFare = hopCappedWeeklyFare;
