@@ -374,7 +374,8 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
 
   const isInnerHarbourFerry = isFerry && !isWaiheke;
 
-  const zoneCount = route.zonesTraveled;
+  // BUG-47: Auckland Transport fare zones cap out at the maximum standard tier (Zone 4+ is $7.90)
+  const zoneCount = Math.max(1, route.zonesTraveled);
 
   // US-23: Micro-mobility calculations
   const walkDistanceKm = typeof input.walkDistanceKm === 'number' ? input.walkDistanceKm : 2.0;
@@ -448,7 +449,6 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
   } else if (isInnerHarbourFerry) {
     // US-10: Inner Harbour Ferry (Devonport, Bayswater, Birkenhead, Northcote Pt)
     // Bypasses standard bus zones and applies flat $7.80 fare.
-    // Under AT integrated fares, transferring to connecting bus within 30 mins charges no additional fare.
     const perPersonStandard = INNER_HARBOUR_FERRY_FARE;
     let perPersonConcession: number;
 
@@ -469,14 +469,19 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
     const baseDailyHopFarePerPerson = round2(perPersonConcession * 2);
     const baseUncappedWeeklyFarePerPerson = round2(baseDailyHopFarePerPerson * input.daysPerWeek);
 
-    // Inner Harbour Ferries ARE eligible for the AT HOP 7-day $50 cap
-    // Cap is applied per commuter and then scaled by passenger count (BUG-37)
+    // BUG-47: Inner Harbour Ferries are eligible for the AT HOP 7-day $50 cap.
     isHopCapApplied = baseUncappedWeeklyFarePerPerson > AT_HOP_7_DAY_CAP;
     const cappedWeeklyPerPerson = isHopCapApplied ? AT_HOP_7_DAY_CAP : baseUncappedWeeklyFarePerPerson;
 
+    // Harmonize effective daily cost with the weekly cap
+    const effectiveDailyPerPerson =
+      isHopCapApplied && input.daysPerWeek > 0
+        ? round2(cappedWeeklyPerPerson / input.daysPerWeek)
+        : baseDailyHopFarePerPerson;
+
     singleTripStandardFare = round2(perPersonStandard * transitPassengers);
     singleTripConcessionFare = round2(perPersonConcession * transitPassengers);
-    dailyTransitFare = round2(baseDailyHopFarePerPerson * transitPassengers);
+    dailyTransitFare = round2(effectiveDailyPerPerson * transitPassengers);
     uncappedWeeklyFare = round2(baseUncappedWeeklyFarePerPerson * transitPassengers);
     hopCappedWeeklyFare = round2(cappedWeeklyPerPerson * transitPassengers);
     const baseWeeklyHopFare = hopCappedWeeklyFare;
@@ -487,12 +492,18 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
     monthlyTransitTotal = baseMonthlyHopFare;
   } else {
     // Standard AT HOP Zonal Fares (bus and train)
-    const perPersonStandard = AT_HOP_ZONE_FARES[zoneCount] || 3.00;
+    // BUG-47: Clamp zone tier lookups to avoid fare leaks or undefined 3.00 fallbacks on multi-zone journeys
+    const maxZoneTier = Math.max(...Object.keys(AT_HOP_ZONE_FARES).map(Number));
+    const effectiveZoneCount = Math.min(zoneCount, maxZoneTier);
+    const perPersonStandard = AT_HOP_ZONE_FARES[effectiveZoneCount] ?? AT_HOP_ZONE_FARES[maxZoneTier] ?? 7.90;
     let perPersonConcession: number;
 
     // Concession calculation
     if (input.fareConcession && AT_HOP_ZONE_FARES_BY_CONCESSION[input.fareConcession]) {
-      perPersonConcession = AT_HOP_ZONE_FARES_BY_CONCESSION[input.fareConcession][zoneCount];
+      const concessionTable = AT_HOP_ZONE_FARES_BY_CONCESSION[input.fareConcession];
+      const maxConcessionZone = Math.max(...Object.keys(concessionTable).map(Number));
+      const clampedConcessionZone = Math.min(zoneCount, maxConcessionZone);
+      perPersonConcession = concessionTable[clampedConcessionZone] ?? concessionTable[maxConcessionZone];
     } else {
       const concessionInfo =
         CONCESSION_MULTIPLIERS[input.concession] || CONCESSION_MULTIPLIERS.adult;
@@ -502,13 +513,19 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
     const baseDailyHopFarePerPerson = round2(perPersonConcession * 2);
     const baseUncappedWeeklyFarePerPerson = round2(baseDailyHopFarePerPerson * input.daysPerWeek);
 
-    // Apply AT HOP 7-Day $50 Cap per commuter, then scale by passenger count (BUG-37)
+    // BUG-47: Apply AT HOP 7-Day $50 Cap per commuter, then scale by passenger count
     isHopCapApplied = baseUncappedWeeklyFarePerPerson > AT_HOP_7_DAY_CAP;
     const cappedWeeklyPerPerson = isHopCapApplied ? AT_HOP_7_DAY_CAP : baseUncappedWeeklyFarePerPerson;
 
+    // Harmonize effective daily cost with the weekly cap
+    const effectiveDailyPerPerson =
+      isHopCapApplied && input.daysPerWeek > 0
+        ? round2(cappedWeeklyPerPerson / input.daysPerWeek)
+        : baseDailyHopFarePerPerson;
+
     singleTripStandardFare = round2(perPersonStandard * transitPassengers);
     singleTripConcessionFare = round2(perPersonConcession * transitPassengers);
-    dailyTransitFare = round2(baseDailyHopFarePerPerson * transitPassengers);
+    dailyTransitFare = round2(effectiveDailyPerPerson * transitPassengers);
     uncappedWeeklyFare = round2(baseUncappedWeeklyFarePerPerson * transitPassengers);
     hopCappedWeeklyFare = round2(cappedWeeklyPerPerson * transitPassengers);
     const baseWeeklyHopFare = hopCappedWeeklyFare;
@@ -518,7 +535,6 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
     if (isMicromobility && input.scooterOwnership === 'RENTAL') {
       // US-23: Rental Scooter: $1 unlock + $0.45/min per leg per person
       // BUG-43: Scooters are single-rider — use transitPassengers (always 1) not passengers.
-      // 2 legs per day return
       const costPerLeg = (1.00 + (scooterDurationMinsPerLeg * 0.45)) * transitPassengers;
       scooterRentalFeesDaily = round2(costPerLeg * 2);
       const weeklyRentalFees = round2(scooterRentalFeesDaily * input.daysPerWeek);
@@ -725,7 +741,6 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
     typeof input.drivingTimeMins === 'number' ? input.drivingTimeMins : route.drivingTimePeakMins;
   const oneWayTransitMinutes =
     typeof input.transitTimeMins === 'number' ? input.transitTimeMins : adjustedTransitTimeMins;
-  // ((transit - drive) * 2 * daysPerWeek * 4.33) / 60
   const monthlyTimeDeltaHours = round2(
     ((oneWayTransitMinutes - oneWayDriveMinutes) * 2 * input.daysPerWeek * 4.33) / 60
   );
@@ -755,7 +770,6 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
       distanceKm: round1(distanceOneWayKm),
       durationMins: Math.round((distanceOneWayKm / 20) * 60),
       cost: round2(dailyTransitFare / 2),
-      // BUG-43: No (X pax) badge — E-Bike is single-rider, transitPassengers is always 1.
       costFormatted: `$${(dailyTransitFare / 2).toFixed(2)}`,
       iconName: 'Bike',
       notes: 'Direct active commute via cycleways',
@@ -789,10 +803,6 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
         : 'BUS';
     const transitDist = Math.max(1, round1(distanceOneWayKm - effectiveFirstMileDist));
 
-    // Priority for middle transit leg duration:
-    // 1. Pure in-vehicle transit ride duration from live timetable routing (e.g. 31-36 mins)
-    // 2. Total door-to-door transit time minus first-mile and last-mile duration
-    // 3. Fallback: static suburb estimate minus first-mile and last-mile
     const transitMins =
       typeof input.transitRideDurationMins === 'number' && input.transitRideDurationMins > 0
         ? input.transitRideDurationMins
@@ -800,7 +810,6 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
         ? Math.max(15, Math.round(input.transitTimeMins - effectiveFirstMileDuration - 8))
         : Math.max(5, Math.round(adjustedTransitTimeMins - effectiveFirstMileDuration - 8));
 
-    // Compose dynamic title and notes reflecting multi-leg transit routes
     const isTransitFerry = isFerry || transitRideMode === 'FERRY';
     const transitTitle =
       input.transitLines && input.transitLines.length > 0
