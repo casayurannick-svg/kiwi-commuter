@@ -2,11 +2,9 @@ name: Regression & CI/CD Suite
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
   pull_request:
-    branches:
-      - main
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
@@ -17,8 +15,6 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -29,36 +25,10 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
-      # Path-triggered alert using dorny/paths-filter
-      - name: Check for Critical Path Changes
-        uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            critical:
-              - 'src/lib/calculator.ts'
-              - 'src/lib/fares.ts'
-
-     # Step output required by acceptance criteria
-      - name: Critical Path Modification Alert
-        if: steps.filter.outputs.critical == 'true'
-        run: echo "[WARNING] CRITICAL PATH MODIFIED: Enforcing full calculation regression suite."
-
-      # Fallback git diff verification for critical calculation paths
-      - name: Fallback Git Diff Critical Path Check
-        run: |
-          CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || true)
-          if echo "$CHANGED_FILES" | grep -qE '^(src/lib/calculator\.ts|src/lib/fares\.ts)$'; then
-            echo "[WARNING] CRITICAL PATH MODIFIED: Enforcing full calculation regression suite."
-          fi
-
-      - name: Run Calculation Regression Suite (Vitest)
-        run: npx vitest run src/lib/calculator.test.ts
-
-      - name: Run Full Vitest Test Suite
+      - name: Run Vitest Test Suite
         run: npx vitest run
 
-      - name: Next.js Production Build & Type Check
+      - name: Next.js Production Build
         run: npm run build
         env:
           NEXT_TELEMETRY_DISABLED: 1
@@ -66,7 +36,7 @@ jobs:
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps chromium
 
-      - name: Run Playwright UI Regression Tests
+      - name: Run Playwright Regression Tests
         run: npx playwright test --project="Mobile Chrome (375px)"
         env:
           CI: true
