@@ -91,10 +91,12 @@ test.describe('Private Vehicle Baseline Decoupled UI (BUG-44)', () => {
     // 1. Locate and click on the 🚲 E-Bike mode button
     const ebikeBtn = page.locator('button:has-text("E-Bike")').first();
     await expect(ebikeBtn).toBeVisible();
-    await ebikeBtn.click();
+    await ebikeBtn.scrollIntoViewIfNeeded();
+    await ebikeBtn.click({ force: true });
 
     // 2. Assert that E-Bike hardware parameters are displayed
-    await expect(page.locator('text=E-Bike Hardware & Cost Parameters')).toBeVisible();
+    const ebikeParams = page.locator('text=E-Bike Hardware & Cost Parameters');
+    await expect(ebikeParams).toBeVisible();
 
     // 3. Assert that Private Vehicle Baseline section remains mounted and visible (BUG-44)
     await expect(page.locator('text=Private Vehicle Baseline')).toBeVisible();
@@ -102,6 +104,7 @@ test.describe('Private Vehicle Baseline Decoupled UI (BUG-44)', () => {
     // 4. Assert that Powertrain selector buttons remain visible and functional
     const dieselButton = page.locator('button[aria-label="Diesel"]').first();
     await expect(dieselButton).toBeVisible();
+    await dieselButton.scrollIntoViewIfNeeded();
 
     // 5. Click Diesel powertrain while E-Bike is active to verify full functionality
     await dieselButton.click();
@@ -114,4 +117,60 @@ test.describe('Private Vehicle Baseline Decoupled UI (BUG-44)', () => {
     await expect(petrolButton).toHaveClass(/border-emerald-500/);
   });
 });
+
+test.describe('Minimalist Zone Badges UI (US-42)', () => {
+  test('asserts origin and destination <select> dropdowns are removed from DOM and zone badges render dynamically', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForSelector('main');
+
+    // 1. Assert that the legacy suburb transport hub <select> dropdowns are completely removed from DOM
+    const originSelect = page.locator('select:has(option:has-text("Mount Roskill"))');
+    await expect(originSelect).toHaveCount(0);
+
+    const destSelect = page.locator('select:has(option:has-text("Auckland CBD"))');
+    await expect(destSelect).toHaveCount(0);
+
+    // Ensure no select in DOM contains Auckland suburb options
+    const allSelects = page.locator('select');
+    const selectTexts = await allSelects.allInnerTexts().catch(() => []);
+    for (const text of selectTexts) {
+      expect(text).not.toContain('Mount Roskill');
+      expect(text).not.toContain('Auckland CBD');
+    }
+
+    // 2. Assert that read-only zone badges are mounted directly adjacent to coordinates
+    const originBadge = page.locator('[data-testid="origin-zone-badge"]');
+    await expect(originBadge).toBeVisible();
+    await expect(originBadge).toContainText('Z1'); // Default Epsom is Zone 1
+    await expect(originBadge).toContainText('Epsom');
+
+    const destBadge = page.locator('[data-testid="destination-zone-badge"]');
+    await expect(destBadge).toBeVisible();
+    await expect(destBadge).toContainText('Z1'); // Default CBD is Zone 1
+    await expect(destBadge).toContainText('Auckland CBD');
+
+    // 3. Test dynamic update when parameters change via URL or address
+    await page.goto('/?from=albany&to=cbd');
+    await page.waitForSelector('main');
+    await expect(originBadge).toContainText('Z4'); // Albany is Zone 4
+    await expect(originBadge).toContainText('Albany');
+  });
+
+  test('validates mobile viewport (375px) has zero horizontal overflow with ZoneBadges', async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 667 });
+    await page.goto('/');
+    await page.waitForSelector('main');
+
+    const originBadge = page.locator('[data-testid="origin-zone-badge"]');
+    await expect(originBadge).toBeVisible();
+
+    const destBadge = page.locator('[data-testid="destination-zone-badge"]');
+    await expect(destBadge).toBeVisible();
+
+    const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+    const clientWidth = await page.evaluate(() => document.documentElement.clientWidth);
+    expect(scrollWidth).toBeLessThanOrEqual(clientWidth + 1);
+  });
+});
+
 

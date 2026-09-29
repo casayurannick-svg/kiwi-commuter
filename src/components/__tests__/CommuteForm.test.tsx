@@ -50,7 +50,18 @@ describe('src/components/CommuteForm.tsx - US-19 Wear & Tear Benchmark Tooltip',
     assert.ok(html.includes('Transit Mode'), 'Must render Transit Mode label');
     assert.ok(html.includes('Bus / Train (AT HOP $50 Cap)'), 'Must render Bus / Train button');
     assert.ok(html.includes('Ferry'), 'Must render Ferry button');
-    assert.ok(html.includes('Waiheke Island (Matiatia)'), 'Must include Waiheke Island in suburb list');
+
+    // US-42: Dropdown replaced by ZoneBadge - verify Waiheke route displays Waiheke in ZoneBadge
+    const waihekeInput: CommuteInput = {
+      ...defaultInput,
+      originSuburbId: 'waiheke',
+      isWaihekeRoute: true,
+    };
+    const htmlWaiheke = renderToStaticMarkup(
+      React.createElement(CommuteForm, { input: waihekeInput })
+    );
+    assert.ok(htmlWaiheke.includes('Waiheke Island (Matiatia)'), 'Must include Waiheke Island in zone badge (US-42)');
+    assert.ok(htmlWaiheke.includes('Waiheke Fullers (AT Cap Exempt)'), 'Must include Waiheke status note');
   });
 
   it('renders Value of Your Time info icon and tooltip explanation (US-22)', () => {
