@@ -149,7 +149,12 @@ export default function DashboardClient({ initialFuelPrices }: DashboardClientPr
           {/* Left Column (Desktop cols 1..5: CommuteForm + FuelRadarWidget) */}
           <div className="contents lg:flex lg:flex-col lg:col-span-5 lg:gap-4 w-full">
             <div className="order-1 w-full">
-              <CommuteForm input={commuteInput} onChange={setCommuteInput} onInputChange={setCommuteInput} />
+              <CommuteForm
+                input={commuteInput}
+                calculationMode={commuteInput.calculationMode}
+                onChange={setCommuteInput}
+                onInputChange={setCommuteInput}
+              />
             </div>
             <div className="order-5 w-full">
               <FuelRadarWidget initialFuelData={initialFuelPrices} />

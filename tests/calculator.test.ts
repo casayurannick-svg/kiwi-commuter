@@ -1115,6 +1115,45 @@ describe('BUG-37: Scale public transport fares by carpool passenger count', () =
         'ComparisonCard must include the exact IRD tooltip text'
       );
     });
+
+    it('BUG-61: verifies IRD True Cost mode does not sum granular fixed/wear costs', () => {
+      const costWithGranular = calculateDrivingCost(50, 'IRD_TRUE_COST', {
+        includeMaintenance: true,
+        maintenanceRate: 0.18,
+        includeRuc: true,
+        includeFixedCosts: true,
+        annualWof: 85,
+        annualRego: 173,
+        annualInsurance: 1311,
+      });
+
+      // 50 km * 1.20 = 60.00
+      assert.strictEqual(costWithGranular, 60.00);
+
+      const arbitrageResult = calculateArbitrage({
+        originSuburbId: 'albany',
+        destinationSuburbId: 'cbd',
+        daysPerWeek: 5,
+        vehicleType: 'diesel',
+        distanceKm: 25,
+        parkingDailyRate: 0,
+        parkingDaysPerWeek: 0,
+        concession: 'adult',
+        includeMaintenanceWear: true,
+        annualWof: 85,
+        annualRego: 173,
+        insuranceEnabled: true,
+        customInsurance: 1311,
+        carpoolPassengers: 1,
+        calculationMode: 'IRD_TRUE_COST',
+      });
+
+      assert.strictEqual(arbitrageResult.driving.dailyFuelCost, 0);
+      assert.strictEqual(arbitrageResult.driving.dailyRucCost, 0);
+      assert.strictEqual(arbitrageResult.driving.dailyMaintenanceCost, 0);
+      assert.strictEqual(arbitrageResult.driving.dailyFixedCost, 0);
+      assert.strictEqual(arbitrageResult.driving.dailyTotal, 60.00);
+    });
   });
 });
 

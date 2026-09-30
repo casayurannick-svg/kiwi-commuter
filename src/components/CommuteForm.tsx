@@ -3,7 +3,7 @@
 import { NZ_EV_CHARGING_RATES, VEHICLE_PRESETS } from '@/config/fares.config';
 import { AUCKLAND_SUBURBS, SUBURB_CENTROIDS } from '@/config/suburbs';
 import { searchAucklandAddresses, GeocodingResult } from '@/lib/mapbox';
-import { CommuteInput, ConcessionType, EVChargingSource, EvChargingMode, ParkingTier, TransitMode, VehiclePowertrain, VehicleType } from '@/types';
+import { CalculationMode, CommuteInput, ConcessionType, EVChargingSource, EvChargingMode, ParkingTier, TransitMode, VehiclePowertrain, VehicleType } from '@/types';
 import {
   Bus,
   Car,
@@ -32,6 +32,7 @@ interface CommuteFormProps {
   input: CommuteInput;
   onChange?: (updated: CommuteInput) => void;
   onInputChange?: (updated: CommuteInput) => void;
+  calculationMode?: CalculationMode;
 }
 
 const POWERTRAIN_OPTIONS: {
@@ -63,7 +64,15 @@ const PARKING_SEGMENTS: { tier: ParkingTier | 'CUSTOM'; label: string; rate: num
 
 type TimeValuePreset = 'off' | '20' | '50' | 'custom';
 
-export default function CommuteForm({ input, onChange, onInputChange }: CommuteFormProps) {
+export default function CommuteForm({
+  input,
+  onChange,
+  onInputChange,
+  calculationMode: calculationModeProp,
+}: CommuteFormProps) {
+  const calculationMode: CalculationMode = calculationModeProp ?? input.calculationMode ?? 'FUEL';
+  const isIrdMode = calculationMode === 'IRD_TRUE_COST';
+
   const [isVehicleBaselineOpen, setIsVehicleBaselineOpen] = useState(true);
   const [isCustomRatesOpen, setIsCustomRatesOpen] = useState(true);
   const [selectedParkingTier, setSelectedParkingTier] = useState<ParkingTier | 'CUSTOM'>(() => {
@@ -1158,32 +1167,54 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
               </div>
 
               {/* Wear & Tear */}
-              <div className="flex items-center pt-4">
-                <label className="text-xs text-slate-300 flex items-center gap-2 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={input.includeMaintenanceWear}
-                    onChange={(e) => handleFieldChange('includeMaintenanceWear', e.target.checked)}
-                    className="w-4 h-4 rounded text-emerald-500 bg-slate-900 border-slate-700"
-                  />
-                  <span className="flex items-center gap-1">
-                    <Wrench className="w-3.5 h-3.5 text-slate-400" />
-                    AA Wear & Tires ($0.18/km)
-                  </span>
-                </label>
-                <Tooltip
-                  avoidCollisions={true}
-                  align="end"
-                  content="AA/IRD annual benchmark: $0.18/km covers the average cost of tires, brake pads, and routine servicing for a typical NZ vehicle."
-                >
-                  <button
-                    type="button"
-                    aria-label="Wear & Tear benchmark info"
-                    className="text-slate-400 hover:text-slate-200 transition-colors p-1 -m-1 focus:outline-none focus:text-slate-200"
+              <div className={`flex items-center pt-4 justify-between ${isIrdMode ? 'opacity-60' : ''}`}>
+                <div className="flex items-center gap-2">
+                  <label
+                    className={`text-xs text-slate-300 flex items-center gap-2 select-none ${
+                      isIrdMode ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
+                    }`}
                   >
-                    <Info className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-200 transition-colors" />
-                  </button>
-                </Tooltip>
+                    <input
+                      type="checkbox"
+                      data-testid="wear-tear-checkbox"
+                      disabled={isIrdMode}
+                      checked={isIrdMode ? false : input.includeMaintenanceWear}
+                      onChange={(e) => handleFieldChange('includeMaintenanceWear', e.target.checked)}
+                      className={`w-4 h-4 rounded text-emerald-500 bg-slate-900 border-slate-700 ${
+                        isIrdMode ? 'opacity-50 pointer-events-none' : ''
+                      }`}
+                    />
+                    <span className="flex items-center gap-1">
+                      <Wrench className="w-3.5 h-3.5 text-slate-400" />
+                      AA Wear & Tires ($0.18/km)
+                    </span>
+                  </label>
+                  {isIrdMode && (
+                    <span
+                      data-testid="wear-tear-ird-label"
+                      className="text-[10px] font-medium text-emerald-400 bg-emerald-950/60 border border-emerald-800/40 rounded px-1.5 py-0.5"
+                    >
+                      Included in IRD True Cost
+                    </span>
+                  )}
+                  <Tooltip
+                    avoidCollisions={true}
+                    align="end"
+                    content={
+                      isIrdMode
+                        ? "Included in IRD True Cost."
+                        : "AA/IRD annual benchmark: $0.18/km covers the average cost of tires, brake pads, and routine servicing for a typical NZ vehicle."
+                    }
+                  >
+                    <button
+                      type="button"
+                      aria-label="Wear & Tear benchmark info"
+                      className="text-slate-400 hover:text-slate-200 transition-colors p-1 -m-1 focus:outline-none focus:text-slate-200"
+                    >
+                      <Info className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-200 transition-colors" />
+                    </button>
+                  </Tooltip>
+                </div>
               </div>
             </div>
 
@@ -1261,32 +1292,69 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
             </div>
 
             {/* Fixed Ownership Costs */}
-            <div className="pt-2 border-t border-slate-800/80 space-y-2">
-              <button
-                type="button"
-                data-testid="toggle-fixed-costs-btn"
-                onClick={() => setIsFixedCostsOpen(!isFixedCostsOpen)}
-                className="w-full min-h-[44px] flex items-center justify-between py-1.5 text-xs font-semibold text-slate-300 hover:text-white transition"
-              >
-                <span className="flex items-center gap-1.5">
+            <div className={`pt-2 border-t border-slate-800/80 space-y-2 ${isIrdMode ? 'opacity-60' : ''}`}>
+              <div className="flex items-center justify-between">
+                <button
+                  type="button"
+                  data-testid="toggle-fixed-costs-btn"
+                  onClick={() => setIsFixedCostsOpen(!isFixedCostsOpen)}
+                  className="min-h-[44px] flex items-center gap-1.5 py-1.5 text-xs font-semibold text-slate-300 hover:text-white transition"
+                >
                   <ShieldCheck className="w-3.5 h-3.5 text-indigo-400" />
-                  Fixed Ownership Costs (Annual) {isFixedCostsOpen ? '▴' : '▾'}
-                </span>
-                <span className="text-[11px] text-slate-400 font-mono">
-                  ${(
-                    (input.annualWof ?? 85) +
-                    (input.annualRego ?? 173) +
-                    (input.insuranceEnabled !== false
-                      ? (typeof input.customInsurance === 'number' && !isNaN(input.customInsurance)
-                          ? input.customInsurance
-                          : (input.defaultInsurance ?? 1311))
-                      : 0)
-                  ).toLocaleString('en-NZ')}/yr
-                </span>
-              </button>
+                  <span>Fixed Ownership Costs (Annual) {isFixedCostsOpen ? '▴' : '▾'}</span>
+                </button>
+                <div className="flex items-center gap-2">
+                  {isIrdMode ? (
+                    <span
+                      data-testid="fixed-costs-ird-label"
+                      className="text-[10px] font-medium text-emerald-400 bg-emerald-950/60 border border-emerald-800/40 rounded px-1.5 py-0.5"
+                    >
+                      Included in IRD True Cost
+                    </span>
+                  ) : (
+                    <span className="text-[11px] text-slate-400 font-mono">
+                      ${(
+                        (input.annualWof ?? 85) +
+                        (input.annualRego ?? 173) +
+                        (input.insuranceEnabled !== false
+                          ? (typeof input.customInsurance === 'number' && !isNaN(input.customInsurance)
+                              ? input.customInsurance
+                              : (input.defaultInsurance ?? 1311))
+                          : 0)
+                      ).toLocaleString('en-NZ')}/yr
+                    </span>
+                  )}
+                  {isIrdMode && (
+                    <Tooltip
+                      avoidCollisions={true}
+                      align="end"
+                      content="Included in IRD True Cost."
+                    >
+                      <button
+                        type="button"
+                        aria-label="Fixed Ownership Costs IRD info"
+                        className="text-slate-400 hover:text-slate-200 transition-colors p-1 -m-1 focus:outline-none focus:text-slate-200"
+                      >
+                        <Info className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-200 transition-colors" />
+                      </button>
+                    </Tooltip>
+                  )}
+                </div>
+              </div>
 
               {isFixedCostsOpen && (
-                <div className="space-y-3 bg-slate-900/60 p-3 rounded-xl border border-slate-800 text-xs animate-in fade-in duration-150">
+                <div
+                  data-testid="fixed-costs-container"
+                  className={`space-y-3 bg-slate-900/60 p-3 rounded-xl border border-slate-800 text-xs animate-in fade-in duration-150 ${
+                    isIrdMode ? 'opacity-50 pointer-events-none select-none' : ''
+                  }`}
+                >
+                  {isIrdMode && (
+                    <div className="flex items-center gap-1.5 text-[11px] text-emerald-400 bg-emerald-950/40 border border-emerald-800/40 rounded-lg p-2 pointer-events-auto">
+                      <Info className="w-3.5 h-3.5 shrink-0" />
+                      <span>WOF, Rego, and Insurance are included in IRD True Cost ($1.20/km).</span>
+                    </div>
+                  )}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <label className="text-[11px] text-slate-400">
@@ -1297,12 +1365,13 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
                         min="0"
                         step="5"
                         placeholder="85"
+                        disabled={isIrdMode}
                         value={input.annualWof ?? 85}
                         onChange={(e) => {
                           const val = e.target.value === '' ? undefined : Math.max(0, parseFloat(e.target.value) || 0);
                           handleFieldChange('annualWof', val);
                         }}
-                        className="w-full min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-sm text-slate-200 font-mono"
+                        className="w-full min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-sm text-slate-200 font-mono disabled:opacity-50"
                       />
                       <span className="text-[10px] text-slate-500">VTNZ/AA annual inspection</span>
                     </div>
@@ -1316,12 +1385,13 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
                         min="0"
                         step="5"
                         placeholder="173"
+                        disabled={isIrdMode}
                         value={input.annualRego ?? 173}
                         onChange={(e) => {
                           const val = e.target.value === '' ? undefined : Math.max(0, parseFloat(e.target.value) || 0);
                           handleFieldChange('annualRego', val);
                         }}
-                        className="w-full min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-sm text-slate-200 font-mono"
+                        className="w-full min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-sm text-slate-200 font-mono disabled:opacity-50"
                       />
                       <span className="text-[10px] text-slate-500">NZTA private light vehicle licence</span>
                     </div>
@@ -1329,17 +1399,20 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
 
                   <div className="pt-2 border-t border-slate-800 space-y-2">
                     <div className="flex items-center justify-between">
-                      <label className="text-xs text-slate-300 flex items-center gap-2 cursor-pointer select-none">
+                      <label className={`text-xs text-slate-300 flex items-center gap-2 select-none ${isIrdMode ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
                         <input
                           type="checkbox"
+                          disabled={isIrdMode}
                           checked={input.insuranceEnabled !== false}
                           onChange={(e) => handleFieldChange('insuranceEnabled', e.target.checked)}
-                          className="w-4 h-4 rounded text-emerald-500 bg-slate-900 border-slate-700"
+                          className="w-4 h-4 rounded text-emerald-500 bg-slate-900 border-slate-700 disabled:opacity-50"
                         />
                         <span className="font-semibold text-slate-200">Include Comprehensive Insurance</span>
                       </label>
                       <span className="text-[10px] font-mono text-indigo-400">
-                        {input.insuranceEnabled === false
+                        {isIrdMode
+                          ? 'Included in IRD'
+                          : input.insuranceEnabled === false
                           ? 'Excluded ($0)'
                           : typeof input.customInsurance === 'number' && !isNaN(input.customInsurance)
                           ? `Custom: $${input.customInsurance}/yr`
@@ -1358,6 +1431,7 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
                             min="0"
                             step="25"
                             placeholder="1311 (Default NZ median)"
+                            disabled={isIrdMode}
                             value={customInsuranceInput}
                             onChange={(e) => {
                               const rawVal = e.target.value;
@@ -1371,9 +1445,9 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
                                 }
                               }
                             }}
-                            className="w-full min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-sm text-slate-200 font-mono"
+                            className="w-full min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-sm text-slate-200 font-mono disabled:opacity-50"
                           />
-                          {customInsuranceInput !== '' && (
+                          {customInsuranceInput !== '' && !isIrdMode && (
                             <button
                               type="button"
                               onClick={() => {
@@ -1398,7 +1472,7 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
                   <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400">
                     <span>70% Commute Apportionment:</span>
                     <span className="font-semibold text-emerald-400 font-mono">
-                      ${(
+                      {isIrdMode ? 'Included in IRD ($0 add-on)' : `$${(
                         (
                           (input.annualWof ?? 85) +
                           (input.annualRego ?? 173) +
@@ -1408,7 +1482,7 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
                                 : (input.defaultInsurance ?? 1311))
                             : 0)
                         ) * 0.70 / 12
-                      ).toFixed(0)}/mo
+                      ).toFixed(0)}/mo`}
                     </span>
                   </div>
                 </div>
@@ -1417,11 +1491,28 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
 
             {/* RUC notice */}
             {!isEbikeActive && currentVehicle.rucRatePerKm > 0 && (
-              <div className="text-[11px] text-amber-300/90 bg-amber-500/10 border border-amber-500/20 rounded-lg p-2 flex items-center gap-1.5">
-                <Zap className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                <span>
-                  NZTA RUC: ${(currentVehicle.rucRatePerKm * 1000).toFixed(0)}/1,000 km included.
-                </span>
+              <div
+                className={`text-[11px] rounded-lg p-2 flex items-center justify-between gap-1.5 transition ${
+                  isIrdMode
+                    ? 'text-slate-400 bg-slate-900/60 border border-slate-800 opacity-50 pointer-events-none'
+                    : 'text-amber-300/90 bg-amber-500/10 border border-amber-500/20'
+                }`}
+              >
+                <div className="flex items-center gap-1.5">
+                  <Zap className={`w-3.5 h-3.5 shrink-0 ${isIrdMode ? 'text-slate-400' : 'text-amber-400'}`} />
+                  <span>
+                    NZTA RUC: ${(currentVehicle.rucRatePerKm * 1000).toFixed(0)}/1,000 km
+                    {isIrdMode ? ' (Included in IRD True Cost)' : ' included.'}
+                  </span>
+                </div>
+                {isIrdMode && (
+                  <span
+                    data-testid="ruc-ird-label"
+                    className="text-[10px] font-medium text-emerald-400 bg-emerald-950/60 border border-emerald-800/40 rounded px-1.5 py-0.5"
+                  >
+                    Included in IRD True Cost
+                  </span>
+                )}
               </div>
             )}
           </div>

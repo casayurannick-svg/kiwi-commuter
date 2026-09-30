@@ -1332,6 +1332,79 @@ describe('src/lib/calculator.ts - calculateCommuteArbitrage', () => {
       assert.ok(result.driving.dailyFuelCost > 0, 'Fuel cost must be non-zero in FUEL mode');
       assert.ok((result.driving.dailyFixedCost ?? 0) > 0, 'Fixed costs must be non-zero in FUEL mode');
     });
+
+    it('BUG-61: calculateDrivingCost strictly bypasses and zeroes out WOF, Rego, Insurance, RUC, and Wear & Tires in IRD_TRUE_COST mode', () => {
+      // 50 km in IRD mode with all granular items enabled
+      const costWithAllOptions = calculateDrivingCost(50, 'IRD_TRUE_COST', {
+        includeMaintenance: true,
+        maintenanceRate: 0.18,
+        includeRuc: true,
+        includeFixedCosts: true,
+        annualWof: 100,
+        annualRego: 200,
+        annualInsurance: 1500,
+        parkingCost: 15.00,
+      });
+
+      // 50 km * $1.20 = $60.00 + $15.00 parking = $75.00
+      assert.strictEqual(costWithAllOptions, 75.00);
+
+      // Same distance with no granular options passed
+      const costClean = calculateDrivingCost(50, 'IRD_TRUE_COST', {
+        parkingCost: 15.00,
+      });
+      assert.strictEqual(costClean, 75.00);
+      assert.strictEqual(costWithAllOptions, costClean, 'Granular options must not alter IRD True Cost');
+    });
+
+    it('BUG-61: calculateCommuteArbitrage strictly zeroes out fuel, RUC, maintenance wear, and fixed ownership in IRD_TRUE_COST mode', () => {
+      const input: CommuteInput = {
+        originSuburbId: 'albany',
+        destinationSuburbId: 'cbd',
+        daysPerWeek: 5,
+        vehicleType: 'diesel', // Diesel carries $0.076/km RUC
+        distanceKm: 20, // 40 km round-trip
+        parkingDailyRate: 10.0,
+        parkingDaysPerWeek: 5,
+        concession: 'adult',
+        includeMaintenanceWear: true, // AA Wear & Tires ($0.18/km)
+        annualWof: 95,
+        annualRego: 185,
+        insuranceEnabled: true,
+        customInsurance: 1500,
+        carpoolPassengers: 1,
+        calculationMode: 'IRD_TRUE_COST',
+      };
+
+      const result = calculateCommuteArbitrage(input);
+
+      // Verify all granular items are strictly zeroed out
+      assert.strictEqual(result.driving.dailyFuelCost, 0, 'dailyFuelCost must be 0 in IRD mode');
+      assert.strictEqual(result.driving.dailyRucCost, 0, 'dailyRucCost must be 0 in IRD mode');
+      assert.strictEqual(result.driving.dailyMaintenanceCost, 0, 'dailyMaintenanceCost must be 0 in IRD mode');
+      assert.strictEqual(result.driving.dailyFixedCost, 0, 'dailyFixedCost must be 0 in IRD mode');
+      assert.strictEqual(result.driving.monthlyFuelCost, 0, 'monthlyFuelCost must be 0 in IRD mode');
+      assert.strictEqual(result.driving.monthlyRucCost, 0, 'monthlyRucCost must be 0 in IRD mode');
+      assert.strictEqual(result.driving.monthlyMaintenanceCost, 0, 'monthlyMaintenanceCost must be 0 in IRD mode');
+      assert.strictEqual(result.driving.monthlyFixedCost, 0, 'monthlyFixedCost must be 0 in IRD mode');
+      assert.strictEqual(result.driving.annualFixedCost, 0, 'annualFixedCost must be 0 in IRD mode');
+
+      // Driving totals must strictly equal distance * 1.20 + parking
+      // 40 km * 1.20 = $48.00 IRD + $10.00 parking = $58.00/day
+      assert.strictEqual(result.driving.dailyIrdCost, 48.00);
+      assert.strictEqual(result.driving.dailyParkingCost, 10.00);
+      assert.strictEqual(result.driving.dailyTotal, 58.00);
+
+      // Weekly: 5 * 48.00 + 5 * 10.00 = 240.00 + 50.00 = 290.00
+      assert.strictEqual(result.driving.weeklyTotal, 290.00);
+
+      // Monthly: 290.00 * (52 / 12) = 1256.67
+      assert.strictEqual(result.driving.monthlyTotal, 1256.67);
+
+      // Delta savings must use effective driving total, avoiding double dipping
+      assert.strictEqual(result.dailySavings, Math.round((58.00 - result.transit.dailyFare) * 100) / 100);
+      assert.strictEqual(result.monthlySavings, Math.round((1256.67 - result.transit.monthlyTotal) * 100) / 100);
+    });
   });
 });
 

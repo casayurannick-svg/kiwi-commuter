@@ -286,6 +286,88 @@ describe('src/components/CommuteForm.tsx - US-19 Wear & Tear Benchmark Tooltip',
     // 4. HEV tooltip
     assert.ok(html.includes('Non-plug-in hybrid'), 'Must render Non-plug-in hybrid tooltip for HEV');
   });
+
+  describe('BUG-61: CommuteForm Driving Cost UI in IRD_TRUE_COST mode', () => {
+    it('disables granular inputs (AA Wear, Fixed Costs, RUC) and displays "Included in IRD True Cost" when calculationMode is IRD_TRUE_COST', () => {
+      const irdInput: CommuteInput = {
+        ...defaultInput,
+        vehicleType: 'diesel',
+        calculationMode: 'IRD_TRUE_COST',
+      };
+
+      const html = renderToStaticMarkup(
+        React.createElement(CommuteForm, { input: irdInput, calculationMode: 'IRD_TRUE_COST' })
+      );
+
+      // 1. AA Wear & Tires checkbox must be disabled and have opacity styling
+      assert.ok(
+        html.includes('data-testid="wear-tear-checkbox"') && html.includes('disabled=""'),
+        'Wear & Tires checkbox must be disabled in IRD mode'
+      );
+      assert.ok(
+        html.includes('data-testid="wear-tear-ird-label"'),
+        'Must render wear-tear-ird-label in IRD mode'
+      );
+      assert.ok(
+        html.includes('Included in IRD True Cost'),
+        'Must display "Included in IRD True Cost" badge/label'
+      );
+
+      // 2. Fixed Ownership Costs must show IRD label
+      assert.ok(
+        html.includes('data-testid="fixed-costs-ird-label"'),
+        'Must render fixed-costs-ird-label in IRD mode'
+      );
+
+      // 3. RUC notice for diesel must be styled with opacity-50 pointer-events-none and display IRD badge
+      assert.ok(
+        html.includes('data-testid="ruc-ird-label"'),
+        'Must render ruc-ird-label for diesel vehicle in IRD mode'
+      );
+      assert.ok(
+        html.includes('NZTA RUC: $76/1,000 km (Included in IRD True Cost)'),
+        'Must indicate RUC is included in IRD True Cost'
+      );
+    });
+
+    it('keeps granular inputs enabled and interactive when calculationMode is FUEL', () => {
+      const fuelInput: CommuteInput = {
+        ...defaultInput,
+        vehicleType: 'diesel',
+        calculationMode: 'FUEL',
+      };
+
+      const html = renderToStaticMarkup(
+        React.createElement(CommuteForm, { input: fuelInput, calculationMode: 'FUEL' })
+      );
+
+      // 1. Wear & Tires checkbox must NOT be disabled
+      assert.ok(
+        html.includes('data-testid="wear-tear-checkbox"') && !html.includes('data-testid="wear-tear-checkbox" disabled'),
+        'Wear & Tires checkbox must not be disabled in FUEL mode'
+      );
+      assert.ok(
+        !html.includes('data-testid="wear-tear-ird-label"'),
+        'Must not render wear-tear-ird-label in FUEL mode'
+      );
+
+      // 2. Fixed Ownership Costs must not show IRD label
+      assert.ok(
+        !html.includes('data-testid="fixed-costs-ird-label"'),
+        'Must not render fixed-costs-ird-label in FUEL mode'
+      );
+
+      // 3. RUC notice must not have IRD badge
+      assert.ok(
+        !html.includes('data-testid="ruc-ird-label"'),
+        'Must not render ruc-ird-label in FUEL mode'
+      );
+      assert.ok(
+        html.includes('NZTA RUC: $76/1,000 km included.'),
+        'Must render standard RUC notice in FUEL mode'
+      );
+    });
+  });
 });
 
 

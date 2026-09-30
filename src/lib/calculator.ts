@@ -731,17 +731,20 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
   };
 
   // --- Financial Arbitrage Deltas ---
-  const dailySavings = round2(dailyTotalDriving - dailyTransitFare);
-  const weeklySavings = round2(weeklyTotalDriving - weeklyTransitTotal);
-  const monthlySavings = round2(monthlyTotalDriving - monthlyTransitTotal);
+  const dailySavings = round2(effectiveDailyTotalDriving - dailyTransitFare);
+  const weeklySavings = round2(effectiveWeeklyTotalDriving - weeklyTransitTotal);
+  const monthlySavings = round2(effectiveMonthlyTotalDriving - monthlyTransitTotal);
   const annualSavings = round2(monthlySavings * 12);
   const co2SavedMonthlyKg = Math.max(0, round1(monthlyCo2KgDriving - monthlyCo2KgTransit));
 
   // Break-even days per week calculation
   let breakEvenDaysPerWeek = 1;
   for (let d = 1; d <= 7; d++) {
+    const dDriveBase = isIrdMode
+      ? dailyIrdCost
+      : (dailyFuelCost + dailyRucCost + dailyMaintenanceCost + dailyFixedCost);
     const dDriveWeekly =
-      (dailyFuelCost + dailyRucCost + dailyMaintenanceCost + dailyFixedCost) * d +
+      dDriveBase * d +
       (effectiveParkingRate * Math.min(input.parkingDaysPerWeek, d)) / passengers;
     // BUG-43: Use transitPassengers for transit breakeven — ebike is always 1 rider.
     const perCommuterTransitDaily = (dailyTransitFare - firstMileDailyCost) / transitPassengers;
@@ -763,7 +766,7 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
   let paybackMonths: number | null = null;
   if (isEbike) {
     const upfront = typeof input.upfrontSetupCost === 'number' ? input.upfrontSetupCost : 2500;
-    const monthlyCarSavings = monthlyTotalDriving - monthlyTransitTotal;
+    const monthlyCarSavings = effectiveMonthlyTotalDriving - monthlyTransitTotal;
     if (upfront > 0 && monthlyCarSavings > 0) {
       paybackMonths = round1(upfront / monthlyCarSavings);
     } else if (upfront === 0) {
@@ -771,7 +774,7 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
     }
   } else if (isMicromobility && input.scooterOwnership === 'OWNED') {
     const capitalCost = typeof input.scooterCapitalCost === 'number' ? input.scooterCapitalCost : 900;
-    const monthlyCarSavings = monthlyTotalDriving - monthlyTransitTotal;
+    const monthlyCarSavings = effectiveMonthlyTotalDriving - monthlyTransitTotal;
     if (capitalCost > 0 && monthlyCarSavings > 0) {
       paybackMonths = round1(capitalCost / monthlyCarSavings);
     } else if (capitalCost === 0) {
@@ -969,12 +972,18 @@ export interface DrivingCostOptions {
   maintenanceRate?: number;
   includeRuc?: boolean;
   parkingCost?: number;
+  annualWof?: number;
+  annualRego?: number;
+  annualInsurance?: number;
+  includeFixedCosts?: boolean;
 }
 
 /**
  * Calculates driving cost for a given distance in km and calculation mode.
- * FEAT-60: If 'IRD_TRUE_COST' is active, calculate `distance_in_km * IRD_MILEAGE_RATE_PER_KM`.
- * In 'FUEL' mode, calculates fuel consumption cost for distance_in_km based on vehicle parameters.
+ * FEAT-60 & BUG-61: If 'IRD_TRUE_COST' is active, calculate `(distance_in_km * IRD_MILEAGE_RATE_PER_KM) / passengers + parking`.
+ * Granular line items (WOF, Rego, Insurance, RUC, Wear & Tires) are strictly bypassed and zeroed out.
+ * In 'FUEL' mode, calculates fuel consumption cost for distance_in_km based on vehicle parameters,
+ * plus any optional granular costs (RUC, maintenance, fixed ownership).
  */
 export function calculateDrivingCost(
   distanceKm: number,
@@ -986,6 +995,8 @@ export function calculateDrivingCost(
   const parking = options.parkingCost ?? 0;
 
   if (mode === 'IRD_TRUE_COST') {
+    // BUG-61: WOF, Rego, Insurance, RUC, and Wear & Tires are strictly zeroed out / bypassed
+    // in the final addition so only (distance * 1.20) / passengers + parking is returned.
     const cost = (distanceKm * rate) / passengers;
     return round2(cost + parking);
   }
@@ -1008,7 +1019,16 @@ export function calculateDrivingCost(
     maintenanceCost = distanceKm * maintRate;
   }
 
-  return round2((fuelCost + rucCost + maintenanceCost) / passengers + parking);
+  let fixedCost = 0;
+  if (options.includeFixedCosts) {
+    const wof = options.annualWof ?? 85;
+    const rego = options.annualRego ?? 173;
+    const insurance = options.annualInsurance ?? 1311;
+    // 70% commute apportionment / 260 working days per year
+    fixedCost = ((wof + rego + insurance) * 0.70) / (52 * 5);
+  }
+
+  return round2((fuelCost + rucCost + maintenanceCost + fixedCost) / passengers + parking);
 }
 
 function round2(num: number): number {
