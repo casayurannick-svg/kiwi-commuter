@@ -1,12 +1,14 @@
 'use client';
 
-import { ArbitrageResult, CommuteInput } from '@/types';
+import { ArbitrageResult, CalculationMode, CommuteInput } from '@/types';
+import { calculateCommuteArbitrage } from '@/lib/calculator';
 import {
   Bus,
   Car,
   Clock,
   Coins,
   Fuel,
+  Info,
   Leaf,
   ParkingCircle,
   ShieldCheck,
@@ -15,15 +17,50 @@ import {
   TrendingUp,
   Zap,
 } from 'lucide-react';
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import MiniReceipt from './MiniReceipt';
+import Tooltip from './Tooltip';
 
 interface ComparisonCardProps {
   arbitrage: ArbitrageResult;
   input: CommuteInput;
+  calculationMode?: CalculationMode;
+  onCalculationModeChange?: (mode: CalculationMode) => void;
 }
-export default function ComparisonCard({ arbitrage, input }: ComparisonCardProps) {
-  const { driving, transit, co2SavedMonthlyKg, timeMetrics } = arbitrage;
+
+export default function ComparisonCard({
+  arbitrage,
+  input,
+  calculationMode: propCalculationMode,
+  onCalculationModeChange,
+}: ComparisonCardProps) {
+  const [localMode, setLocalMode] = useState<CalculationMode>(
+    propCalculationMode || input.calculationMode || 'FUEL'
+  );
+
+  useEffect(() => {
+    if (propCalculationMode) {
+      setLocalMode(propCalculationMode);
+    } else if (input.calculationMode) {
+      setLocalMode(input.calculationMode);
+    }
+  }, [propCalculationMode, input.calculationMode]);
+
+  const activeMode = propCalculationMode || localMode;
+
+  const handleToggleMode = (newMode: CalculationMode) => {
+    setLocalMode(newMode);
+    onCalculationModeChange?.(newMode);
+  };
+
+  const activeArbitrage = useMemo(() => {
+    if (activeMode === (input.calculationMode || 'FUEL')) {
+      return arbitrage;
+    }
+    return calculateCommuteArbitrage({ ...input, calculationMode: activeMode });
+  }, [arbitrage, input, activeMode]);
+
+  const { driving, transit, co2SavedMonthlyKg, timeMetrics } = activeArbitrage;
   const passengers = Math.max(1, input.carpoolPassengers || transit.passengers || 1);
   // BUG-43: E-Bike and E-Scooter are single-rider — suppress (X pax) badges for these modes.
   const isEbikeOrScooterMode =
@@ -47,14 +84,14 @@ export default function ComparisonCard({ arbitrage, input }: ComparisonCardProps
   let badgeColor = 'text-zinc-400 bg-zinc-800/60 border-zinc-700';
 
   if (isTransitCheaper && !isBreakEven) {
-    const modeLabel = arbitrage.transit.primaryMode === 'E-Bike' ? 'an E-Bike' : 'public transport';
+    const modeLabel = activeArbitrage.transit.primaryMode === 'E-Bike' ? 'an E-Bike' : 'public transport';
     headline = `You save $${delta}/month on ${modeLabel}`;
     subline = `Save $${annualDelta.toLocaleString('en-NZ')}/year compared to driving`;
     headlineColor = 'text-emerald-400';
     badgeColor = 'text-emerald-300 bg-emerald-500/20 border-emerald-500/30';
   } else if (isDrivingCheaper && !isBreakEven) {
     headline = `You save $${delta}/month driving`;
-    const altModeLabel = arbitrage.transit.primaryMode === 'E-Bike' ? 'an E-Bike' : 'public transport';
+    const altModeLabel = activeArbitrage.transit.primaryMode === 'E-Bike' ? 'an E-Bike' : 'public transport';
     subline = `Save $${annualDelta.toLocaleString('en-NZ')}/year compared to ${altModeLabel}`;
     headlineColor = 'text-amber-400';
     badgeColor = 'text-amber-300 bg-amber-500/20 border-amber-500/30';
@@ -62,8 +99,8 @@ export default function ComparisonCard({ arbitrage, input }: ComparisonCardProps
 
   // Time saving comparison: difference in one-way commute duration
   const monthlyHoursSaved = Math.abs(timeMetrics?.monthlyTimeDeltaHours ?? 0);
-  const oneWayDrive = timeMetrics?.oneWayDriveMinutes ?? arbitrage.drivingTimeMins;
-  const oneWayTransit = timeMetrics?.oneWayTransitMinutes ?? arbitrage.transitTimeMins;
+  const oneWayDrive = timeMetrics?.oneWayDriveMinutes ?? activeArbitrage.drivingTimeMins;
+  const oneWayTransit = timeMetrics?.oneWayTransitMinutes ?? activeArbitrage.transitTimeMins;
   const isDriveFaster = oneWayDrive < oneWayTransit;
   const isTransitFaster = oneWayTransit < oneWayDrive;
   const oneWayTimeDelta = Math.abs(oneWayTransit - oneWayDrive);
@@ -244,14 +281,18 @@ export default function ComparisonCard({ arbitrage, input }: ComparisonCardProps
 
               {/* Quick cost drivers */}
               <div className="mt-2.5 pt-2 border-t border-slate-800/60 flex items-center justify-between text-[11px] text-slate-400">
-                <span className="truncate">Fuel: ${driving.monthlyFuelCost.toFixed(0)}</span>
+                {activeMode === 'IRD_TRUE_COST' ? (
+                  <span className="truncate">IRD Rate: ${(driving.monthlyIrdCost ?? driving.monthlyTotal).toFixed(0)}</span>
+                ) : (
+                  <span className="truncate">Fuel: ${driving.monthlyFuelCost.toFixed(0)}</span>
+                )}
                 {driving.monthlyParkingCost > 0 && (
                   <span className="truncate">Parking: ${driving.monthlyParkingCost.toFixed(0)}</span>
                 )}
-                {driving.monthlyRucCost > 0 && (
+                {activeMode !== 'IRD_TRUE_COST' && driving.monthlyRucCost > 0 && (
                   <span className="truncate">RUC: ${driving.monthlyRucCost.toFixed(0)}</span>
                 )}
-                {((driving.monthlyFixedCosts ?? driving.monthlyFixedCost ?? 0) > 0) && (
+                {activeMode !== 'IRD_TRUE_COST' && ((driving.monthlyFixedCosts ?? driving.monthlyFixedCost ?? 0) > 0) && (
                   <span className="truncate">Fixed: ${(driving.monthlyFixedCosts ?? driving.monthlyFixedCost ?? 0).toFixed(0)}</span>
                 )}
                 <span>${driving.weeklyTotal.toFixed(0)}/wk</span>
@@ -327,7 +368,7 @@ export default function ComparisonCard({ arbitrage, input }: ComparisonCardProps
           Time Cost (Slower commute)
           Your True Benefit
         */}
-        <MiniReceipt arbitrage={arbitrage} input={input} />
+        <MiniReceipt arbitrage={activeArbitrage} input={{ ...input, calculationMode: activeMode }} />
       </div>
 
       {/* Side-by-Side Breakdown Cards (Tight List Items) */}
@@ -349,61 +390,136 @@ export default function ComparisonCard({ arbitrage, input }: ComparisonCardProps
             </div>
           </div>
 
+          {/* FEAT-60: IRD True Cost Mileage Mode Toggle */}
+          <div className="flex items-center justify-between py-1.5 px-2.5 bg-slate-900/70 rounded-xl border border-slate-800 text-xs">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px] font-semibold text-slate-300">
+                IRD True Cost
+              </span>
+              <Tooltip
+                avoidCollisions={true}
+                align="start"
+                content="Includes depreciation, WOF, Rego, maintenance, and insurance."
+              >
+                <button
+                  type="button"
+                  aria-label="IRD True Cost info"
+                  className="text-slate-400 hover:text-slate-200 transition-colors p-0.5 focus:outline-none focus:text-slate-200"
+                >
+                  <Info className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-200 transition-colors" />
+                </button>
+              </Tooltip>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-slate-400 font-medium">
+                {activeMode === 'IRD_TRUE_COST' ? 'IRD Rate' : 'Fuel Only'}
+              </span>
+              <button
+                type="button"
+                role="switch"
+                data-testid="ird-mode-toggle"
+                aria-checked={activeMode === 'IRD_TRUE_COST'}
+                aria-label="Toggle IRD True Cost mode"
+                onClick={() =>
+                  handleToggleMode(activeMode === 'IRD_TRUE_COST' ? 'FUEL' : 'IRD_TRUE_COST')
+                }
+                className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 focus:ring-offset-slate-900 ${
+                  activeMode === 'IRD_TRUE_COST' ? 'bg-emerald-600' : 'bg-slate-700'
+                }`}
+              >
+                <span
+                  aria-hidden="true"
+                  className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                    activeMode === 'IRD_TRUE_COST' ? 'translate-x-4' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
+
           {/* Tight List Items */}
           <div className="space-y-1.5 text-xs">
-            <div className="flex items-center justify-between">
-              <span className="text-slate-400 flex items-center gap-1.5">
-                <Fuel className="w-3 h-3 text-amber-400" />
-                Fuel:
-              </span>
-              <span className="font-semibold text-slate-200 tabular-nums">
-                ${driving.monthlyFuelCost.toFixed(0)}/mo
-              </span>
-            </div>
+            {activeMode === 'IRD_TRUE_COST' ? (
+              <>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400 flex items-center gap-1.5">
+                    <Coins className="w-3 h-3 text-emerald-400" />
+                    IRD Mileage ($1.20/km):
+                  </span>
+                  <span className="font-semibold text-slate-200 tabular-nums">
+                    ${(driving.monthlyIrdCost ?? driving.monthlyTotal).toFixed(0)}/mo
+                  </span>
+                </div>
 
-            <div className="flex items-center justify-between">
-              <span className="text-slate-400 flex items-center gap-1.5">
-                <Zap className="w-3 h-3 text-amber-400" />
-                RUC ({driving.dailyRucCost > 0 ? (input.powertrain === 'PHEV' || input.power === 'PHEV' || input.vehicleType === 'phev' ? '$0.038/km' : '$0.076/km') : 'Exempt'}):
-              </span>
-              <span className="font-semibold text-slate-200 tabular-nums">
-                {driving.monthlyRucCost > 0 ? `$${driving.monthlyRucCost.toFixed(0)}/mo` : '$0'}
-              </span>
-            </div>
+                {driving.monthlyParkingCost > 0 && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-400 flex items-center gap-1.5">
+                      <ParkingCircle className="w-3 h-3 text-sky-400" />
+                      Parking:
+                    </span>
+                    <span className="font-semibold text-slate-200 tabular-nums">
+                      ${driving.monthlyParkingCost.toFixed(0)}/mo
+                    </span>
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400 flex items-center gap-1.5">
+                    <Fuel className="w-3 h-3 text-amber-400" />
+                    Fuel:
+                  </span>
+                  <span className="font-semibold text-slate-200 tabular-nums">
+                    ${driving.monthlyFuelCost.toFixed(0)}/mo
+                  </span>
+                </div>
 
-            {/* US-38: Fixed Ownership Costs (WOF, Rego, Insurance) */}
-            {((driving.monthlyFixedCosts ?? driving.monthlyFixedCost ?? 0) > 0) && (
-              <div className="flex items-center justify-between" data-testid="fixed-costs-line-item">
-                <span className="text-slate-400 flex items-center gap-1.5">
-                  <ShieldCheck className="w-3 h-3 text-indigo-400" />
-                  Fixed Costs (Ins/Rego/WOF):
-                </span>
-                <span className="font-semibold text-slate-200 tabular-nums">
-                  ${(driving.monthlyFixedCosts ?? driving.monthlyFixedCost ?? 0).toFixed(0)}/mo
-                </span>
-              </div>
-            )}
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400 flex items-center gap-1.5">
+                    <Zap className="w-3 h-3 text-amber-400" />
+                    RUC ({driving.dailyRucCost > 0 ? (input.powertrain === 'PHEV' || input.power === 'PHEV' || input.vehicleType === 'phev' ? '$0.038/km' : '$0.076/km') : 'Exempt'}):
+                  </span>
+                  <span className="font-semibold text-slate-200 tabular-nums">
+                    {driving.monthlyRucCost > 0 ? `$${driving.monthlyRucCost.toFixed(0)}/mo` : '$0'}
+                  </span>
+                </div>
 
-            <div className="flex items-center justify-between">
-              <span className="text-slate-400 flex items-center gap-1.5">
-                <ParkingCircle className="w-3 h-3 text-sky-400" />
-                Parking:
-              </span>
-              <span className="font-semibold text-slate-200 tabular-nums">
-                ${driving.monthlyParkingCost.toFixed(0)}/mo
-              </span>
-            </div>
+                {/* US-38: Fixed Ownership Costs (WOF, Rego, Insurance) */}
+                {((driving.monthlyFixedCosts ?? driving.monthlyFixedCost ?? 0) > 0) && (
+                  <div className="flex items-center justify-between" data-testid="fixed-costs-line-item">
+                    <span className="text-slate-400 flex items-center gap-1.5">
+                      <ShieldCheck className="w-3 h-3 text-indigo-400" />
+                      Fixed Costs (Ins/Rego/WOF):
+                    </span>
+                    <span className="font-semibold text-slate-200 tabular-nums">
+                      ${(driving.monthlyFixedCosts ?? driving.monthlyFixedCost ?? 0).toFixed(0)}/mo
+                    </span>
+                  </div>
+                )}
 
-            {input.includeMaintenanceWear && (
-              <div className="flex items-center justify-between">
-                <span className="text-slate-400 flex items-center gap-1.5">
-                  <Coins className="w-3 h-3 text-slate-400" />
-                  Wear & WOF:
-                </span>
-                <span className="font-semibold text-slate-200 tabular-nums">
-                  ${driving.monthlyMaintenanceCost.toFixed(0)}/mo
-                </span>
-              </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400 flex items-center gap-1.5">
+                    <ParkingCircle className="w-3 h-3 text-sky-400" />
+                    Parking:
+                  </span>
+                  <span className="font-semibold text-slate-200 tabular-nums">
+                    ${driving.monthlyParkingCost.toFixed(0)}/mo
+                  </span>
+                </div>
+
+                {input.includeMaintenanceWear && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-400 flex items-center gap-1.5">
+                      <Coins className="w-3 h-3 text-slate-400" />
+                      Wear & WOF:
+                    </span>
+                    <span className="font-semibold text-slate-200 tabular-nums">
+                      ${driving.monthlyMaintenanceCost.toFixed(0)}/mo
+                    </span>
+                  </div>
+                )}
+              </>
             )}
           </div>
 

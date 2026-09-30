@@ -159,7 +159,13 @@ export default function DashboardClient({ initialFuelPrices }: DashboardClientPr
           {/* Right Column (Desktop cols 6..12: ComparisonCard + JourneyTimeline + RouteMap + MonthlySavingsChart) */}
           <div className="contents lg:flex lg:flex-col lg:col-span-7 lg:gap-4 w-full">
             <div className="order-2 w-full">
-              <ComparisonCard arbitrage={arbitrage} input={commuteInput} />
+              <ComparisonCard
+                arbitrage={arbitrage}
+                input={commuteInput}
+                onCalculationModeChange={(mode) =>
+                  setCommuteInput((prev) => ({ ...prev, calculationMode: mode }))
+                }
+              />
             </div>
             <div className="order-3 w-full">
               <JourneyTimeline

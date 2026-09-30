@@ -202,6 +202,12 @@ $$\text{Daily RUC} = D_{\text{day}} \times R_{\text{powertrain}}$$
 - **Carpool Allocation:**
   $$\text{Total Daily Driving Cost} = \frac{C_{\text{fuel/energy}} + \text{RUC} + P_{\text{daily}} + C_{\text{wear}}}{\text{Carpool Passengers}}$$
 
+#### 4. Inland Revenue Department (IRD) True Cost Mode (FEAT-60)
+When `calculationMode === 'IRD_TRUE_COST'`, marginal fuel, RUC, wear, and fixed vehicle ownership costs are replaced by the statutory Tier 1 rate:
+$$\text{IRD Rate} = \$1.20 / \text{km} \quad (\text{IRD\_MILEAGE\_RATE\_PER\_KM})$$
+$$\text{Total Daily Driving Cost} = \frac{D_{\text{day}} \times \text{IRD\_MILEAGE\_RATE\_PER\_KM}}{\text{Carpool Passengers}} + P_{\text{daily}}$$
+This comprehensive benchmark encapsulates depreciation, warrant of fitness (WOF), registration (rego), scheduled servicing, and insurance in addition to running fuel costs.
+
 ---
 
 ### 5.3 Auckland Transport Public Transit Costs

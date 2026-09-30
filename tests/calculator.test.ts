@@ -2,7 +2,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
-import { calculateArbitrage, WEEKS_PER_MONTH } from '../src/lib/calculator';
+import { calculateArbitrage, calculateDrivingCost, IRD_MILEAGE_RATE_PER_KM, WEEKS_PER_MONTH } from '../src/lib/calculator';
 import {
   AT_HOP_7_DAY_CAP,
   AT_HOP_ZONE_FARES_BY_CONCESSION,
@@ -1051,6 +1051,69 @@ describe('BUG-37: Scale public transport fares by carpool passenger count', () =
       assert.strictEqual(res.driving.dailyFixedCost, 0.69);
       assert.strictEqual(res.driving.weeklyFixedCost, 3.45);
       assert.strictEqual(res.driving.monthlyFixedCost, 14.95);
+    });
+  });
+
+  describe('FEAT-60: IRD True Cost mileage toggle (Driving comparison logic)', () => {
+    it('defines the standard IRD Tier 1 mileage rate constant as $1.20/km', () => {
+      assert.strictEqual(IRD_MILEAGE_RATE_PER_KM, 1.20);
+    });
+
+    it('verifies calculateDrivingCost calculates distance_in_km * IRD_MILEAGE_RATE_PER_KM in IRD_TRUE_COST mode', () => {
+      assert.strictEqual(calculateDrivingCost(10, 'IRD_TRUE_COST'), 12.00);
+      assert.strictEqual(calculateDrivingCost(25, 'IRD_TRUE_COST'), 30.00);
+      assert.strictEqual(calculateDrivingCost(50, 'IRD_TRUE_COST'), 60.00);
+      assert.strictEqual(calculateDrivingCost(100, 'IRD_TRUE_COST'), 120.00);
+    });
+
+    it('verifies calculateDrivingCost calculates fuel consumption cost in FUEL mode', () => {
+      // 25km with petrol91 (7.2L/100km, $2.72/L)
+      assert.strictEqual(calculateDrivingCost(25, 'FUEL'), 4.90);
+      assert.strictEqual(calculateDrivingCost(50, 'FUEL'), 9.79);
+      assert.strictEqual(calculateDrivingCost(100, 'FUEL'), 19.58);
+    });
+
+    it('verifies calculateArbitrage updates Driving cost with IRD_TRUE_COST mode', () => {
+      const result = calculateArbitrage({
+        originSuburbId: 'epsom',
+        destinationSuburbId: 'cbd',
+        daysPerWeek: 5,
+        vehicleType: 'petrol91',
+        distanceKm: 25, // 25 km one-way = 50 km round-trip
+        parkingDailyRate: 0,
+        parkingDaysPerWeek: 0,
+        concession: 'adult',
+        includeMaintenanceWear: false,
+        carpoolPassengers: 1,
+        calculationMode: 'IRD_TRUE_COST',
+      });
+
+      // 50 km * 1.20 = 60.00
+      assert.strictEqual(result.driving.distanceRoundTripKm, 50);
+      assert.strictEqual(result.driving.dailyIrdCost, 60.00);
+      assert.strictEqual(result.driving.dailyTotal, 60.00);
+      assert.strictEqual(result.driving.weeklyTotal, 300.00);
+      assert.strictEqual(result.driving.monthlyTotal, 1300.00);
+      assert.strictEqual(result.driving.annualTotal, 15600.00);
+      assert.strictEqual(result.driving.calculationMode, 'IRD_TRUE_COST');
+    });
+
+    it('verifies ComparisonCard source includes the IRD toggle switch, info icon, and exact tooltip text', () => {
+      const cardPath = path.resolve(process.cwd(), 'src/components/ComparisonCard.tsx');
+      const content = fs.readFileSync(cardPath, 'utf8');
+
+      assert.ok(
+        content.includes('data-testid="ird-mode-toggle"'),
+        'ComparisonCard must include data-testid="ird-mode-toggle"'
+      );
+      assert.ok(
+        content.includes('role="switch"'),
+        'ComparisonCard must include a role="switch" toggle'
+      );
+      assert.ok(
+        content.includes('Includes depreciation, WOF, Rego, maintenance, and insurance.'),
+        'ComparisonCard must include the exact IRD tooltip text'
+      );
     });
   });
 });

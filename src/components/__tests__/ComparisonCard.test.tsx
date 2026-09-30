@@ -399,6 +399,64 @@ describe('src/components/ComparisonCard.tsx - US-16 Mini-Receipt Time Valuation'
       assert.ok(html.includes('RUC (Exempt):'), 'Must display RUC Exempt label for petrol');
     });
   });
+
+  describe('FEAT-60: IRD True Cost Mileage Toggle & Tooltip', () => {
+    it('renders the Tailwind toggle switch with role="switch" and aria-label', () => {
+      const input: CommuteInput = { ...defaultInput };
+      const arbitrage = createMockArbitrage();
+      const html = renderToStaticMarkup(
+        React.createElement(ComparisonCard, { arbitrage, input })
+      );
+
+      assert.ok(html.includes('role="switch"'), 'Must render a role="switch" element for the mode toggle');
+      assert.ok(html.includes('data-testid="ird-mode-toggle"'), 'Must render data-testid="ird-mode-toggle"');
+      assert.ok(html.includes('aria-label="Toggle IRD True Cost mode"'), 'Must have accessible aria-label on toggle');
+    });
+
+    it('renders the info icon and exact tooltip stating: "Includes depreciation, WOF, Rego, maintenance, and insurance."', () => {
+      const input: CommuteInput = { ...defaultInput };
+      const arbitrage = createMockArbitrage();
+      const html = renderToStaticMarkup(
+        React.createElement(ComparisonCard, { arbitrage, input })
+      );
+
+      assert.ok(html.includes('aria-label="IRD True Cost info"'), 'Must render info button next to toggle');
+      assert.ok(
+        html.includes('Includes depreciation, WOF, Rego, maintenance, and insurance.'),
+        'Must contain exact tooltip text: "Includes depreciation, WOF, Rego, maintenance, and insurance."'
+      );
+    });
+
+    it('renders IRD Mileage rate and line items when in IRD_TRUE_COST mode', () => {
+      const input: CommuteInput = {
+        ...defaultInput,
+        calculationMode: 'IRD_TRUE_COST',
+      };
+      const arbitrage = createMockArbitrage({
+        calculationMode: 'IRD_TRUE_COST',
+        driving: {
+          ...createMockArbitrage().driving,
+          dailyIrdCost: 43.20,
+          monthlyIrdCost: 936.00,
+          dailyFuelCost: 0,
+          dailyRucCost: 0,
+          dailyFixedCost: 0,
+          dailyFixedCosts: 0,
+          monthlyFuelCost: 0,
+          monthlyRucCost: 0,
+          monthlyFixedCost: 0,
+          monthlyFixedCosts: 0,
+          calculationMode: 'IRD_TRUE_COST',
+        },
+      });
+      const html = renderToStaticMarkup(
+        React.createElement(ComparisonCard, { arbitrage, input })
+      );
+
+      assert.ok(html.includes('IRD Mileage ($1.20/km):'), 'Must render IRD Mileage ($1.20/km) label');
+      assert.ok(html.includes('IRD Rate'), 'Must show IRD Rate indicator');
+    });
+  });
 });
 
 

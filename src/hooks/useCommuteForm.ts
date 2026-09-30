@@ -22,6 +22,7 @@ export const DEFAULT_COMMUTE_INPUT: CommuteInput = {
   annualRego: 173,
   insuranceEnabled: true,
   defaultInsurance: 1311,
+  calculationMode: 'FUEL',
 };
 
 export interface UseCommuteFormOptions {

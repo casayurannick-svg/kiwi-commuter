@@ -154,6 +154,9 @@ export function serializeCommuteToParams(input: CommuteInput): URLSearchParams {
   if (input.customInsurance !== undefined && input.customInsurance !== null) {
     params.set('customIns', input.customInsurance.toString());
   }
+  if (input.calculationMode && input.calculationMode !== 'FUEL') {
+    params.set('calcMode', input.calculationMode);
+  }
 
   return params;
 }
@@ -548,6 +551,13 @@ export function parseCommuteFromParams(
       params.has('customIns') && !isNaN(Number(params.get('customIns')))
         ? Number(params.get('customIns'))
         : fallback.customInsurance,
+    calculationMode:
+      (params.get('calcMode') || params.get('calculationMode'))?.toUpperCase() === 'IRD_TRUE_COST' ||
+      (params.get('calcMode') || params.get('calculationMode'))?.toUpperCase() === 'IRD'
+        ? 'IRD_TRUE_COST'
+        : (params.get('calcMode') || params.get('calculationMode'))?.toUpperCase() === 'FUEL'
+        ? 'FUEL'
+        : fallback.calculationMode ?? 'FUEL',
   };
 }
 

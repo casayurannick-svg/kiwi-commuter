@@ -367,6 +367,13 @@ export const VEHICLE_PRESETS: Record<VehicleType, VehicleConfig> = {
 
 export const NZ_AA_MAINTENANCE_PER_KM = 0.18; // Amortized tires, brake pads, servicing, WOF, depreciation
 
+/**
+ * FEAT-60: Standard IRD Tier 1 Mileage Rate ($/km)
+ * Current Inland Revenue Department Tier 1 rate for light passenger vehicles up to 14,000 km/yr.
+ * Comprehensive benchmark covering fuel, depreciation, WOF, Rego, maintenance, and insurance.
+ */
+export const IRD_MILEAGE_RATE_PER_KM = 1.20;
+
 export const CO2_FACTORS = {
   petrolPerLitre: 2.31, // kg CO2 / L
   dieselPerLitre: 2.68, // kg CO2 / L

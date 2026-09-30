@@ -6,6 +6,8 @@ export type FareConcession = 'ADULT' | 'CHILD' | 'TERTIARY';
 
 export type ParkingTier = 'CBD_EARLY_BIRD' | 'CBD_CASUAL' | 'SUBURBAN_HUB' | 'FREE';
 
+export type CalculationMode = 'FUEL' | 'IRD_TRUE_COST';
+
 export interface SuburbCentroid {
   id: string;
   name: string;
@@ -108,6 +110,7 @@ export interface CommuteInput {
   insuranceEnabled?: boolean; // US-38: Whether comprehensive vehicle insurance is included (default true)
   defaultInsurance?: number; // US-38: Default annual insurance premium (default $1,311)
   customInsurance?: number | null; // US-38: Optional custom annual insurance override (mutually exclusive with defaultInsurance)
+  calculationMode?: CalculationMode; // FEAT-60: 'FUEL' | 'IRD_TRUE_COST'
 }
 
 export interface TransitStepDetail {
@@ -178,6 +181,7 @@ export interface DrivingCostBreakdown {
   dailyMaintenanceCost: number;
   dailyFixedCost?: number;
   dailyFixedCosts?: number;
+  dailyIrdCost?: number;
   dailyTotal: number;
 
   weeklyFuelCost: number;
@@ -186,6 +190,7 @@ export interface DrivingCostBreakdown {
   weeklyMaintenanceCost: number;
   weeklyFixedCost?: number;
   weeklyFixedCosts?: number;
+  weeklyIrdCost?: number;
   weeklyTotal: number;
 
   monthlyFuelCost: number;
@@ -194,12 +199,14 @@ export interface DrivingCostBreakdown {
   monthlyMaintenanceCost: number;
   monthlyFixedCost?: number;
   monthlyFixedCosts?: number;
+  monthlyIrdCost?: number;
   monthlyTotal: number;
 
   annualFixedCost?: number;
   annualFixedCosts?: number;
   annualTotal: number;
   monthlyCo2Kg: number;
+  calculationMode?: CalculationMode;
 }
 
 export interface TransitCostBreakdown {
@@ -251,6 +258,7 @@ export interface CommuteComparisonResult {
   scooterOwnership?: 'OWNED' | 'RENTAL';
   journeyLegs?: JourneyLeg[];
   nearestStation?: TransitStation;
+  calculationMode?: CalculationMode;
 }
 
 export type ArbitrageResult = CommuteComparisonResult;

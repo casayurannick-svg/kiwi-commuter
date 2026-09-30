@@ -45,6 +45,7 @@
 | **BUG-41** | Mobile Viewport Tooltip Overflow & Collision Avoidance | **DONE** | [`src/components/Tooltip.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/Tooltip.tsx), [`src/components/ui/Tooltip.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/ui/Tooltip.tsx), [`src/app/layout.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/app/layout.tsx), [`src/components/RouteMap.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/RouteMap.tsx), [`tests/ui.spec.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/tests/ui.spec.ts) | Replaced inline tooltips with global collision-aware Tooltip component; enforced `max-w-[90vw]`, text wrapping, dynamic client viewport clamping, and `overflow-x-hidden` on html/body; verified 100% containment within 375px mobile viewport. |
 | **BUG-43** | Decouple Micromobility from Carpool Multiplier | **DONE** | [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts), [`src/components/ComparisonCard.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/ComparisonCard.tsx), [`src/components/JourneyTimeline.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/JourneyTimeline.tsx), [`src/lib/calculator.test.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.test.ts) | Introduced `transitPassengers` variable locked to 1 for EBIKE/Scooter modes; prevents carpool multiplier from scaling E-Bike energy costs or Scooter AT HOP fares; removed `(X pax)` UI badges from micromobility tiles; preserves BUG-37 carpool scaling for Bus/Train/Ferry. |
 | **BUG-44** | Decouple Private Vehicle Baseline from Alternative Modes | **DONE** | [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts), [`src/components/CommuteForm.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/CommuteForm.tsx), [`src/types/index.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/types/index.ts), [`src/lib/calculator.test.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.test.ts), [`tests/ui.spec.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/tests/ui.spec.ts) | Decoupled private vehicle baseline parameters (Powertrain, RUC, Parking, Fuel/Consumption) from alternative modes; refactored sidebar UI with persistent, independently collapsible "Private Vehicle Baseline" section; verified Diesel RUC applies to baseline in E-Bike mode and Powertrain selector remains functional when E-Bike active. |
+| **FEAT-60** | IRD True Cost Mileage Toggle & Formula | **DONE** | [`src/config/fares.config.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/config/fares.config.ts), [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts), [`src/components/ComparisonCard.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/ComparisonCard.tsx) | Defined standard IRD Tier 1 rate ($1.20/km), added 'FUEL' vs 'IRD_TRUE_COST' mode state, updated Driving cost formula (`distance_in_km * IRD_MILEAGE_RATE_PER_KM`), added Tailwind toggle switch with info icon and tooltip ("Includes depreciation, WOF, Rego, maintenance, and insurance."). |
 
 ---
 
@@ -771,6 +772,48 @@
     - **Playwright E2E UI Tests ([`tests/ui.spec.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/tests/ui.spec.ts))**:
       - Added automated test that clicks the 🚲 E-Bike mode button, asserts E-Bike hardware parameters and Private Vehicle Baseline section are visible, and verifies the Powertrain selector buttons (Diesel, Petrol 91) remain interactive and functional.
       - 12/12 Playwright tests passing across Mobile Chrome, Mobile Safari, and Desktop Chrome.
+
+---
+
+### FEAT-60: IRD True Cost Mileage Toggle (Driving Comparison Logic)
+**As a** Kiwi commuter evaluating public transit vs driving,  
+**I want to** toggle between fuel-only costs and the full Inland Revenue Department (IRD) standard mileage benchmark,  
+**So that** I understand the true total cost of ownership of vehicle commuting (including depreciation, insurance, WOF, and repairs).
+
+* **Gherkin Acceptance Criteria:**
+  ```gherkin
+  Scenario: Commuter views comparison in default FUEL mode
+    Given the commuter loads the Kiwi Commuter dashboard
+    Then the calculationMode defaults to 'FUEL'
+    And private vehicle expenses reflect fuel, NZTA RUC, maintenance wear, parking, and amortized fixed costs
+
+  Scenario: Commuter toggles to IRD True Cost mode
+    Given the commuter flips the "IRD True Cost" switch on the Driving Comparison Card
+    Then the calculationMode switches to 'IRD_TRUE_COST'
+    And the driving cost formula computes: distance_in_km * IRD_MILEAGE_RATE_PER_KM ($1.20/km)
+    And individual fuel, RUC, wear, and fixed cost lines are superseded by the single all-inclusive IRD mileage figure
+    And daily, weekly, monthly, and annual driving totals and net savings update immediately
+
+  Scenario: Commuter inspects the IRD explanation tooltip
+    When the user hovers or taps the 'info' icon next to the toggle switch
+    Then an accessible tooltip appears with the text:
+      "Includes depreciation, WOF, Rego, maintenance, and insurance."
+  ```
+
+* **Technical Implementation Details:**
+  - **Global Constant ([`src/config/fares.config.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/config/fares.config.ts))**:
+    - Defined `IRD_MILEAGE_RATE_PER_KM = 1.20` representing the current standard IRD Tier 1 light passenger vehicle mileage benchmark.
+  - **State Management & Types ([`src/types/index.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/types/index.ts), [`src/hooks/useCommuteForm.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/hooks/useCommuteForm.ts), [`src/lib/urlParams.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/urlParams.ts))**:
+    - Added `CalculationMode = 'FUEL' | 'IRD_TRUE_COST'` union.
+    - Updated `CommuteInput`, `DrivingCostBreakdown`, and `CommuteComparisonResult` interfaces.
+    - Synchronized `calculationMode` via `calcMode` URL search param.
+  - **Calculation Logic ([`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts))**:
+    - Exported `calculateDrivingCost(distanceKm, mode, options)` verifying formula `distance_in_km * IRD_MILEAGE_RATE_PER_KM`.
+    - In `calculateCommuteArbitrage`, computed `dailyIrdCost`, `weeklyIrdCost`, `monthlyIrdCost` and updated `drivingBreakdown` totals.
+  - **UI Toggle Component ([`src/components/ComparisonCard.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/ComparisonCard.tsx))**:
+    - Added Tailwind-styled toggle switch with `role="switch"` and `data-testid="ird-mode-toggle"`.
+    - Added accessible `Info` icon with collision-aware `Tooltip` displaying exact copy: *"Includes depreciation, WOF, Rego, maintenance, and insurance."*
+    - Dynamic re-computation of arbitrage balance sheet and hero metrics upon toggling.
 
 ---
 

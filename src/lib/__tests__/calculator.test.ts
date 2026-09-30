@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert';
-import { calculateCommuteArbitrage, WEEKS_PER_MONTH } from '../calculator';
+import { calculateCommuteArbitrage, calculateDrivingCost, IRD_MILEAGE_RATE_PER_KM, WEEKS_PER_MONTH } from '../calculator';
 import { AT_HOP_7_DAY_CAP, PARKING_TIER_RATES } from '../../config/fares.config';
 import { CommuteInput } from '@/types';
 
@@ -1245,6 +1245,92 @@ describe('src/lib/calculator.ts - calculateCommuteArbitrage', () => {
       assert.strictEqual(res.driving.dailyFixedCost, 0.69);
       assert.strictEqual(res.driving.weeklyFixedCost, 3.45);
       assert.strictEqual(res.driving.monthlyFixedCost, 14.95);
+    });
+  });
+
+  describe('FEAT-60: IRD True Cost mileage toggle (Driving comparison logic)', () => {
+    it('verifies IRD_MILEAGE_RATE_PER_KM is defined as 1.20', () => {
+      assert.strictEqual(IRD_MILEAGE_RATE_PER_KM, 1.20);
+    });
+
+    it('verifies calculateDrivingCost returns distance_in_km * IRD_MILEAGE_RATE_PER_KM for sample distances in IRD_TRUE_COST mode', () => {
+      // Test sample distances: 10km, 25km, 50km, 100km
+      assert.strictEqual(calculateDrivingCost(10, 'IRD_TRUE_COST'), 12.00);
+      assert.strictEqual(calculateDrivingCost(25, 'IRD_TRUE_COST'), 30.00);
+      assert.strictEqual(calculateDrivingCost(50, 'IRD_TRUE_COST'), 60.00);
+      assert.strictEqual(calculateDrivingCost(100, 'IRD_TRUE_COST'), 120.00);
+    });
+
+    it('verifies calculateDrivingCost returns expected fuel calculation in FUEL mode for sample distances', () => {
+      // Petrol 91 default: 7.2 L/100km, $2.72/L
+      // 25km: (25 * 7.2 / 100) * 2.72 = 4.896 -> 4.90
+      // 50km: (50 * 7.2 / 100) * 2.72 = 9.792 -> 9.79
+      // 100km: (100 * 7.2 / 100) * 2.72 = 19.584 -> 19.58
+      assert.strictEqual(calculateDrivingCost(25, 'FUEL'), 4.90);
+      assert.strictEqual(calculateDrivingCost(50, 'FUEL'), 9.79);
+      assert.strictEqual(calculateDrivingCost(100, 'FUEL'), 19.58);
+    });
+
+    it('verifies calculateCommuteArbitrage computes IRD True Cost when calculationMode is IRD_TRUE_COST', () => {
+      const input: CommuteInput = {
+        originSuburbId: 'albany',
+        destinationSuburbId: 'cbd',
+        daysPerWeek: 5,
+        vehicleType: 'petrol91',
+        distanceKm: 20, // 20 km one-way -> 40 km round-trip
+        parkingDailyRate: 0,
+        parkingDaysPerWeek: 0,
+        concession: 'adult',
+        includeMaintenanceWear: false,
+        carpoolPassengers: 1,
+        calculationMode: 'IRD_TRUE_COST',
+      };
+
+      const result = calculateCommuteArbitrage(input);
+
+      // Round trip: 40 km * $1.20 = $48.00/day
+      assert.strictEqual(result.driving.distanceRoundTripKm, 40);
+      assert.strictEqual(result.driving.dailyIrdCost, 48.00);
+      assert.strictEqual(result.driving.dailyTotal, 48.00);
+      assert.strictEqual(result.driving.dailyFuelCost, 0);
+      assert.strictEqual(result.driving.dailyRucCost, 0);
+      assert.strictEqual(result.driving.dailyFixedCost, 0);
+
+      // Weekly: 5 days * 48.00 = 240.00
+      assert.strictEqual(result.driving.weeklyIrdCost, 240.00);
+      assert.strictEqual(result.driving.weeklyTotal, 240.00);
+
+      // Monthly: 240.00 * (52 / 12) = 1040.00
+      assert.strictEqual(result.driving.monthlyIrdCost, 1040.00);
+      assert.strictEqual(result.driving.monthlyTotal, 1040.00);
+
+      // Annual: 1040.00 * 12 = 12480.00
+      assert.strictEqual(result.driving.annualTotal, 12480.00);
+      assert.strictEqual(result.driving.calculationMode, 'IRD_TRUE_COST');
+      assert.strictEqual(result.calculationMode, 'IRD_TRUE_COST');
+    });
+
+    it('verifies calculationMode defaults to FUEL preserving standard fuel and ownership breakdown', () => {
+      const input: CommuteInput = {
+        originSuburbId: 'albany',
+        destinationSuburbId: 'cbd',
+        daysPerWeek: 5,
+        vehicleType: 'petrol91',
+        distanceKm: 20,
+        parkingDailyRate: 0,
+        parkingDaysPerWeek: 0,
+        concession: 'adult',
+        includeMaintenanceWear: false,
+        carpoolPassengers: 1,
+      };
+
+      const result = calculateCommuteArbitrage(input);
+
+      assert.strictEqual(result.driving.calculationMode, 'FUEL');
+      assert.strictEqual(result.calculationMode, 'FUEL');
+      assert.strictEqual(result.driving.dailyIrdCost, undefined);
+      assert.ok(result.driving.dailyFuelCost > 0, 'Fuel cost must be non-zero in FUEL mode');
+      assert.ok((result.driving.dailyFixedCost ?? 0) > 0, 'Fixed costs must be non-zero in FUEL mode');
     });
   });
 });

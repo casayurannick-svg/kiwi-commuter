@@ -10,6 +10,7 @@ import {
   DEFAULT_ANNUAL_INSURANCE,
   FIXED_COST_COMMUTE_APPORTIONMENT,
   EV_CHARGING_PRESETS,
+  IRD_MILEAGE_RATE_PER_KM,
   NZ_AA_MAINTENANCE_PER_KM,
   NZ_EV_CHARGING_RATES,
   NZTA_RUC_RATES,
@@ -21,6 +22,7 @@ import {
 import { resolveFerryFareTier } from '@/constants/fares';
 import { estimateRouteMetrics, getSuburbById } from '@/config/suburbs';
 import {
+  CalculationMode,
   CommuteComparisonResult,
   CommuteInput,
   DrivingCostBreakdown,
@@ -33,6 +35,7 @@ import {
 import { findNearestTransitStation } from './stations';
 
 export const WEEKS_PER_MONTH = 52 / 12; // 4.33333333
+export { IRD_MILEAGE_RATE_PER_KM };
 
 const POWERTRAIN_TO_VEHICLE_TYPE: Record<VehiclePowertrain, VehicleType> = {
   PETROL_91: 'petrol91',
@@ -287,39 +290,78 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
   const monthlyMaintenanceCost = round2(weeklyMaintenanceCost * WEEKS_PER_MONTH);
   const monthlyTotalDriving = round2(weeklyTotalDriving * WEEKS_PER_MONTH);
 
-  const annualTotalDriving = round2(monthlyTotalDriving * 12);
+  // FEAT-60: IRD True Cost Mileage Mode
+  // If 'IRD_TRUE_COST' is active, calculate distance_in_km * IRD_MILEAGE_RATE_PER_KM.
+  // IRD mileage rate comprehensively covers fuel, depreciation, WOF, Rego, maintenance, and insurance.
+  const calculationMode: CalculationMode = input.calculationMode || 'FUEL';
+  const isIrdMode = calculationMode === 'IRD_TRUE_COST';
+
+  const dailyIrdCost = round2((distanceRoundTripKm * IRD_MILEAGE_RATE_PER_KM) / passengers);
+  const weeklyIrdCost = round2(dailyIrdCost * input.daysPerWeek);
+  const monthlyIrdCost = round2(weeklyIrdCost * WEEKS_PER_MONTH);
+
+  const effectiveDailyFuelCost = isIrdMode ? 0 : dailyFuelCost;
+  const effectiveDailyRucCost = isIrdMode ? 0 : dailyRucCost;
+  const effectiveDailyMaintenanceCost = isIrdMode ? 0 : dailyMaintenanceCost;
+  const effectiveDailyFixedCost = isIrdMode ? 0 : dailyFixedCost;
+
+  const effectiveWeeklyFuelCost = isIrdMode ? 0 : weeklyFuelCost;
+  const effectiveWeeklyRucCost = isIrdMode ? 0 : weeklyRucCost;
+  const effectiveWeeklyMaintenanceCost = isIrdMode ? 0 : weeklyMaintenanceCost;
+  const effectiveWeeklyFixedCost = isIrdMode ? 0 : weeklyFixedCost;
+
+  const effectiveMonthlyFuelCost = isIrdMode ? 0 : monthlyFuelCost;
+  const effectiveMonthlyRucCost = isIrdMode ? 0 : monthlyRucCost;
+  const effectiveMonthlyMaintenanceCost = isIrdMode ? 0 : monthlyMaintenanceCost;
+  const effectiveMonthlyFixedCost = isIrdMode ? 0 : monthlyFixedCost;
+  const effectiveAnnualFixedCost = isIrdMode ? 0 : annualFixedCost;
+
+  const effectiveDailyTotalDriving = isIrdMode
+    ? round2(dailyIrdCost + dailyParkingCost)
+    : dailyTotalDriving;
+  const effectiveWeeklyTotalDriving = isIrdMode
+    ? round2(weeklyIrdCost + weeklyParkingCost)
+    : weeklyTotalDriving;
+  const effectiveMonthlyTotalDriving = isIrdMode
+    ? round2(monthlyIrdCost + monthlyParkingCost)
+    : monthlyTotalDriving;
+  const effectiveAnnualTotalDriving = round2(effectiveMonthlyTotalDriving * 12);
 
   const drivingBreakdown: DrivingCostBreakdown = {
     distanceOneWayKm: round1(distanceOneWayKm),
     distanceRoundTripKm: round1(distanceRoundTripKm),
-    dailyFuelCost,
-    dailyRucCost,
+    dailyFuelCost: effectiveDailyFuelCost,
+    dailyRucCost: effectiveDailyRucCost,
     dailyParkingCost,
-    dailyMaintenanceCost,
-    dailyFixedCost,
-    dailyFixedCosts: dailyFixedCost,
-    dailyTotal: dailyTotalDriving,
+    dailyMaintenanceCost: effectiveDailyMaintenanceCost,
+    dailyFixedCost: effectiveDailyFixedCost,
+    dailyFixedCosts: effectiveDailyFixedCost,
+    dailyIrdCost: isIrdMode ? dailyIrdCost : undefined,
+    dailyTotal: effectiveDailyTotalDriving,
 
-    weeklyFuelCost,
-    weeklyRucCost,
+    weeklyFuelCost: effectiveWeeklyFuelCost,
+    weeklyRucCost: effectiveWeeklyRucCost,
     weeklyParkingCost,
-    weeklyMaintenanceCost,
-    weeklyFixedCost,
-    weeklyFixedCosts: weeklyFixedCost,
-    weeklyTotal: weeklyTotalDriving,
+    weeklyMaintenanceCost: effectiveWeeklyMaintenanceCost,
+    weeklyFixedCost: effectiveWeeklyFixedCost,
+    weeklyFixedCosts: effectiveWeeklyFixedCost,
+    weeklyIrdCost: isIrdMode ? weeklyIrdCost : undefined,
+    weeklyTotal: effectiveWeeklyTotalDriving,
 
-    monthlyFuelCost,
-    monthlyRucCost,
+    monthlyFuelCost: effectiveMonthlyFuelCost,
+    monthlyRucCost: effectiveMonthlyRucCost,
     monthlyParkingCost,
-    monthlyMaintenanceCost,
-    monthlyFixedCost,
-    monthlyFixedCosts: monthlyFixedCost,
-    monthlyTotal: monthlyTotalDriving,
+    monthlyMaintenanceCost: effectiveMonthlyMaintenanceCost,
+    monthlyFixedCost: effectiveMonthlyFixedCost,
+    monthlyFixedCosts: effectiveMonthlyFixedCost,
+    monthlyIrdCost: isIrdMode ? monthlyIrdCost : undefined,
+    monthlyTotal: effectiveMonthlyTotalDriving,
 
-    annualFixedCost,
-    annualFixedCosts: annualFixedCost,
-    annualTotal: annualTotalDriving,
+    annualFixedCost: effectiveAnnualFixedCost,
+    annualFixedCosts: effectiveAnnualFixedCost,
+    annualTotal: effectiveAnnualTotalDriving,
     monthlyCo2Kg: round1(monthlyCo2KgDriving),
+    calculationMode,
   };
 
   // --- Public Transport (AT HOP / Ferry / E-Bike) Costs ---
@@ -909,11 +951,65 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
     scooterOwnership: input.scooterOwnership,
     journeyLegs,
     nearestStation,
+    calculationMode,
   };
 }
 
 // Backward compatible alias
 export const calculateArbitrage = calculateCommuteArbitrage;
+
+export interface DrivingCostOptions {
+  consumption?: number; // L/100km or kWh/100km
+  fuelPrice?: number; // $/L or $/kWh
+  powertrain?: VehiclePowertrain;
+  vehicleType?: VehicleType;
+  passengers?: number;
+  ratePerKm?: number;
+  includeMaintenance?: boolean;
+  maintenanceRate?: number;
+  includeRuc?: boolean;
+  parkingCost?: number;
+}
+
+/**
+ * Calculates driving cost for a given distance in km and calculation mode.
+ * FEAT-60: If 'IRD_TRUE_COST' is active, calculate `distance_in_km * IRD_MILEAGE_RATE_PER_KM`.
+ * In 'FUEL' mode, calculates fuel consumption cost for distance_in_km based on vehicle parameters.
+ */
+export function calculateDrivingCost(
+  distanceKm: number,
+  mode: CalculationMode = 'FUEL',
+  options: DrivingCostOptions = {}
+): number {
+  const rate = options.ratePerKm ?? IRD_MILEAGE_RATE_PER_KM;
+  const passengers = Math.max(1, options.passengers ?? 1);
+  const parking = options.parkingCost ?? 0;
+
+  if (mode === 'IRD_TRUE_COST') {
+    const cost = (distanceKm * rate) / passengers;
+    return round2(cost + parking);
+  }
+
+  const effectiveVehicleType = options.vehicleType || 'petrol91';
+  const vehicle = VEHICLE_PRESETS[effectiveVehicleType] || VEHICLE_PRESETS.petrol91;
+  const consumption = options.consumption ?? vehicle.defaultConsumption;
+  const fuelPrice = options.fuelPrice ?? vehicle.defaultFuelPrice;
+  const fuelCost = ((distanceKm * consumption) / 100) * fuelPrice;
+
+  let rucCost = 0;
+  if (options.includeRuc) {
+    const rucRate = vehicle.rucRatePerKm ?? 0;
+    rucCost = distanceKm * rucRate;
+  }
+
+  let maintenanceCost = 0;
+  if (options.includeMaintenance) {
+    const maintRate = options.maintenanceRate ?? NZ_AA_MAINTENANCE_PER_KM;
+    maintenanceCost = distanceKm * maintRate;
+  }
+
+  return round2((fuelCost + rucCost + maintenanceCost) / passengers + parking);
+}
 
 function round2(num: number): number {
   return Math.round((num + Number.EPSILON) * 100) / 100;
