@@ -11,9 +11,11 @@ import { getSuburbById } from '@/config/suburbs';
 import { calculateCommuteArbitrage } from '@/lib/calculator';
 import { FuelBenchmarkDto } from '@/lib/supabase';
 import ShareButton from '@/components/ShareButton';
+import FeedbackButton from '@/components/FeedbackButton';
+import FeedbackModal from '@/components/FeedbackModal';
 import KiwiPathwayIcon from '@/components/icons/KiwiPathwayIcon';
 import { useCommuteForm } from '@/hooks/useCommuteForm';
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 
 interface DashboardClientProps {
   initialFuelPrices?: FuelBenchmarkDto;
@@ -21,6 +23,7 @@ interface DashboardClientProps {
 
 export default function DashboardClient({ initialFuelPrices }: DashboardClientProps) {
   const { commuteInput, setCommuteInput } = useCommuteForm({ initialFuelPrices });
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
 
   const origin = useMemo(() => getSuburbById(commuteInput.originSuburbId), [commuteInput.originSuburbId]);
   const destination = useMemo(
@@ -131,8 +134,9 @@ export default function DashboardClient({ initialFuelPrices }: DashboardClientPr
             </div>
           </div>
 
-          {/* Minimal Badges, Donation Button & Share Link */}
+          {/* Minimal Badges, Feedback Button, Donation Button & Share Link */}
           <div className="flex items-center gap-1.5 shrink-0">
+            <FeedbackButton onClick={() => setIsFeedbackOpen(true)} variant="header" />
             <DonationButton variant="header" />
             <ShareButton commuteInput={commuteInput} />
           </div>
@@ -215,11 +219,15 @@ export default function DashboardClient({ initialFuelPrices }: DashboardClientPr
               MBIE Data
             </a>
           </div>
-          <div className="shrink-0">
+          <div className="flex items-center gap-2 shrink-0">
+            <FeedbackButton onClick={() => setIsFeedbackOpen(true)} variant="footer" />
             <DonationButton variant="footer" />
           </div>
         </div>
       </footer>
+
+      {/* In-App Feedback Reporter Modal */}
+      <FeedbackModal isOpen={isFeedbackOpen} onClose={() => setIsFeedbackOpen(false)} />
     </div>
   );
 }
