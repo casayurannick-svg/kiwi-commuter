@@ -41,9 +41,38 @@ describe('src/components/FeedbackModal.tsx & FeedbackButton.tsx - US-49 In-App F
     assert.ok(html.includes('role="dialog"'), 'Must render dialog role');
     assert.ok(html.includes('aria-modal="true"'), 'Must have aria-modal="true"');
     assert.ok(html.includes('Report Feedback'), 'Must render title Report Feedback');
+    assert.ok(html.includes('aria-label="Kiwi Commuter"'), 'Must render Kiwi logo icon with Kiwi Commuter aria-label');
     assert.ok(html.includes('id="feedback-name"'), 'Must have Name input');
     assert.ok(html.includes('id="feedback-contact"'), 'Must have Contact input');
     assert.ok(html.includes('id="feedback-message"'), 'Must have Message textarea');
     assert.ok(html.includes('Submit Feedback'), 'Must have Submit Feedback button');
+  });
+
+  it('renders rebranded success state with exact text and no GitHub link (TASK-55)', () => {
+    const html = renderToStaticMarkup(
+      React.createElement(FeedbackModal, { isOpen: true, onClose: () => {}, initialSuccess: true })
+    );
+
+    assert.ok(html.includes('Thank you for your feedback!'), 'Must render success heading');
+    assert.ok(
+      html.includes('Your feedback has been successfully recorded. We appreciate your help making Kiwi Commuter better!'),
+      'Must render exact required description text'
+    );
+    assert.strictEqual(
+      html.includes('GitHub'),
+      false,
+      'Must completely remove GitHub references from success state'
+    );
+    assert.strictEqual(
+      html.includes('View Issue'),
+      false,
+      'Must completely remove View Issue link from success state'
+    );
+    assert.strictEqual(
+      html.includes('<a'),
+      false,
+      'Must not contain any anchor link tags in success state'
+    );
+    assert.ok(html.includes('Done'), 'Must render Done button');
   });
 });

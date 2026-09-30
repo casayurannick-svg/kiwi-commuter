@@ -1,20 +1,23 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { MessageSquare, X, CheckCircle2, Loader2, Send } from 'lucide-react';
+import { X, CheckCircle2, Loader2, Send } from 'lucide-react';
+import KiwiPathwayIcon from '@/components/icons/KiwiPathwayIcon';
 
 export interface FeedbackModalProps {
   isOpen: boolean;
   onClose: () => void;
+  /** Optional initial success state for testing/preview */
+  initialSuccess?: boolean;
 }
 
-export default function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
+export default function FeedbackModal({ isOpen, onClose, initialSuccess = false }: FeedbackModalProps) {
   const [name, setName] = useState('');
   const [contact, setContact] = useState('');
   const [message, setMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [successData, setSuccessData] = useState<{ issueNumber?: number; issueUrl?: string } | null>(null);
+  const [isSuccess, setIsSuccess] = useState(initialSuccess);
 
   const modalRef = useRef<HTMLDivElement>(null);
   const messageInputRef = useRef<HTMLTextAreaElement>(null);
@@ -37,14 +40,14 @@ export default function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
   useEffect(() => {
     if (isOpen) {
       setError(null);
-      setSuccessData(null);
+      setIsSuccess(initialSuccess);
       // Timeout to ensure modal has mounted
       const timer = setTimeout(() => {
         messageInputRef.current?.focus();
       }, 50);
       return () => clearTimeout(timer);
     }
-  }, [isOpen]);
+  }, [isOpen, initialSuccess]);
 
   if (!isOpen) return null;
 
@@ -82,10 +85,7 @@ export default function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
         throw new Error(data.error || 'Failed to submit feedback. Please try again.');
       }
 
-      setSuccessData({
-        issueNumber: data.issueNumber,
-        issueUrl: data.issueUrl,
-      });
+      setIsSuccess(true);
 
       // Clear form inputs
       setName('');
@@ -121,8 +121,8 @@ export default function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
         {/* Header */}
         <div className="flex items-start justify-between pb-4 border-b border-slate-800">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
-              <MessageSquare className="w-5 h-5" />
+            <div className="p-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 shrink-0">
+              <KiwiPathwayIcon className="w-6 h-6 text-emerald-500" aria-label="Kiwi Commuter" />
             </div>
             <div>
               <h2 id="feedback-modal-title" className="text-lg font-bold text-white leading-tight">
@@ -144,25 +144,15 @@ export default function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
         </div>
 
         {/* Content: Success or Form */}
-        {successData ? (
+        {isSuccess ? (
           <div className="py-8 text-center flex flex-col items-center">
             <div className="w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 mb-3 animate-in zoom-in-90 duration-200">
               <CheckCircle2 className="w-7 h-7" />
             </div>
             <h3 className="text-base font-semibold text-white">Thank you for your feedback!</h3>
             <p className="text-xs text-slate-400 max-w-sm mt-1 mb-4 leading-relaxed">
-              Your report has been automatically recorded as a GitHub issue. We appreciate your help making Kiwi Commuter better!
+              Your feedback has been successfully recorded. We appreciate your help making Kiwi Commuter better!
             </p>
-            {successData.issueUrl && (
-              <a
-                href={successData.issueUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs text-emerald-400 hover:text-emerald-300 underline underline-offset-4 mb-6 transition"
-              >
-                View Issue #{successData.issueNumber} on GitHub &rarr;
-              </a>
-            )}
             <button
               type="button"
               onClick={onClose}
