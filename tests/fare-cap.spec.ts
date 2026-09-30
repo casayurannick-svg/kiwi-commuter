@@ -2,8 +2,8 @@ import { test, expect } from '@playwright/test';
 
 test.describe('AT HOP Fare Calculations', () => {
   test('Strictly applies $7.90 4-zone cap and $50 weekly cap', async ({ page }) => {
-    // Navigate to production URL with standard commute parameters
-    await page.goto('https://kiwi-commuter.vercel.app/?from=papakura&to=parnell&days=4&transitMode=MICROMOBILITY_TRANSIT');
+    // Navigate with standard commute parameters
+    await page.goto('/?from=papakura&to=parnell&days=4&transitMode=MICROMOBILITY_TRANSIT');
 
     // Wait for the calculation engine to render the Transit card
     const transitCard = page.locator('[data-testid="at-hop-transit-summary"]');

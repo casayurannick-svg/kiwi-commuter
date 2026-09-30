@@ -10,7 +10,6 @@ import {
   DEFAULT_ANNUAL_INSURANCE,
   FIXED_COST_COMMUTE_APPORTIONMENT,
   EV_CHARGING_PRESETS,
-  INNER_HARBOUR_FERRY_FARE,
   NZ_AA_MAINTENANCE_PER_KM,
   NZ_EV_CHARGING_RATES,
   NZTA_RUC_RATES,
@@ -19,6 +18,7 @@ import {
   VEHICLE_PRESETS,
   WAIHEKE_FERRY_FARES,
 } from '@/config/fares.config';
+import { resolveFerryFareTier } from '@/constants/fares';
 import { estimateRouteMetrics, getSuburbById } from '@/config/suburbs';
 import {
   CommuteComparisonResult,
@@ -365,7 +365,19 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
           input.originSuburbId === 'bayswater' ||
           input.destinationSuburbId === 'bayswater' ||
           input.originSuburbId === 'birkenhead' ||
-          input.destinationSuburbId === 'birkenhead')));
+          input.destinationSuburbId === 'birkenhead' ||
+          input.originSuburbId === 'half-moon-bay' ||
+          input.destinationSuburbId === 'half-moon-bay' ||
+          input.originSuburbId === 'hobsonville' ||
+          input.destinationSuburbId === 'hobsonville' ||
+          input.originSuburbId === 'beach-haven' ||
+          input.destinationSuburbId === 'beach-haven' ||
+          input.originSuburbId === 'gulf-harbour' ||
+          input.destinationSuburbId === 'gulf-harbour' ||
+          input.originSuburbId === 'pine-harbour' ||
+          input.destinationSuburbId === 'pine-harbour' ||
+          input.originSuburbId === 'west-harbour' ||
+          input.destinationSuburbId === 'west-harbour')));
 
   const isWaiheke = Boolean(
     input.isWaihekeRoute ||
@@ -373,6 +385,17 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
   );
 
   const isInnerHarbourFerry = isFerry && !isWaiheke;
+
+  const ferryTier = isInnerHarbourFerry
+    ? resolveFerryFareTier({
+        originSuburbId: input.originSuburbId,
+        destinationSuburbId: input.destinationSuburbId,
+        originCoordinates: input.originCoordinates || origin.coordinates,
+        destinationCoordinates: input.destinationCoordinates || destination.coordinates,
+        transitSteps: input.transitSteps,
+        transitLines: input.transitLines,
+      })
+    : null;
 
   // BUG-47: Ensure zoneCount is at least 1
   const zoneCount = Math.max(1, route.zonesTraveled);
@@ -447,9 +470,18 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
     monthlyTransitTotal = round2(perPersonMonthly * passengers);
     hopFareMonthly = monthlyTransitTotal;
   } else if (isInnerHarbourFerry) {
-    // US-10: Inner Harbour Ferry (Devonport, Bayswater, Birkenhead, Northcote Pt)
-    // Bypasses standard bus zones and applies flat $7.80 fare.
-    const perPersonStandard = INNER_HARBOUR_FERRY_FARE;
+    // Auckland Transport Ferry Fare Calibration (Inner Harbor $7.80, Mid Harbor $10.40, Outer Harbor $13.80)
+    const effectiveFerryTier =
+      ferryTier ||
+      resolveFerryFareTier({
+        originSuburbId: input.originSuburbId,
+        destinationSuburbId: input.destinationSuburbId,
+        originCoordinates: input.originCoordinates || origin.coordinates,
+        destinationCoordinates: input.destinationCoordinates || destination.coordinates,
+        transitSteps: input.transitSteps,
+        transitLines: input.transitLines,
+      });
+    const perPersonStandard = effectiveFerryTier.rate;
     let perPersonConcession: number;
 
     if (input.fareConcession && AT_HOP_ZONE_FARES_BY_CONCESSION[input.fareConcession]) {
@@ -469,8 +501,8 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
     const baseDailyHopFarePerPerson = round2(perPersonConcession * 2);
     const baseUncappedWeeklyFarePerPerson = round2(baseDailyHopFarePerPerson * input.daysPerWeek);
 
-    // Inner Harbour Ferries ARE eligible for the AT HOP 7-day $50 cap (BUG-37)
-    isHopCapApplied = baseUncappedWeeklyFarePerPerson > AT_HOP_7_DAY_CAP;
+    // Inner & Mid Harbour Ferries ARE eligible for the AT HOP 7-day $50 cap (BUG-37; Outer Harbor is exempt)
+    isHopCapApplied = effectiveFerryTier.capEligible && baseUncappedWeeklyFarePerPerson > AT_HOP_7_DAY_CAP;
     const cappedWeeklyPerPerson = isHopCapApplied ? AT_HOP_7_DAY_CAP : baseUncappedWeeklyFarePerPerson;
 
     singleTripStandardFare = round2(perPersonStandard * transitPassengers);
@@ -489,7 +521,11 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
     // BUG-47: Clamp zone tier lookups to avoid fare leaks or undefined 3.00 fallbacks on multi-zone journeys
     const maxZoneTier = Math.max(...Object.keys(AT_HOP_ZONE_FARES).map(Number));
     const effectiveZoneCount = Math.min(zoneCount, maxZoneTier);
-    const perPersonStandard = AT_HOP_ZONE_FARES[effectiveZoneCount] ?? AT_HOP_ZONE_FARES[maxZoneTier] ?? 7.90;
+    let perPersonStandard = AT_HOP_ZONE_FARES[effectiveZoneCount] ?? AT_HOP_ZONE_FARES[maxZoneTier] ?? 7.90;
+    if (zoneCount >= 5) {
+      // BUG-47: Auckland Transport fare zones cap out at the maximum standard tier (Zone 4+ is $7.90)
+      perPersonStandard = 7.90;
+    }
     let perPersonConcession: number;
 
     // Concession calculation
@@ -497,7 +533,10 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
       const concessionTable = AT_HOP_ZONE_FARES_BY_CONCESSION[input.fareConcession];
       const maxConcessionZone = Math.max(...Object.keys(concessionTable).map(Number));
       const clampedConcessionZone = Math.min(zoneCount, maxConcessionZone);
-      perPersonConcession = concessionTable[clampedConcessionZone] ?? concessionTable[maxConcessionZone];
+      perPersonConcession =
+        zoneCount >= 5 && input.fareConcession === 'ADULT'
+          ? 7.90
+          : (concessionTable[clampedConcessionZone] ?? concessionTable[maxConcessionZone]);
     } else {
       const concessionInfo =
         CONCESSION_MULTIPLIERS[input.concession] || CONCESSION_MULTIPLIERS.adult;
@@ -810,7 +849,9 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
         : isHopCapApplied
         ? (passengers > 1 ? `Covered by AT $${50 * passengers}/wk Cap (${passengers} pax)` : 'Covered by AT $50 Weekly Cap')
         : isInnerHarbourFerry
-        ? (passengers > 1 ? `Inner Harbour Ferry Fare ($${(7.80 * passengers).toFixed(2)} for ${passengers} pax)` : 'Inner Harbour Ferry Fare ($7.80)')
+        ? (passengers > 1
+            ? `${ferryTier?.name || 'Ferry'} Fare ($${((ferryTier?.rate ?? 7.80) * passengers).toFixed(2)} for ${passengers} pax)`
+            : `${ferryTier?.name || 'Ferry'} Fare ($${(ferryTier?.rate ?? 7.80).toFixed(2)})`)
         : (passengers > 1 ? `${zoneCount}-Zone AT HOP Fare (${passengers} pax)` : `${zoneCount}-Zone AT HOP Fare`);
 
     journeyLegs.push({

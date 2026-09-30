@@ -7,6 +7,11 @@ import {
   INNER_HARBOUR_FERRY_FARE,
   WAIHEKE_FERRY_FARES,
 } from '@/config/fares.config';
+import {
+  FERRY_FARE_TIERS,
+  resolveFerryFareTier,
+  getFerryFareTier,
+} from '@/constants/fares';
 import { ConcessionType, FareConcession, TransitStepDetail } from '@/types';
 
 export {
@@ -17,6 +22,9 @@ export {
   CONCESSION_MULTIPLIERS,
   INNER_HARBOUR_FERRY_FARE,
   WAIHEKE_FERRY_FARES,
+  FERRY_FARE_TIERS,
+  resolveFerryFareTier,
+  getFerryFareTier,
 };
 
 /**
@@ -84,7 +92,18 @@ export function isInnerHarbourFerryRoute(params: {
   }
 
   // Suburb primary mode or harbour-crossing terminal suburbs
-  const harbourSuburbs = ['devonport', 'bayswater', 'birkenhead', 'half-moon-bay', 'hobsonville-point'];
+  const harbourSuburbs = [
+    'devonport',
+    'bayswater',
+    'birkenhead',
+    'half-moon-bay',
+    'hobsonville',
+    'hobsonville-point',
+    'beach-haven',
+    'gulf-harbour',
+    'pine-harbour',
+    'west-harbour',
+  ];
   if (
     (!params.transitMode &&
       (params.primaryTransitMode === 'Ferry' ||
@@ -99,7 +118,7 @@ export function isInnerHarbourFerryRoute(params: {
 
 /**
  * Calculates the single-trip standard and concession fares for a given transit route.
- * Handles the February 2026 AT HOP price hike and Inner Harbour Ferry classification.
+ * Handles the February 2026 AT HOP price hike and Inner/Mid/Outer Harbour Ferry classification.
  */
 export function calculateSingleTripTransitFare(params: {
   zoneCount: number;
@@ -107,12 +126,24 @@ export function calculateSingleTripTransitFare(params: {
   isWaiheke: boolean;
   concession: ConcessionType;
   fareConcession?: FareConcession;
+  originSuburbId?: string;
+  destinationSuburbId?: string;
+  suburbId?: string;
 }): {
   singleTripStandardFare: number;
   singleTripConcessionFare: number;
   isCapEligible: boolean;
 } {
-  const { zoneCount, isFerry, isWaiheke, concession, fareConcession } = params;
+  const {
+    zoneCount,
+    isFerry,
+    isWaiheke,
+    concession,
+    fareConcession,
+    originSuburbId,
+    destinationSuburbId,
+    suburbId,
+  } = params;
 
   if (isFerry && isWaiheke) {
     const standard = WAIHEKE_FERRY_FARES.singleTripStandard;
@@ -125,8 +156,11 @@ export function calculateSingleTripTransitFare(params: {
   }
 
   if (isFerry) {
-    // US-10: Inner Harbour Ferry fare of $7.80
-    const standard = INNER_HARBOUR_FERRY_FARE;
+    const ferryTier = resolveFerryFareTier({
+      originSuburbId: originSuburbId || suburbId,
+      destinationSuburbId,
+    });
+    const standard = ferryTier.rate;
     let concessionFare = standard;
 
     if (fareConcession && AT_HOP_ZONE_FARES_BY_CONCESSION[fareConcession]) {
@@ -143,7 +177,7 @@ export function calculateSingleTripTransitFare(params: {
     return {
       singleTripStandardFare: standard,
       singleTripConcessionFare: Math.round(concessionFare * 100) / 100,
-      isCapEligible: true,
+      isCapEligible: ferryTier.capEligible,
     };
   }
 

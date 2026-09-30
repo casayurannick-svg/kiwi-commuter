@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import Tooltip from './Tooltip';
+import ZoneBadge from './ZoneBadge';
 
 interface CommuteFormProps {
   input: CommuteInput;
@@ -401,9 +402,12 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
             </label>
             <div className="flex items-center gap-1.5 shrink-0">
               {originSuburb && (
-                <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-medium text-emerald-300 whitespace-nowrap">
-                  Z{originSuburb.zone} · {originSuburb.name}
-                </span>
+                <ZoneBadge
+                  zone={originSuburb.zone}
+                  hubName={originSuburb.name}
+                  variant="origin"
+                  data-testid="origin-zone-badge"
+                />
               )}
               {input.originCoordinates && (
                 <span className="text-[10px] text-emerald-400/80 font-mono whitespace-nowrap">
@@ -479,9 +483,12 @@ export default function CommuteForm({ input, onChange, onInputChange }: CommuteF
             </label>
             <div className="flex items-center gap-1.5 shrink-0">
               {destSuburb && (
-                <span className="px-1.5 py-0.5 rounded bg-sky-500/10 border border-sky-500/20 text-[10px] font-medium text-sky-300 whitespace-nowrap">
-                  Z{destSuburb.zone} · {destSuburb.name}
-                </span>
+                <ZoneBadge
+                  zone={destSuburb.zone}
+                  hubName={destSuburb.name}
+                  variant="destination"
+                  data-testid="destination-zone-badge"
+                />
               )}
               {input.destinationCoordinates && (
                 <span className="text-[10px] text-sky-400/80 font-mono whitespace-nowrap">

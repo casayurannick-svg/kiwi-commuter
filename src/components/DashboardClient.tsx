@@ -10,109 +10,20 @@ import RouteMap from '@/components/RouteMap';
 import { getSuburbById } from '@/config/suburbs';
 import { calculateCommuteArbitrage } from '@/lib/calculator';
 import { FuelBenchmarkDto } from '@/lib/supabase';
-import { parseCommuteFromParams, serializeCommuteToParams } from '@/lib/urlParams';
-import { CommuteInput } from '@/types';
 import ShareButton from '@/components/ShareButton';
+import FeedbackButton from '@/components/FeedbackButton';
+import FeedbackModal from '@/components/FeedbackModal';
 import KiwiPathwayIcon from '@/components/icons/KiwiPathwayIcon';
-import { usePathname, useSearchParams } from 'next/navigation';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useCommuteForm } from '@/hooks/useCommuteForm';
+import React, { useEffect, useMemo, useState } from 'react';
 
 interface DashboardClientProps {
   initialFuelPrices?: FuelBenchmarkDto;
 }
 
 export default function DashboardClient({ initialFuelPrices }: DashboardClientProps) {
-  const searchParams = useSearchParams();
-  const pathname = usePathname();
-
-  // Strict one-way hydration guard & sync refs (BUG-48)
-  const hasHydratedRef = useRef(false);
-  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const isSyncingFromPopstateRef = useRef(false);
-
-  // 1. Initial State Hydration: Parse directly from URL on initial lazy initialization
-  const [commuteInput, setCommuteInput] = useState<CommuteInput>(() => {
-    const base: CommuteInput = {
-      originSuburbId: 'epsom',
-      destinationSuburbId: 'cbd',
-      daysPerWeek: 3,
-      vehicleType: 'petrol91',
-      parkingDailyRate: 22.0,
-      parkingDaysPerWeek: 3,
-      parkingTier: 'CBD_EARLY_BIRD',
-      concession: 'adult',
-      includeMaintenanceWear: true,
-      carpoolPassengers: 1,
-      fuelPriceOverride: initialFuelPrices?.regular_91,
-      annualWof: 85,
-      annualRego: 173,
-      insuranceEnabled: true,
-      defaultInsurance: 1311,
-    };
-
-    if (searchParams && searchParams.toString()) {
-      return parseCommuteFromParams(searchParams, base);
-    }
-    if (typeof window !== 'undefined' && window.location.search) {
-      const windowParams = new URLSearchParams(window.location.search);
-      return parseCommuteFromParams(windowParams, base);
-    }
-    return base;
-  });
-
-  // 2. Mark initial hydration complete on mount
-  useEffect(() => {
-    hasHydratedRef.current = true;
-  }, []);
-
-  // 3. Handle browser back/forward navigation (popstate) without feedback loop
-  useEffect(() => {
-    const handlePopState = () => {
-      if (typeof window === 'undefined') return;
-      isSyncingFromPopstateRef.current = true;
-      const currentUrlParams = new URLSearchParams(window.location.search);
-      setCommuteInput((prev) => parseCommuteFromParams(currentUrlParams, prev));
-      setTimeout(() => {
-        isSyncingFromPopstateRef.current = false;
-      }, 50);
-    };
-
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
-
-  // 4. Debounced synchronization from state to URL on user interaction (BUG-48)
-  useEffect(() => {
-    // Guard: only serialize to URL after initial mount has completed
-    if (!hasHydratedRef.current) return;
-    // Guard: do not echo back to URL when state change originated from browser popstate
-    if (isSyncingFromPopstateRef.current) return;
-
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
-    }
-
-    debounceTimerRef.current = setTimeout(() => {
-      if (typeof window === 'undefined') return;
-
-      const params = serializeCommuteToParams(commuteInput);
-      const queryString = params.toString();
-      const newSearch = queryString ? `?${queryString}` : '';
-      const currentSearch = window.location.search;
-
-      // Only invoke history replaceState if query string actually changed
-      if (currentSearch !== newSearch) {
-        const newUrl = `${pathname}${newSearch}`;
-        window.history.replaceState(null, '', newUrl);
-      }
-    }, 300);
-
-    return () => {
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current);
-      }
-    };
-  }, [commuteInput, pathname]);
+  const { commuteInput, setCommuteInput } = useCommuteForm({ initialFuelPrices });
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
 
   const origin = useMemo(() => getSuburbById(commuteInput.originSuburbId), [commuteInput.originSuburbId]);
   const destination = useMemo(
@@ -203,6 +114,7 @@ export default function DashboardClient({ initialFuelPrices }: DashboardClientPr
     commuteInput.transitMode,
     origin?.coordinates,
     destination?.coordinates,
+    setCommuteInput,
   ]);
 
   return (
@@ -222,8 +134,9 @@ export default function DashboardClient({ initialFuelPrices }: DashboardClientPr
             </div>
           </div>
 
-          {/* Minimal Badges, Donation Button & Share Link */}
+          {/* Minimal Badges, Feedback Button, Donation Button & Share Link */}
           <div className="flex items-center gap-1.5 shrink-0">
+            <FeedbackButton onClick={() => setIsFeedbackOpen(true)} variant="header" />
             <DonationButton variant="header" />
             <ShareButton commuteInput={commuteInput} />
           </div>
@@ -306,11 +219,15 @@ export default function DashboardClient({ initialFuelPrices }: DashboardClientPr
               MBIE Data
             </a>
           </div>
-          <div className="shrink-0">
+          <div className="flex items-center gap-2 shrink-0">
+            <FeedbackButton onClick={() => setIsFeedbackOpen(true)} variant="footer" />
             <DonationButton variant="footer" />
           </div>
         </div>
       </footer>
+
+      {/* In-App Feedback Reporter Modal */}
+      <FeedbackModal isOpen={isFeedbackOpen} onClose={() => setIsFeedbackOpen(false)} />
     </div>
   );
 }

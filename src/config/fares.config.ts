@@ -196,6 +196,8 @@ export const AT_HOP_ZONE_FARES_BY_CONCESSION: Record<FareConcession, Record<numb
  */
 export const INNER_HARBOUR_FERRY_FARE = 7.80;
 export const AT_INNER_HARBOUR_FERRY_FARE = 7.80;
+export const MID_HARBOUR_FERRY_FARE = 10.40;
+export const OUTER_HARBOUR_FERRY_FARE = 13.80;
 
 /**
  * Auckland Transport 7-Day Fare Cap
