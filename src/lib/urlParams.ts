@@ -171,15 +171,18 @@ export function parseCommuteFromParams(
     params.get('power') ||
     params.get('powertrain') ||
     params.get('vehicleType') ||
-    params.get('vehicle');
+    params.get('vehicle_type') ||
+    params.get('vehicle') ||
+    params.get('drivetrain') ||
+    params.get('drive_train');
 
   let resolvedPowertrain: VehiclePowertrain = fallback.powertrain || 'PETROL_91';
   let resolvedVehicleType: VehicleType = fallback.vehicleType || 'petrol91';
 
   if (rawPower) {
     const trimmed = rawPower.trim();
-    const upper = trimmed.toUpperCase() as VehiclePowertrain;
-    const lower = trimmed.toLowerCase() as VehicleType;
+    const upper = trimmed.toUpperCase().replace(/-/g, '_') as VehiclePowertrain;
+    const lower = trimmed.toLowerCase().replace(/[-_]/g, '') as VehicleType;
 
     if (POWERTRAIN_TO_VEHICLE_TYPE[upper]) {
       resolvedPowertrain = upper;
@@ -187,18 +190,29 @@ export function parseCommuteFromParams(
     } else if (VEHICLE_TYPE_TO_POWERTRAIN[lower]) {
       resolvedVehicleType = lower;
       resolvedPowertrain = VEHICLE_TYPE_TO_POWERTRAIN[lower];
-    } else if (upper === 'PETROL' as VehiclePowertrain) {
+    } else if (upper === ('PETROL' as VehiclePowertrain) || upper === ('PETROL_91' as VehiclePowertrain) || upper === ('91' as VehiclePowertrain)) {
       resolvedPowertrain = 'PETROL_91';
       resolvedVehicleType = 'petrol91';
-    } else if (upper === 'DIESEL' as VehiclePowertrain) {
+    } else if (upper === ('PETROL_95' as VehiclePowertrain) || upper === ('95' as VehiclePowertrain) || upper === ('PREMIUM' as VehiclePowertrain)) {
+      resolvedPowertrain = 'PETROL_95';
+      resolvedVehicleType = 'petrol95';
+    } else if (upper === ('DIESEL' as VehiclePowertrain)) {
       resolvedPowertrain = 'DIESEL';
       resolvedVehicleType = 'diesel';
-    } else if (upper === 'EV' as VehiclePowertrain || upper === 'ELECTRIC' as VehiclePowertrain) {
+    } else if (upper === ('EV' as VehiclePowertrain) || upper === ('ELECTRIC' as VehiclePowertrain) || upper === ('BEV' as VehiclePowertrain)) {
       resolvedPowertrain = 'BEV';
       resolvedVehicleType = 'bev';
-    } else if (upper === 'HYBRID' as VehiclePowertrain) {
+    } else if (upper === ('HYBRID' as VehiclePowertrain) || upper === ('HEV' as VehiclePowertrain)) {
       resolvedPowertrain = 'HEV';
       resolvedVehicleType = 'hev';
+    } else if (
+      upper === ('PHEV' as VehiclePowertrain) ||
+      upper === ('PLUGIN' as VehiclePowertrain) ||
+      upper === ('PLUGIN_HYBRID' as VehiclePowertrain) ||
+      upper === ('PLUG_IN_HYBRID' as VehiclePowertrain)
+    ) {
+      resolvedPowertrain = 'PHEV';
+      resolvedVehicleType = 'phev';
     }
   }
 
@@ -209,7 +223,30 @@ export function parseCommuteFromParams(
       ? Number(params.get('fuelEconomy'))
       : undefined;
 
-  const parkTierParam = (params.get('park') || params.get('parkingTier')) as ParkingTier | undefined;
+  const rawParkTier =
+    params.get('park') ||
+    params.get('parkingTier') ||
+    params.get('parking_tier') ||
+    params.get('tier');
+  let parkTierParam: ParkingTier | undefined = undefined;
+  if (rawParkTier) {
+    const upperTier = rawParkTier.trim().toUpperCase();
+    if (
+      upperTier === 'CBD_EARLY_BIRD' ||
+      upperTier === 'CBD_CASUAL' ||
+      upperTier === 'SUBURBAN_HUB' ||
+      upperTier === 'FREE' ||
+      upperTier === 'CUSTOM'
+    ) {
+      parkTierParam = upperTier as ParkingTier;
+    } else if (upperTier === 'EARLY_BIRD' || upperTier === 'EARLYBIRD') {
+      parkTierParam = 'CBD_EARLY_BIRD';
+    } else if (upperTier === 'CASUAL') {
+      parkTierParam = 'CBD_CASUAL';
+    } else if (upperTier === 'SUBURBAN') {
+      parkTierParam = 'SUBURBAN_HUB';
+    }
+  }
 
   // Alias support for custom parking daily rate
   const rawCustomPark =
@@ -217,7 +254,17 @@ export function parseCommuteFromParams(
     params.get('parkingDailyRate') ||
     params.get('parkingDaily') ||
     params.get('parkRate') ||
-    params.get('dailyParking');
+    params.get('dailyParking') ||
+    params.get('parkingRate') ||
+    params.get('parking_rate') ||
+    params.get('parking_daily_rate') ||
+    params.get('parking_daily') ||
+    params.get('daily_parking') ||
+    params.get('parkingCost') ||
+    params.get('parking_cost') ||
+    params.get('parkCost') ||
+    params.get('park_cost') ||
+    (params.get('parking') && !isNaN(Number(params.get('parking'))) ? params.get('parking') : null);
   const customParkVal =
     rawCustomPark !== null && !isNaN(Number(rawCustomPark))
       ? Number(rawCustomPark)
@@ -352,9 +399,14 @@ export function parseCommuteFromParams(
   const rawDriveDist =
     params.get('driveDist') ||
     params.get('drivingDistanceKm') ||
+    params.get('drivingDistance') ||
+    params.get('driving_distance') ||
+    params.get('driving_distance_km') ||
     params.get('distanceKm') ||
+    params.get('distance_km') ||
     params.get('distance') ||
-    params.get('dist');
+    params.get('dist') ||
+    params.get('km');
   const drivingDistanceKm =
     rawDriveDist !== null && !isNaN(Number(rawDriveDist))
       ? Number(rawDriveDist)

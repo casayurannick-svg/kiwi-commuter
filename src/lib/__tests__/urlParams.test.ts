@@ -224,4 +224,52 @@ describe('src/lib/urlParams.ts - URL Search Param Synchronization', () => {
     assert.deepStrictEqual(parsed.originCoordinates, [174.7972, -36.8306]);
     assert.deepStrictEqual(parsed.destinationCoordinates, [174.7633, -36.8485]);
   });
+
+  it('maps legacy parameter aliases (powertrain, distance, parking rates) for backward compatibility', () => {
+    // Test powertrain legacy aliases
+    const phevParams = new URLSearchParams('powertrain=plugin_hybrid');
+    assert.strictEqual(parseCommuteFromParams(phevParams, defaultFallback).powertrain, 'PHEV');
+    assert.strictEqual(parseCommuteFromParams(phevParams, defaultFallback).vehicleType, 'phev');
+
+    const evParams = new URLSearchParams('drivetrain=electric');
+    assert.strictEqual(parseCommuteFromParams(evParams, defaultFallback).powertrain, 'BEV');
+    assert.strictEqual(parseCommuteFromParams(evParams, defaultFallback).vehicleType, 'bev');
+
+    const hybridParams = new URLSearchParams('vehicle_type=hybrid');
+    assert.strictEqual(parseCommuteFromParams(hybridParams, defaultFallback).powertrain, 'HEV');
+    assert.strictEqual(parseCommuteFromParams(hybridParams, defaultFallback).vehicleType, 'hev');
+
+    const petrol95Params = new URLSearchParams('power=premium');
+    assert.strictEqual(parseCommuteFromParams(petrol95Params, defaultFallback).powertrain, 'PETROL_95');
+    assert.strictEqual(parseCommuteFromParams(petrol95Params, defaultFallback).vehicleType, 'petrol95');
+
+    // Test distance legacy aliases
+    const dist1 = new URLSearchParams('driving_distance=32.4');
+    assert.strictEqual(parseCommuteFromParams(dist1, defaultFallback).drivingDistanceKm, 32.4);
+
+    const dist2 = new URLSearchParams('distance=18.6');
+    assert.strictEqual(parseCommuteFromParams(dist2, defaultFallback).drivingDistanceKm, 18.6);
+
+    const dist3 = new URLSearchParams('km=25');
+    assert.strictEqual(parseCommuteFromParams(dist3, defaultFallback).drivingDistanceKm, 25);
+
+    // Test parking rates and tier legacy aliases
+    const parkRate1 = new URLSearchParams('parkingRate=27.5');
+    assert.strictEqual(parseCommuteFromParams(parkRate1, defaultFallback).parkingDailyRate, 27.5);
+
+    const parkRate2 = new URLSearchParams('parking_daily=30');
+    assert.strictEqual(parseCommuteFromParams(parkRate2, defaultFallback).parkingDailyRate, 30);
+
+    const parkRate3 = new URLSearchParams('parkingCost=19');
+    assert.strictEqual(parseCommuteFromParams(parkRate3, defaultFallback).parkingDailyRate, 19);
+
+    const parkTier1 = new URLSearchParams('parking_tier=early_bird');
+    assert.strictEqual(parseCommuteFromParams(parkTier1, defaultFallback).parkingTier, 'CBD_EARLY_BIRD');
+
+    const parkTier2 = new URLSearchParams('tier=casual');
+    assert.strictEqual(parseCommuteFromParams(parkTier2, defaultFallback).parkingTier, 'CBD_CASUAL');
+
+    const parkTier3 = new URLSearchParams('park=suburban');
+    assert.strictEqual(parseCommuteFromParams(parkTier3, defaultFallback).parkingTier, 'SUBURBAN_HUB');
+  });
 });
