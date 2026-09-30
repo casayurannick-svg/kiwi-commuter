@@ -17,16 +17,58 @@ export interface GeocodingResult {
   suburbName?: string;
 }
 
+export interface AddressSearchOptions {
+  transitMode?: string;
+  proximity?: [number, number];
+}
+
+export const HOBSONVILLE_FERRY_TERMINAL: GeocodingResult = {
+  id: 'hobsonville-point-ferry',
+  placeName: 'Hobsonville Point Ferry Terminal, Hobsonville, Auckland',
+  text: 'Hobsonville Point Ferry Terminal',
+  coordinates: [174.6680, -36.7980],
+  suburbName: 'Hobsonville Point',
+};
+
+export const HOBSONVILLE_TOWN_CENTRE: GeocodingResult = {
+  id: 'hobsonville-town-centre',
+  placeName: 'Hobsonville Town Centre, Hobsonville, Auckland',
+  text: 'Hobsonville Town Centre',
+  coordinates: [174.6590, -36.7920],
+  suburbName: 'Hobsonville Point',
+};
+
 /**
  * Searches Auckland addresses using Mapbox Geocoding API with Auckland bounding box
- * Falls back to SUBURB_CENTROIDS when offline or without token
+ * Falls back to SUBURB_CENTROIDS when offline or without token.
+ * BUG-54: When transitMode=FERRY is active, prioritizes or explicitly snaps
+ * "Hobsonville" to "Hobsonville Point Ferry Terminal" rather than inland "Hobsonville Town Centre".
  */
 export async function searchAucklandAddresses(
   query: string,
-  proximity: [number, number] = [174.7645, -36.8485]
+  proximityOrOptions?: [number, number] | AddressSearchOptions | string,
+  options?: AddressSearchOptions
 ): Promise<GeocodingResult[]> {
   const cleanQuery = query.trim();
   if (!cleanQuery || cleanQuery.length < 2) return [];
+
+  let proximity: [number, number] = [174.7645, -36.8485];
+  let transitMode: string | undefined;
+
+  if (Array.isArray(proximityOrOptions)) {
+    proximity = proximityOrOptions;
+    if (options && typeof options === 'object') {
+      transitMode = options.transitMode;
+    }
+  } else if (typeof proximityOrOptions === 'object' && proximityOrOptions !== null) {
+    if (proximityOrOptions.proximity) proximity = proximityOrOptions.proximity;
+    transitMode = proximityOrOptions.transitMode;
+  } else if (typeof proximityOrOptions === 'string') {
+    transitMode = proximityOrOptions;
+  }
+
+  const isFerryMode = transitMode?.toUpperCase() === 'FERRY';
+  const isHobsonvilleQuery = cleanQuery.toLowerCase().includes('hobsonville');
 
   // Try Mapbox Geocoding API if token is configured
   if (MAPBOX_TOKEN && MAPBOX_TOKEN.startsWith('pk.')) {
@@ -49,7 +91,7 @@ interface MapboxFeatureItem {
 }
 
         if (Array.isArray(data.features) && data.features.length > 0) {
-          return (data.features as MapboxFeatureItem[]).map((f) => ({
+          const apiResults = (data.features as MapboxFeatureItem[]).map((f) => ({
             id: f.id,
             placeName: f.place_name,
             text: f.text,
@@ -59,6 +101,22 @@ interface MapboxFeatureItem {
                 (c) => c.id.startsWith('locality') || c.id.startsWith('neighborhood')
               )?.text || f.text,
           }));
+
+          if (isHobsonvilleQuery) {
+            if (isFerryMode) {
+              const withoutTerminal = apiResults.filter(
+                (r) => r.id !== HOBSONVILLE_FERRY_TERMINAL.id && !r.text.toLowerCase().includes('ferry')
+              );
+              return [HOBSONVILLE_FERRY_TERMINAL, ...withoutTerminal].slice(0, 6);
+            } else {
+              const withoutTerminal = apiResults.filter(
+                (r) => r.id !== HOBSONVILLE_FERRY_TERMINAL.id && !r.text.toLowerCase().includes('ferry')
+              );
+              return [HOBSONVILLE_TOWN_CENTRE, ...withoutTerminal].slice(0, 6);
+            }
+          }
+
+          return apiResults;
         }
       }
     } catch (e) {
@@ -66,7 +124,15 @@ interface MapboxFeatureItem {
     }
   }
 
-  // Fallback: match against Auckland suburb centroids
+  // Fallback: match against Auckland suburb centroids & snap points
+  if (isHobsonvilleQuery) {
+    if (isFerryMode) {
+      return [HOBSONVILLE_FERRY_TERMINAL, HOBSONVILLE_TOWN_CENTRE];
+    } else {
+      return [HOBSONVILLE_TOWN_CENTRE, HOBSONVILLE_FERRY_TERMINAL];
+    }
+  }
+
   const lower = cleanQuery.toLowerCase();
   const matched = SUBURB_CENTROIDS.filter((s) => s.name.toLowerCase().includes(lower));
   return matched.slice(0, 6).map((s) => ({

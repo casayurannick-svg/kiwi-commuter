@@ -272,4 +272,23 @@ describe('src/lib/urlParams.ts - URL Search Param Synchronization', () => {
     const parkTier3 = new URLSearchParams('park=suburban');
     assert.strictEqual(parseCommuteFromParams(parkTier3, defaultFallback).parkingTier, 'SUBURBAN_HUB');
   });
+
+  it('BUG-54: snaps Hobsonville coordinates to ferry terminal when transitMode is FERRY', () => {
+    const ferryParams = new URLSearchParams('from=hobsonville&to=cbd&transitMode=FERRY');
+    const parsed = parseCommuteFromParams(ferryParams, defaultFallback);
+    assert.deepStrictEqual(
+      parsed.originCoordinates,
+      [174.6680, -36.7980],
+      'Origin coordinates must snap to Hobsonville Point Ferry Terminal'
+    );
+
+    const busParams = new URLSearchParams('from=hobsonville&to=cbd&transitMode=BUS');
+    const parsedBus = parseCommuteFromParams(busParams, defaultFallback);
+    assert.deepStrictEqual(
+      parsedBus.originCoordinates,
+      [174.6590, -36.7920],
+      'Origin coordinates must default to inland Hobsonville centroid for bus'
+    );
+  });
 });
+

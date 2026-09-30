@@ -13,6 +13,7 @@ import {
   ParkingCircle,
   ShieldCheck,
   Ship,
+  Train,
   TrendingDown,
   TrendingUp,
   Zap,
@@ -62,10 +63,59 @@ export default function ComparisonCard({
 
   const { driving, transit, co2SavedMonthlyKg, timeMetrics } = activeArbitrage;
   const passengers = Math.max(1, input.carpoolPassengers || transit.passengers || 1);
+
+  // BUG-54: Derive transport mode label and icon dynamically by inspecting the mode types
+  // of the actual legs in the returned route array, rather than relying on URL transitMode parameter.
+  const transitModeInfo = useMemo(() => {
+    if (transit.primaryMode === 'E-Bike' || input.transitMode === 'EBIKE') {
+      return { mode: 'E-Bike', label: 'E-Bike', isEbike: true, isFerry: false, isTrain: false, isBus: false };
+    }
+
+    const actualTransitLeg = activeArbitrage.journeyLegs?.find((l) => l.type === 'TRANSIT');
+    const returnedSteps = input.transitSteps ?? actualTransitLeg?.transitSteps;
+    const hasReturnedSteps = Array.isArray(returnedSteps) && returnedSteps.length > 0;
+
+    if (hasReturnedSteps) {
+      const hasFerry = returnedSteps.some(
+        (s) =>
+          s.travelMode === 'FERRY' ||
+          s.vehicleType === 'FERRY' ||
+          s.line?.toLowerCase().includes('ferry') ||
+          s.line?.toUpperCase() === 'DEV' ||
+          s.departureStop?.toLowerCase().includes('wharf') ||
+          s.arrivalStop?.toLowerCase().includes('wharf') ||
+          s.departureStop?.toLowerCase().includes('ferry') ||
+          s.arrivalStop?.toLowerCase().includes('ferry')
+      );
+
+      if (hasFerry) {
+        return { mode: 'Ferry', label: 'AT HOP Ferry', isEbike: false, isFerry: true, isTrain: false, isBus: false };
+      }
+
+      const hasTrain = returnedSteps.some(
+        (s) => s.travelMode === 'TRAIN' || s.vehicleType === 'TRAIN' || s.line?.toLowerCase().includes('train')
+      );
+      if (hasTrain) {
+        return { mode: 'Train', label: 'AT HOP Train', isEbike: false, isFerry: false, isTrain: true, isBus: false };
+      }
+
+      // If actual steps exist and none are ferry or train, it is strictly an all-bus route!
+      return { mode: 'Bus', label: 'AT HOP Transit', isEbike: false, isFerry: false, isTrain: false, isBus: true };
+    }
+
+    // Fall back to actual transit leg mode or transit.primaryMode when no detailed steps array is available
+    if (actualTransitLeg?.mode === 'FERRY' || transit.primaryMode === 'Ferry') {
+      return { mode: 'Ferry', label: 'AT HOP Ferry', isEbike: false, isFerry: true, isTrain: false, isBus: false };
+    }
+    if (actualTransitLeg?.mode === 'TRAIN' || transit.primaryMode === 'Train') {
+      return { mode: 'Train', label: 'AT HOP Train', isEbike: false, isFerry: false, isTrain: true, isBus: false };
+    }
+    return { mode: 'Bus', label: 'AT HOP Transit', isEbike: false, isFerry: false, isTrain: false, isBus: true };
+  }, [transit.primaryMode, input.transitMode, input.transitSteps, activeArbitrage.journeyLegs]);
+
   // BUG-43: E-Bike and E-Scooter are single-rider — suppress (X pax) badges for these modes.
   const isEbikeOrScooterMode =
-    transit.primaryMode === 'E-Bike' ||
-    input.transitMode === 'EBIKE' ||
+    transitModeInfo.isEbike ||
     input.transitMode === 'MICROMOBILITY_TRANSIT' ||
     input.transitMode === 'Scooter & Ride' ||
     input.transitMode === 'Scooter & Transit';
@@ -84,14 +134,14 @@ export default function ComparisonCard({
   let badgeColor = 'text-zinc-400 bg-zinc-800/60 border-zinc-700';
 
   if (isTransitCheaper && !isBreakEven) {
-    const modeLabel = activeArbitrage.transit.primaryMode === 'E-Bike' ? 'an E-Bike' : 'public transport';
+    const modeLabel = transitModeInfo.isEbike ? 'an E-Bike' : transitModeInfo.isFerry ? 'the ferry' : 'public transport';
     headline = `You save $${delta}/month on ${modeLabel}`;
     subline = `Save $${annualDelta.toLocaleString('en-NZ')}/year compared to driving`;
     headlineColor = 'text-emerald-400';
     badgeColor = 'text-emerald-300 bg-emerald-500/20 border-emerald-500/30';
   } else if (isDrivingCheaper && !isBreakEven) {
     headline = `You save $${delta}/month driving`;
-    const altModeLabel = activeArbitrage.transit.primaryMode === 'E-Bike' ? 'an E-Bike' : 'public transport';
+    const altModeLabel = transitModeInfo.isEbike ? 'an E-Bike' : transitModeInfo.isFerry ? 'the ferry' : 'public transport';
     subline = `Save $${annualDelta.toLocaleString('en-NZ')}/year compared to ${altModeLabel}`;
     headlineColor = 'text-amber-400';
     badgeColor = 'text-amber-300 bg-amber-500/20 border-amber-500/30';
@@ -311,24 +361,22 @@ export default function ComparisonCard({
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div className="p-1.5 bg-emerald-950/60 text-emerald-400 rounded-lg border border-emerald-500/30">
-                    {transit.primaryMode === 'E-Bike' ? (
+                    {transitModeInfo.isEbike ? (
                       <span className="text-sm">🚲</span>
-                    ) : transit.primaryMode === 'Ferry' ? (
+                    ) : transitModeInfo.isFerry ? (
                       <Ship className="w-4 h-4" />
+                    ) : transitModeInfo.isTrain ? (
+                      <Train className="w-4 h-4" />
                     ) : (
                       <Bus className="w-4 h-4" />
                     )}
                   </div>
                   <div>
                     <span className="text-xs font-bold text-white block">
-                      {transit.primaryMode === 'E-Bike'
-                        ? 'E-Bike'
-                        : transit.primaryMode === 'Ferry'
-                        ? 'AT HOP Ferry'
-                        : 'AT HOP Transit'}
+                      {transitModeInfo.label}
                     </span>
                     <span className="text-[10px] text-slate-400">
-                      {oneWayTransit} mins one-way • {transit.primaryMode === 'E-Bike' ? 'Active Commute' : `${transit.primaryMode}`}
+                      {oneWayTransit} mins one-way • {transitModeInfo.isEbike ? 'Active Commute' : `${transitModeInfo.mode}`}
                     </span>
                   </div>
                 </div>
@@ -534,20 +582,18 @@ export default function ComparisonCard({
           <div className="flex items-center justify-between pb-2 border-b border-slate-800">
             <div className="flex items-center gap-2">
               <div className="p-1.5 bg-emerald-950/60 text-emerald-400 rounded-lg border border-emerald-500/30">
-                {transit.primaryMode === 'E-Bike' ? (
+                {transitModeInfo.isEbike ? (
                   <span className="text-sm">🚲</span>
-                ) : transit.primaryMode === 'Ferry' ? (
+                ) : transitModeInfo.isFerry ? (
                   <Ship className="w-4 h-4" />
+                ) : transitModeInfo.isTrain ? (
+                  <Train className="w-4 h-4" />
                 ) : (
                   <Bus className="w-4 h-4" />
                 )}
               </div>
               <span className="text-sm font-bold text-white">
-                {transit.primaryMode === 'E-Bike'
-                  ? 'E-Bike'
-                  : transit.primaryMode === 'Ferry'
-                  ? 'AT HOP Ferry'
-                  : 'AT HOP Transit'}
+                {transitModeInfo.label}
               </span>
             </div>
             <div className="text-right">
@@ -599,13 +645,13 @@ export default function ComparisonCard({
               </div>
             )}
 
-{transit.primaryMode !== 'E-Bike' && (
+{!transitModeInfo.isEbike && (
             <div className="flex items-center justify-between">
               <span className="text-slate-400">Corridor:</span>
               <span className="font-semibold text-slate-300 truncate max-w-[140px]">
-                {transit.primaryMode === 'Ferry'
+                {transitModeInfo.isFerry
                   ? (input.isWaihekeRoute || input.originSuburbId === 'waiheke' ? 'Waiheke Ferry' : 'Inner Harbour Ferry')
-                  : `Zone ${transit.zoneCount} • ${transit.primaryMode}`}
+                  : `Zone ${transit.zoneCount} • ${transitModeInfo.mode}`}
               </span>
             </div>
           )}

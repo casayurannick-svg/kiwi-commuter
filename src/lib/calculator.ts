@@ -392,34 +392,48 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
     )
   );
 
+  const hasReturnedSteps = Boolean(
+    (input.transitSteps && input.transitSteps.length > 0) ||
+    (input.transitLines && input.transitLines.length > 0)
+  );
+
+  const hasTrainStep = Boolean(
+    input.transitSteps?.some((s) => s.travelMode === 'TRAIN' || s.vehicleType === 'TRAIN') ||
+    input.transitLines?.some((l) => l.toLowerCase().includes('train'))
+  );
+
+  // BUG-54: If actual transit steps/legs were returned in route array, check if any ferry leg exists.
+  // If the returned route is all-bus, do NOT classify as Ferry or prepend Ferry to UI.
   const isFerry =
     !isEbike &&
     !isMicromobility &&
-    (hasFerryStep ||
-      hasFerryLine ||
-      input.transitMode === 'FERRY' ||
-      input.transitMode === 'Ferry' ||
-      (!input.transitMode &&
-        (origin.primaryTransitMode === 'Ferry' ||
-          destination.primaryTransitMode === 'Ferry' ||
-          input.originSuburbId === 'devonport' ||
-          input.destinationSuburbId === 'devonport' ||
-          input.originSuburbId === 'bayswater' ||
-          input.destinationSuburbId === 'bayswater' ||
-          input.originSuburbId === 'birkenhead' ||
-          input.destinationSuburbId === 'birkenhead' ||
-          input.originSuburbId === 'half-moon-bay' ||
-          input.destinationSuburbId === 'half-moon-bay' ||
-          input.originSuburbId === 'hobsonville' ||
-          input.destinationSuburbId === 'hobsonville' ||
-          input.originSuburbId === 'beach-haven' ||
-          input.destinationSuburbId === 'beach-haven' ||
-          input.originSuburbId === 'gulf-harbour' ||
-          input.destinationSuburbId === 'gulf-harbour' ||
-          input.originSuburbId === 'pine-harbour' ||
-          input.destinationSuburbId === 'pine-harbour' ||
-          input.originSuburbId === 'west-harbour' ||
-          input.destinationSuburbId === 'west-harbour')));
+    (hasReturnedSteps
+      ? (hasFerryStep || hasFerryLine)
+      : (hasFerryStep ||
+          hasFerryLine ||
+          input.transitMode === 'FERRY' ||
+          input.transitMode === 'Ferry' ||
+          (!input.transitMode &&
+            (origin.primaryTransitMode === 'Ferry' ||
+              destination.primaryTransitMode === 'Ferry' ||
+              input.originSuburbId === 'devonport' ||
+              input.destinationSuburbId === 'devonport' ||
+              input.originSuburbId === 'bayswater' ||
+              input.destinationSuburbId === 'bayswater' ||
+              input.originSuburbId === 'birkenhead' ||
+              input.destinationSuburbId === 'birkenhead' ||
+              input.originSuburbId === 'half-moon-bay' ||
+              input.destinationSuburbId === 'half-moon-bay' ||
+              input.originSuburbId === 'hobsonville' ||
+              input.destinationSuburbId === 'hobsonville' ||
+              input.originSuburbId === 'beach-haven' ||
+              input.destinationSuburbId === 'beach-haven' ||
+              input.originSuburbId === 'gulf-harbour' ||
+              input.destinationSuburbId === 'gulf-harbour' ||
+              input.originSuburbId === 'pine-harbour' ||
+              input.destinationSuburbId === 'pine-harbour' ||
+              input.originSuburbId === 'west-harbour' ||
+              input.destinationSuburbId === 'west-harbour'))));
 
   const isWaiheke = Boolean(
     input.isWaihekeRoute ||
@@ -710,7 +724,9 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
       ? 'Scooter & Ride'
       : isFerry
       ? 'Ferry'
-      : origin.primaryTransitMode,
+      : (hasReturnedSteps && hasTrainStep) || (!hasReturnedSteps && origin.primaryTransitMode === 'Train')
+      ? 'Train'
+      : 'Bus',
     estimatedTransitTimeMins:
       typeof input.transitTimeMins === 'number' && input.transitTimeMins > 0
         ? input.transitTimeMins
@@ -867,11 +883,11 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
       notes: nearestStation?.hasParkAndRide ? 'Park & Ride Available' : undefined,
     });
 
-    const transitRideMode =
-      origin.primaryTransitMode === 'Train'
-        ? 'TRAIN'
-        : origin.primaryTransitMode === 'Ferry' || isFerry
+    const transitRideMode: 'TRAIN' | 'FERRY' | 'BUS' =
+      isFerry
         ? 'FERRY'
+        : (hasReturnedSteps && hasTrainStep) || (!hasReturnedSteps && origin.primaryTransitMode === 'Train')
+        ? 'TRAIN'
         : 'BUS';
     const transitDist = Math.max(1, round1(distanceOneWayKm - effectiveFirstMileDist));
 
@@ -882,11 +898,12 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
         ? Math.max(15, Math.round(input.transitTimeMins - effectiveFirstMileDuration - 8))
         : Math.max(5, Math.round(adjustedTransitTimeMins - effectiveFirstMileDuration - 8));
 
-    const isTransitFerry = isFerry || transitRideMode === 'FERRY';
+    const isTransitFerry = isFerry;
+    const isTransitTrain = transitRideMode === 'TRAIN';
     const transitTitle =
       input.transitLines && input.transitLines.length > 0
-        ? `${isTransitFerry ? 'Ferry' : 'Bus'} ${input.transitLines.join(' + ')} Ride`
-        : `${transitBreakdown.primaryMode || (isTransitFerry ? 'Ferry' : 'Transit')} Ride`;
+        ? `${isTransitFerry ? 'Ferry' : isTransitTrain ? 'Train' : 'Bus'} ${input.transitLines.join(' + ')} Ride`
+        : `${transitBreakdown.primaryMode || (isTransitFerry ? 'Ferry' : isTransitTrain ? 'Train' : 'Transit')} Ride`;
 
     const transitNotes =
       input.transitSteps && input.transitSteps.length > 1

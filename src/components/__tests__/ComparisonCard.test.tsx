@@ -457,7 +457,131 @@ describe('src/components/ComparisonCard.tsx - US-16 Mini-Receipt Time Valuation'
       assert.ok(html.includes('IRD Rate'), 'Must show IRD Rate indicator');
     });
   });
+
+  describe('BUG-54: Dynamic Transit Mode Resolution (Ghost Ferry UI Prevention)', () => {
+    it('does not display a ferry icon or AT HOP Ferry label for an all-bus route when transitMode is FERRY', () => {
+      const input: CommuteInput = {
+        ...defaultInput,
+        transitMode: 'FERRY',
+        transitLines: ['11', 'WX1'],
+        transitSteps: [
+          { line: '11', durationMins: 15, travelMode: 'BUS' },
+          { line: 'WX1', durationMins: 25, travelMode: 'BUS' },
+        ],
+      };
+
+      const arbitrage = createMockArbitrage({
+        transit: {
+          ...createMockArbitrage().transit,
+          primaryMode: 'Bus',
+        },
+        journeyLegs: [
+          {
+            id: 'walk-1',
+            type: 'FIRST_MILE',
+            mode: 'WALK',
+            title: 'Walk to Stop',
+            originName: 'Hobsonville',
+            destinationName: 'Stop 1234',
+            distanceKm: 0.5,
+            durationMins: 6,
+            cost: 0,
+            costFormatted: 'Free',
+          },
+          {
+            id: 'transit-1',
+            type: 'TRANSIT',
+            mode: 'BUS',
+            title: 'Bus 11 + WX1 Ride',
+            originName: 'Stop 1234',
+            destinationName: 'Britomart',
+            distanceKm: 20,
+            durationMins: 40,
+            cost: 4.80,
+            costFormatted: '$4.80',
+            transitSteps: [
+              { line: '11', durationMins: 15, travelMode: 'BUS' },
+              { line: 'WX1', durationMins: 25, travelMode: 'BUS' },
+            ],
+          },
+        ],
+      });
+
+      const html = renderToStaticMarkup(
+        React.createElement(ComparisonCard, { arbitrage, input })
+      );
+
+      // Must NOT render ferry icon or ferry label
+      assert.ok(
+        !html.includes('lucide-ship'),
+        'Must NOT render lucide-ship icon for an all-bus route'
+      );
+      assert.ok(
+        !html.includes('AT HOP Ferry'),
+        'Must NOT render "AT HOP Ferry" label for an all-bus route'
+      );
+
+      // Must render bus icon and AT HOP Transit
+      assert.ok(
+        html.includes('lucide-bus'),
+        'Must render lucide-bus icon for an all-bus route'
+      );
+      assert.ok(
+        html.includes('AT HOP Transit'),
+        'Must render "AT HOP Transit" label for an all-bus route'
+      );
+    });
+
+    it('displays ferry icon and AT HOP Ferry label when actual route contains a ferry step', () => {
+      const input: CommuteInput = {
+        ...defaultInput,
+        transitMode: 'FERRY',
+        transitLines: ['HOBH Ferry'],
+        transitSteps: [
+          { line: 'HOBH Ferry', durationMins: 35, travelMode: 'FERRY' },
+        ],
+      };
+
+      const arbitrage = createMockArbitrage({
+        transit: {
+          ...createMockArbitrage().transit,
+          primaryMode: 'Ferry',
+        },
+        journeyLegs: [
+          {
+            id: 'transit-1',
+            type: 'TRANSIT',
+            mode: 'FERRY',
+            title: 'Ferry HOBH Ferry Ride',
+            originName: 'Hobsonville Point',
+            destinationName: 'Downtown Ferry Terminal',
+            distanceKm: 15,
+            durationMins: 35,
+            cost: 8.20,
+            costFormatted: '$8.20',
+            transitSteps: [
+              { line: 'HOBH Ferry', durationMins: 35, travelMode: 'FERRY' },
+            ],
+          },
+        ],
+      });
+
+      const html = renderToStaticMarkup(
+        React.createElement(ComparisonCard, { arbitrage, input })
+      );
+
+      assert.ok(
+        html.includes('lucide-ship'),
+        'Must render lucide-ship icon for ferry route'
+      );
+      assert.ok(
+        html.includes('AT HOP Ferry'),
+        'Must render "AT HOP Ferry" label for ferry route'
+      );
+    });
+  });
 });
+
 
 
 

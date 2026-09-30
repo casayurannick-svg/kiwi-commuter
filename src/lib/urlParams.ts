@@ -327,15 +327,25 @@ export function parseCommuteFromParams(
 
   const rawFromCoords = params.get('fromCoords') || params.get('originCoords');
   let originCoordinates: [number, number] | undefined = fallback.originCoordinates;
+  const rawTransitModeForCoords = (
+    params.get('transitMode') ||
+    params.get('mode') ||
+    params.get('transit')
+  )?.toUpperCase();
+
   if (rawFromCoords) {
     const parts = rawFromCoords.split(',').map((p) => parseFloat(p.trim()));
     if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
       originCoordinates = [parts[0], parts[1]];
     }
   } else if (fromSuburbParam) {
-    const sub = SUBURB_CENTROIDS.find((s) => s.id === fromSuburbParam);
-    if (sub) {
-      originCoordinates = sub.coordinates;
+    if (fromSuburbParam === 'hobsonville' && rawTransitModeForCoords === 'FERRY') {
+      originCoordinates = [174.6680, -36.7980]; // Hobsonville Point Ferry Terminal
+    } else {
+      const sub = SUBURB_CENTROIDS.find((s) => s.id === fromSuburbParam);
+      if (sub) {
+        originCoordinates = sub.coordinates;
+      }
     }
   }
 
@@ -347,9 +357,13 @@ export function parseCommuteFromParams(
       destinationCoordinates = [parts[0], parts[1]];
     }
   } else if (toSuburbParam) {
-    const sub = SUBURB_CENTROIDS.find((s) => s.id === toSuburbParam);
-    if (sub) {
-      destinationCoordinates = sub.coordinates;
+    if (toSuburbParam === 'hobsonville' && rawTransitModeForCoords === 'FERRY') {
+      destinationCoordinates = [174.6680, -36.7980]; // Hobsonville Point Ferry Terminal
+    } else {
+      const sub = SUBURB_CENTROIDS.find((s) => s.id === toSuburbParam);
+      if (sub) {
+        destinationCoordinates = sub.coordinates;
+      }
     }
   }
 

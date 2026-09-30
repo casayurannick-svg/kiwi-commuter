@@ -1405,6 +1405,68 @@ describe('src/lib/calculator.ts - calculateCommuteArbitrage', () => {
       assert.strictEqual(result.dailySavings, Math.round((58.00 - result.transit.dailyFare) * 100) / 100);
       assert.strictEqual(result.monthlySavings, Math.round((1256.67 - result.transit.monthlyTotal) * 100) / 100);
     });
+
+    it('BUG-54: all-bus route does not prepend "Ferry" or set Ferry mode when transitMode is FERRY', () => {
+      const input: CommuteInput = {
+        originSuburbId: 'hobsonville',
+        destinationSuburbId: 'cbd',
+        daysPerWeek: 5,
+        vehicleType: 'petrol91',
+        parkingDailyRate: 0,
+        parkingDaysPerWeek: 0,
+        concession: 'adult',
+        includeMaintenanceWear: false,
+        carpoolPassengers: 1,
+        transitMode: 'FERRY', // User requested ferry, but only bus route was returned
+        transitLines: ['11', 'WX1'],
+        transitSteps: [
+          { line: '11', durationMins: 15, travelMode: 'BUS' },
+          { line: 'WX1', durationMins: 25, travelMode: 'BUS' },
+        ],
+      };
+
+      const result = calculateCommuteArbitrage(input);
+
+      // Verify that primaryMode is NOT Ferry
+      assert.strictEqual(result.transit.primaryMode, 'Bus', 'primaryMode must be Bus, not Ferry');
+
+      // Verify transit leg title does not prepend Ferry
+      const transitLeg = result.journeyLegs?.find((l) => l.type === 'TRANSIT');
+      assert.ok(transitLeg, 'Transit leg must exist');
+      assert.strictEqual(transitLeg.mode, 'BUS', 'Transit leg mode must be BUS');
+      assert.strictEqual(transitLeg.title, 'Bus 11 + WX1 Ride', 'Transit leg title must not be Ferry 11 + WX1 Ride');
+      assert.strictEqual(transitLeg.iconName, 'Bus', 'Transit leg iconName must be Bus');
+    });
+
+    it('BUG-54: route with actual ferry step correctly identifies as Ferry mode', () => {
+      const input: CommuteInput = {
+        originSuburbId: 'hobsonville',
+        destinationSuburbId: 'cbd',
+        daysPerWeek: 5,
+        vehicleType: 'petrol91',
+        parkingDailyRate: 0,
+        parkingDaysPerWeek: 0,
+        concession: 'adult',
+        includeMaintenanceWear: false,
+        carpoolPassengers: 1,
+        transitMode: 'FERRY',
+        transitLines: ['HOBH Ferry'],
+        transitSteps: [
+          { line: 'HOBH Ferry', durationMins: 35, travelMode: 'FERRY' },
+        ],
+      };
+
+      const result = calculateCommuteArbitrage(input);
+
+      assert.strictEqual(result.transit.primaryMode, 'Ferry');
+
+      const transitLeg = result.journeyLegs?.find((l) => l.type === 'TRANSIT');
+      assert.ok(transitLeg);
+      assert.strictEqual(transitLeg.mode, 'FERRY');
+      assert.strictEqual(transitLeg.iconName, 'Ship', 'Transit leg iconName must be Ship');
+      assert.strictEqual(transitLeg.title, 'Ferry HOBH Ferry Ride');
+    });
   });
 });
+
 

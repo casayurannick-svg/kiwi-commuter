@@ -276,7 +276,9 @@ export default function CommuteForm({
       setIsOriginLoading(true);
       setShowOriginDropdown(true);
       try {
-        const results = await searchAucklandAddresses(val);
+        const results = await searchAucklandAddresses(val, undefined, {
+          transitMode: input.transitMode,
+        });
         setOriginSuggestions(results);
       } catch (e) {
         console.error(e);
@@ -322,7 +324,9 @@ export default function CommuteForm({
       setIsDestLoading(true);
       setShowDestDropdown(true);
       try {
-        const results = await searchAucklandAddresses(val);
+        const results = await searchAucklandAddresses(val, undefined, {
+          transitMode: input.transitMode,
+        });
         setDestSuggestions(results);
       } catch (e) {
         console.error(e);
