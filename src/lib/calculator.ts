@@ -489,7 +489,11 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
     // BUG-47: Clamp zone tier lookups to avoid fare leaks or undefined 3.00 fallbacks on multi-zone journeys
     const maxZoneTier = Math.max(...Object.keys(AT_HOP_ZONE_FARES).map(Number));
     const effectiveZoneCount = Math.min(zoneCount, maxZoneTier);
-    const perPersonStandard = AT_HOP_ZONE_FARES[effectiveZoneCount] ?? AT_HOP_ZONE_FARES[maxZoneTier] ?? 7.90;
+    let perPersonStandard = AT_HOP_ZONE_FARES[effectiveZoneCount] ?? AT_HOP_ZONE_FARES[maxZoneTier] ?? 7.90;
+    if (zoneCount >= 5) {
+      // BUG-47: Auckland Transport fare zones cap out at the maximum standard tier (Zone 4+ is $7.90)
+      perPersonStandard = 7.90;
+    }
     let perPersonConcession: number;
 
     // Concession calculation
@@ -497,7 +501,10 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
       const concessionTable = AT_HOP_ZONE_FARES_BY_CONCESSION[input.fareConcession];
       const maxConcessionZone = Math.max(...Object.keys(concessionTable).map(Number));
       const clampedConcessionZone = Math.min(zoneCount, maxConcessionZone);
-      perPersonConcession = concessionTable[clampedConcessionZone] ?? concessionTable[maxConcessionZone];
+      perPersonConcession =
+        zoneCount >= 5 && input.fareConcession === 'ADULT'
+          ? 7.90
+          : (concessionTable[clampedConcessionZone] ?? concessionTable[maxConcessionZone]);
     } else {
       const concessionInfo =
         CONCESSION_MULTIPLIERS[input.concession] || CONCESSION_MULTIPLIERS.adult;

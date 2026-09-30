@@ -260,6 +260,7 @@ export default function ComparisonCard({ arbitrage, input }: ComparisonCardProps
 
             {/* Transit Summary Panel */}
             <div
+              data-testid="at-hop-transit-summary"
               className={`p-3 rounded-xl border transition-all ${
                 isTransitCheaper && !isBreakEven
                   ? 'bg-emerald-950/20 border-emerald-500/30'
@@ -302,7 +303,7 @@ export default function ComparisonCard({ arbitrage, input }: ComparisonCardProps
 
               {/* Quick cost drivers */}
               <div className="mt-2.5 pt-2 border-t border-slate-800/60 flex items-center justify-between text-[11px] text-slate-400">
-                <span>
+                <span data-testid="single-fare-value">
                   Single: ${transit.singleTripConcessionFare.toFixed(2)}
                   {showPaxBadge && ` (${passengers} pax)`}
                 </span>
@@ -313,7 +314,7 @@ export default function ComparisonCard({ arbitrage, input }: ComparisonCardProps
                     ? (showPaxBadge ? `$${50 * passengers} cap (${passengers}x)` : '$50 cap active')
                     : (showPaxBadge ? `Under $${50 * passengers} cap` : 'Under $50 cap')}
                 </span>
-                <span>${transit.weeklyTotal.toFixed(0)}/wk</span>
+                <span data-testid="weekly-transit-cost">${transit.weeklyTotal.toFixed(2)}/wk</span>
               </div>
             </div>
           </div>
