@@ -29,10 +29,12 @@ import {
   JourneyLeg,
   TimeMetrics,
   TransitCostBreakdown,
+  TransitStation,
   VehiclePowertrain,
   VehicleType,
 } from '@/types';
 import { findNearestTransitStation } from './stations';
+import { haversineDistanceKm } from './routes';
 
 export const WEEKS_PER_MONTH = 52 / 12; // 4.33333333
 export { IRD_MILEAGE_RATE_PER_KM };
@@ -633,12 +635,64 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
     }
   }
 
-  // --- US-28: First-Mile Running Cost & Spatial Nearest Station Search ---
+  // --- US-28 & BUG-63: First-Mile Running Cost & Spatial Nearest Station Search ---
+  const HOBSONVILLE_FERRY_COORDS: [number, number] = [174.6680, -36.7980];
   const originCoords: [number, number] | undefined = input.originCoordinates;
-  const nearestStation = originCoords ? findNearestTransitStation(originCoords) : undefined;
-  const firstMileMode = input.firstMileMode ?? (input.originCoordinates ? 'DRIVE' : undefined);
+
+  const isFerryModeActive =
+    input.transitMode === 'FERRY' ||
+    input.transitMode === 'Ferry' ||
+    isInnerHarbourFerry;
+
+  const distToHobsonvilleTerminal = originCoords
+    ? haversineDistanceKm(originCoords, HOBSONVILLE_FERRY_COORDS)
+    : input.originSuburbId === 'hobsonville'
+    ? 1.2
+    : undefined;
+  const isOriginFerryTerminal =
+    typeof distToHobsonvilleTerminal === 'number' && distToHobsonvilleTerminal < 0.15;
+
+  const isAllBusRoute = hasReturnedSteps && !hasFerryStep && !hasFerryLine;
+
+  const hasExplicitOrigin = Boolean(
+    input.originAddress ||
+    input.originCoordinates ||
+    input.firstMileMode ||
+    (typeof input.firstMileDistanceKm === 'number' && input.firstMileDistanceKm > 0)
+  );
+
+  const isFerryWaypointInjection =
+    !isAllBusRoute &&
+    Boolean(isFerryModeActive) &&
+    hasExplicitOrigin &&
+    !isOriginFerryTerminal &&
+    (input.originSuburbId === 'hobsonville' ||
+      (typeof distToHobsonvilleTerminal === 'number' && distToHobsonvilleTerminal < 25));
+
+  const hobsonvilleTerminalStation: TransitStation | undefined = isFerryWaypointInjection
+    ? {
+        id: 'hobsonville-point-ferry',
+        name: 'Hobsonville Point Ferry Terminal',
+        mode: 'Ferry',
+        zone: 3,
+        region: 'West Auckland',
+        hasParkAndRide: true,
+        coordinates: HOBSONVILLE_FERRY_COORDS,
+        distanceKm:
+          typeof input.firstMileDistanceKm === 'number' && input.firstMileDistanceKm > 0
+            ? input.firstMileDistanceKm
+            : round1(typeof distToHobsonvilleTerminal === 'number' ? distToHobsonvilleTerminal : 1.2),
+      }
+    : undefined;
+
+  const nearestStation =
+    hobsonvilleTerminalStation || (originCoords ? findNearestTransitStation(originCoords) : undefined);
+  const firstMileMode =
+    input.firstMileMode ?? (isFerryWaypointInjection ? 'DRIVE' : input.originCoordinates ? 'DRIVE' : undefined);
   const firstMileDistanceKm =
-    typeof input.firstMileDistanceKm === 'number'
+    isOriginFerryTerminal
+      ? 0
+      : typeof input.firstMileDistanceKm === 'number' && input.firstMileDistanceKm > 0
       ? input.firstMileDistanceKm
       : nearestStation
       ? nearestStation.distanceKm
@@ -676,18 +730,36 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
       firstMileDailyCost = round2(firstMileFuelCost + firstMileRucCost + firstMileMaintenanceCost);
       firstMileWeeklyCost = round2(firstMileDailyCost * input.daysPerWeek);
       firstMileMonthlyCost = round2(firstMileWeeklyCost * WEEKS_PER_MONTH);
-      firstMileDurationMins = Math.max(3, Math.round(firstMileDistanceKm * 2.5));
+      firstMileDurationMins =
+        typeof input.firstMileDurationMins === 'number' && input.firstMileDurationMins > 0
+          ? input.firstMileDurationMins
+          : Math.max(3, Math.round(firstMileDistanceKm * 2.5));
     } else if (firstMileMode === 'SCOOTER') {
-      firstMileDurationMins = round1((firstMileDistanceKm / 15) * 60);
+      firstMileDurationMins =
+        typeof input.firstMileDurationMins === 'number' && input.firstMileDurationMins > 0
+          ? input.firstMileDurationMins
+          : round1((firstMileDistanceKm / 15) * 60);
       if (input.scooterOwnership === 'RENTAL') {
         const costPerLeg = 1.00 + (firstMileDurationMins * 0.45);
         firstMileDailyCost = round2(costPerLeg * 2);
         firstMileWeeklyCost = round2(firstMileDailyCost * input.daysPerWeek);
         firstMileMonthlyCost = round2(firstMileWeeklyCost * WEEKS_PER_MONTH);
       }
+    } else if (firstMileMode === 'CYCLE') {
+      // BUG-63: Cycling first-mile to station/terminal (free, ~15 km/h)
+      firstMileDurationMins =
+        typeof input.firstMileDurationMins === 'number' && input.firstMileDurationMins > 0
+          ? input.firstMileDurationMins
+          : Math.max(3, Math.round((firstMileDistanceKm / 15) * 60));
+      firstMileDailyCost = 0;
+      firstMileWeeklyCost = 0;
+      firstMileMonthlyCost = 0;
     } else {
       // WALK
-      firstMileDurationMins = Math.round((firstMileDistanceKm / 5) * 60);
+      firstMileDurationMins =
+        typeof input.firstMileDurationMins === 'number' && input.firstMileDurationMins > 0
+          ? input.firstMileDurationMins
+          : Math.round((firstMileDistanceKm / 5) * 60);
       firstMileDailyCost = 0;
       firstMileWeeklyCost = 0;
       firstMileMonthlyCost = 0;
@@ -827,8 +899,27 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
   // Time metrics and opportunity cost calculations (US-13)
   const oneWayDriveMinutes =
     typeof input.drivingTimeMins === 'number' ? input.drivingTimeMins : route.drivingTimePeakMins;
+  const effectiveTransitMins =
+    typeof input.transitRideDurationMins === 'number' && input.transitRideDurationMins > 0
+      ? input.transitRideDurationMins
+      : isFerryWaypointInjection
+      ? 35
+      : Math.max(15, adjustedTransitTimeMins);
+
+  const synthesizedTransitTimeMins = isFerryWaypointInjection
+    ? (firstMileDurationMins > 0
+        ? firstMileDurationMins
+        : firstMileMode === 'DRIVE'
+        ? Math.max(3, Math.round(firstMileDistanceKm * 2.5))
+        : firstMileMode === 'CYCLE'
+        ? Math.max(3, Math.round((firstMileDistanceKm / 15) * 60))
+        : Math.round(firstMileDistanceKm * 12)) +
+      effectiveTransitMins +
+      8
+    : adjustedTransitTimeMins;
+
   const oneWayTransitMinutes =
-    typeof input.transitTimeMins === 'number' ? input.transitTimeMins : adjustedTransitTimeMins;
+    typeof input.transitTimeMins === 'number' ? input.transitTimeMins : synthesizedTransitTimeMins;
   const monthlyTimeDeltaHours = round2(
     ((oneWayTransitMinutes - oneWayDriveMinutes) * 2 * input.daysPerWeek * 4.33) / 60
   );
@@ -863,40 +954,84 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
       notes: 'Direct active commute via cycleways',
     });
   } else {
-    const stationName = nearestStation ? nearestStation.name : `${origin.name} Station`;
-    const fMode: 'DRIVE' | 'WALK' | 'SCOOTER' = firstMileMode || 'DRIVE';
-    const effectiveFirstMileDist = firstMileDistanceKm > 0 ? firstMileDistanceKm : (nearestStation ? nearestStation.distanceKm : 2.5);
-    const effectiveFirstMileDuration = firstMileDurationMins > 0 ? firstMileDurationMins : (fMode === 'DRIVE' ? Math.max(3, Math.round(effectiveFirstMileDist * 2.5)) : Math.round(effectiveFirstMileDist * 12));
+    const isAlreadyAtStation =
+      isOriginFerryTerminal ||
+      (nearestStation && nearestStation.distanceKm < 0.15 && !input.firstMileDistanceKm);
 
-    journeyLegs.push({
-      id: 'leg-first-mile',
-      title: fMode === 'DRIVE' ? 'Drive to Station' : fMode === 'SCOOTER' ? 'Scooter to Station' : 'Walk to Station',
-      type: 'FIRST_MILE',
-      mode: fMode,
-      originName: input.originAddress || origin.name,
-      destinationName: stationName,
-      distanceKm: round1(effectiveFirstMileDist),
-      durationMins: effectiveFirstMileDuration,
-      cost: round2(firstMileDailyCost / 2),
-      costFormatted: (firstMileDailyCost / 2) > 0 ? `$${(firstMileDailyCost / 2).toFixed(2)}` : 'Free',
-      iconName: fMode === 'DRIVE' ? 'Car' : fMode === 'SCOOTER' ? 'Zap' : 'Footprints',
-      notes: nearestStation?.hasParkAndRide ? 'Park & Ride Available' : undefined,
-    });
+    const stationName = isOriginFerryTerminal
+      ? 'Hobsonville Point Ferry Terminal'
+      : nearestStation
+      ? nearestStation.name
+      : `${origin.name} Station`;
+    const fMode: 'DRIVE' | 'WALK' | 'SCOOTER' | 'CYCLE' = firstMileMode || 'DRIVE';
+    const effectiveFirstMileDist =
+      firstMileDistanceKm > 0 ? firstMileDistanceKm : (nearestStation ? nearestStation.distanceKm : 2.5);
+    const effectiveFirstMileDuration =
+      firstMileDurationMins > 0
+        ? firstMileDurationMins
+        : fMode === 'DRIVE'
+        ? Math.max(3, Math.round(effectiveFirstMileDist * 2.5))
+        : fMode === 'CYCLE'
+        ? Math.max(3, Math.round((effectiveFirstMileDist / 15) * 60))
+        : Math.round(effectiveFirstMileDist * 12);
+
+    const firstMileTitle = isFerryWaypointInjection
+      ? fMode === 'DRIVE'
+        ? 'Drive to Ferry Terminal'
+        : fMode === 'CYCLE'
+        ? 'Cycle to Ferry Terminal'
+        : fMode === 'SCOOTER'
+        ? 'Scooter to Ferry Terminal'
+        : 'Walk to Ferry Terminal'
+      : fMode === 'DRIVE'
+      ? 'Drive to Station'
+      : fMode === 'CYCLE'
+      ? 'Cycle to Station'
+      : fMode === 'SCOOTER'
+      ? 'Scooter to Station'
+      : 'Walk to Station';
+
+    if (!isAlreadyAtStation) {
+      journeyLegs.push({
+        id: 'leg-first-mile',
+        title: firstMileTitle,
+        type: 'FIRST_MILE',
+        mode: fMode,
+        originName: input.originAddress || origin.name,
+        destinationName: stationName,
+        distanceKm: round1(effectiveFirstMileDist),
+        durationMins: effectiveFirstMileDuration,
+        cost: round2(firstMileDailyCost / 2),
+        costFormatted: (firstMileDailyCost / 2) > 0 ? `$${(firstMileDailyCost / 2).toFixed(2)}` : 'Free',
+        iconName:
+          fMode === 'DRIVE' ? 'Car' : fMode === 'CYCLE' ? 'Bike' : fMode === 'SCOOTER' ? 'Zap' : 'Footprints',
+        notes: nearestStation?.hasParkAndRide ? 'Park & Ride Available' : undefined,
+      });
+    }
 
     const transitRideMode: 'TRAIN' | 'FERRY' | 'BUS' =
-      isFerry
+      isFerry || (isFerryWaypointInjection && !isAllBusRoute)
         ? 'FERRY'
         : (hasReturnedSteps && hasTrainStep) || (!hasReturnedSteps && origin.primaryTransitMode === 'Train')
         ? 'TRAIN'
         : 'BUS';
-    const transitDist = Math.max(1, round1(distanceOneWayKm - effectiveFirstMileDist));
+    const transitDist = Math.max(1, round1(distanceOneWayKm - (isAlreadyAtStation ? 0 : effectiveFirstMileDist)));
+
+    const stepsTransitMins =
+      Array.isArray(input.transitSteps) && input.transitSteps.length > 0
+        ? input.transitSteps.reduce((acc, s) => acc + (s.durationMins || 0), 0)
+        : 0;
 
     const transitMins =
       typeof input.transitRideDurationMins === 'number' && input.transitRideDurationMins > 0
         ? input.transitRideDurationMins
+        : stepsTransitMins > 0
+        ? stepsTransitMins
+        : isFerryWaypointInjection
+        ? 35
         : typeof input.transitTimeMins === 'number' && input.transitTimeMins > 0
-        ? Math.max(15, Math.round(input.transitTimeMins - effectiveFirstMileDuration - 8))
-        : Math.max(5, Math.round(adjustedTransitTimeMins - effectiveFirstMileDuration - 8));
+        ? Math.max(15, Math.round(input.transitTimeMins - (isAlreadyAtStation ? 0 : effectiveFirstMileDuration) - 8))
+        : Math.max(5, Math.round(adjustedTransitTimeMins - (isAlreadyAtStation ? 0 : effectiveFirstMileDuration) - 8));
 
     const isTransitFerry = isFerry;
     const isTransitTrain = transitRideMode === 'TRAIN';

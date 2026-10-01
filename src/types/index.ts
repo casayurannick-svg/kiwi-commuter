@@ -99,8 +99,9 @@ export interface CommuteInput {
   destinationAddress?: string; // US-28: Geocoded destination address text
   originCoordinates?: [number, number]; // US-28: [lng, lat] geocoded coordinates
   destinationCoordinates?: [number, number]; // US-28: [lng, lat] geocoded coordinates
-  firstMileMode?: 'DRIVE' | 'WALK' | 'SCOOTER'; // US-28: Mode used to reach nearest station
+  firstMileMode?: 'DRIVE' | 'WALK' | 'SCOOTER' | 'CYCLE'; // US-28 & BUG-63: Mode used to reach nearest station / terminal
   firstMileDistanceKm?: number; // US-28: Distance to nearest transit station in km
+  firstMileDurationMins?: number; // BUG-63: Duration to reach nearest station / terminal in minutes
   transitRideDurationMins?: number; // In-vehicle transit ride duration (e.g. 36 mins for 25B + OuterLink)
   transitSteps?: TransitStepDetail[]; // Breakdown of individual transit legs
   transitLines?: string[]; // Transit line names (e.g. ['25B', 'OuterLink'])
@@ -152,7 +153,7 @@ export interface JourneyLeg {
   id: string;
   title: string;
   type: 'FIRST_MILE' | 'TRANSIT' | 'LAST_MILE';
-  mode: 'DRIVE' | 'WALK' | 'TRAIN' | 'BUS' | 'FERRY' | 'SCOOTER' | 'EBIKE';
+  mode: 'DRIVE' | 'WALK' | 'TRAIN' | 'BUS' | 'FERRY' | 'SCOOTER' | 'EBIKE' | 'CYCLE';
   originName: string;
   destinationName: string;
   distanceKm: number;
@@ -231,7 +232,7 @@ export interface TransitCostBreakdown {
   firstMileMonthlyCost?: number;
   firstMileDistanceKm?: number;
   firstMileDurationMins?: number;
-  firstMileMode?: 'DRIVE' | 'WALK' | 'SCOOTER';
+  firstMileMode?: 'DRIVE' | 'WALK' | 'SCOOTER' | 'CYCLE';
   nearestStationName?: string;
   passengers?: number; // BUG-37: Active passenger count for multi-passenger scaling
   perPersonSingleFare?: number; // BUG-37: Per-commuter one-way fare before passenger scaling

@@ -400,8 +400,8 @@ export function parseCommuteFromParams(
     Boolean(fallback.isWaihekeRoute);
 
   const rawFirstMileMode = (params.get('firstMileMode') || params.get('fmm'))?.toUpperCase();
-  const firstMileMode: 'DRIVE' | 'WALK' | 'SCOOTER' | undefined =
-    rawFirstMileMode === 'DRIVE' || rawFirstMileMode === 'WALK' || rawFirstMileMode === 'SCOOTER'
+  const firstMileMode: 'DRIVE' | 'WALK' | 'SCOOTER' | 'CYCLE' | undefined =
+    rawFirstMileMode === 'DRIVE' || rawFirstMileMode === 'WALK' || rawFirstMileMode === 'SCOOTER' || rawFirstMileMode === 'CYCLE'
       ? rawFirstMileMode
       : fallback.firstMileMode;
 

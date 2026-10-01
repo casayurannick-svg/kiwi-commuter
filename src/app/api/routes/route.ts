@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server';
-import { estimateRoadMetrics } from '@/lib/routes';
+import { estimateRoadMetrics, haversineDistanceKm } from '@/lib/routes';
 
 export const dynamic = 'force-dynamic';
 
 const GOOGLE_ROUTES_ENDPOINT = 'https://routes.googleapis.com/directions/v2:computeRoutes';
+
+// BUG-63: Hobsonville Point Ferry Terminal coordinates for waypoint injection
+const HOBSONVILLE_FERRY_TERMINAL_COORDS: [number, number] = [174.6680, -36.7980];
 
 export interface TransitStepDetail {
   line: string;
@@ -27,12 +30,55 @@ export interface GoogleRoutesResponse {
   drivingDistanceKm?: number | null; // Real road driving distance e.g. 17.5 km
   drivingDurationMins?: number | null; // Real road driving duration e.g. 25 mins
 
+  // BUG-63: Park & Ride waypoint injection for ferry commutes
+  firstMileDistanceKm?: number | null;
+  firstMileDurationMins?: number | null;
+  firstMileMode?: string | null;
+  waypointInjected?: boolean;
+  waypointTerminal?: string | null;
+
   source: 'google_routes_api' | 'fallback_none';
   departureTime?: string;
   debug?: Record<string, unknown>;
 }
 
 export type GoogleRoutesTransitResponse = GoogleRoutesResponse;
+
+interface GoogleRouteLegStep {
+  travelMode?: string;
+  staticDuration?: string;
+  transitDetails?: {
+    headsign?: string;
+    transitLine?: {
+      name?: string;
+      nameShort?: string;
+      shortName?: string;
+      vehicle?: {
+        type?: string;
+      };
+    };
+    stopDetails?: {
+      departureStop?: { name?: string };
+      arrivalStop?: { name?: string };
+    };
+  };
+}
+
+interface GoogleRouteLeg {
+  distanceMeters?: number;
+  duration?: string;
+  steps?: GoogleRouteLegStep[];
+}
+
+interface GoogleRoute {
+  distanceMeters?: number;
+  duration?: string;
+  legs?: GoogleRouteLeg[];
+}
+
+interface GoogleComputeRoutesApiResponse {
+  routes?: GoogleRoute[];
+}
 
 /**
  * US-21 & US-35: Google Routes API – Multimodal Route Endpoint
@@ -58,6 +104,12 @@ export async function GET(request: Request) {
   const destinationLng = parseFloat(searchParams.get('destinationLng') || '');
   const destinationLat = parseFloat(searchParams.get('destinationLat') || '');
   const travelModeParam = (searchParams.get('travelMode') || 'BOTH').toUpperCase();
+  const transitModeParam = (searchParams.get('transitMode') || '').toUpperCase();
+  const rawFirstMileMode = (searchParams.get('firstMileMode') || 'DRIVE').toUpperCase();
+  const firstMileMode: 'DRIVE' | 'CYCLE' | 'SCOOTER' | 'WALK' =
+    rawFirstMileMode === 'CYCLE' || rawFirstMileMode === 'SCOOTER' || rawFirstMileMode === 'WALK'
+      ? rawFirstMileMode
+      : 'DRIVE';
   const isDebug = searchParams.get('debug') === '1' || searchParams.get('debug') === 'true';
 
   // Validate coordinates
@@ -67,6 +119,12 @@ export async function GET(request: Request) {
       { status: 400 }
     );
   }
+
+  // BUG-63: Check if Ferry Waypoint Injection is active
+  // If transitMode=FERRY and the origin is not already at the Hobsonville Ferry Terminal (within 150m)
+  const distToHobsonvilleTerminalKm = haversineDistanceKm([originLng, originLat], HOBSONVILLE_FERRY_TERMINAL_COORDS);
+  const isOriginAlreadyTerminal = distToHobsonvilleTerminalKm < 0.15;
+  const shouldInjectFerryWaypoint = transitModeParam === 'FERRY' && !isOriginAlreadyTerminal;
 
   // Use provided departure time or compute next weekday morning (Auckland time)
   let departureTime = searchParams.get('departureTime');
@@ -84,6 +142,10 @@ export async function GET(request: Request) {
       keyPrefix: apiKey ? `${apiKey.slice(0, 4)}...` : null,
       departureTime,
       travelModeParam,
+      transitModeParam,
+      firstMileMode,
+      shouldInjectFerryWaypoint,
+      distToHobsonvilleTerminalKm,
     };
   }
 
@@ -103,7 +165,12 @@ export async function GET(request: Request) {
       const transitLines: string[] = [];
       let legCount = 0;
 
-      // 1. Fetch Driving Route if requested
+      let firstMileDistanceKm: number | null = null;
+      let firstMileDurationMins: number | null = null;
+      let waypointInjected = false;
+      let waypointTerminal: string | null = null;
+
+      // 1. Fetch Driving Route if requested (direct origin to destination for private vehicle comparison)
       const drivePromise = shouldFetchDrive
         ? fetch(GOOGLE_ROUTES_ENDPOINT, {
             method: 'POST',
@@ -121,29 +188,96 @@ export async function GET(request: Request) {
           }).then(async (res) => (res.ok ? res.json() : null)).catch(() => null)
         : Promise.resolve(null);
 
-      // 2. Fetch Transit Route if requested
-      const transitPromise = shouldFetchTransit
-        ? fetch(GOOGLE_ROUTES_ENDPOINT, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Goog-Api-Key': apiKey,
-              'X-Goog-FieldMask': 'routes.duration,routes.legs.duration,routes.legs.steps.staticDuration,routes.legs.steps.travelMode,routes.legs.steps.transitDetails',
-            },
-            body: JSON.stringify({
-              origin: { location: { latLng: { latitude: originLat, longitude: originLng } } },
-              destination: { location: { latLng: { latitude: destinationLat, longitude: destinationLng } } },
-              travelMode: 'TRANSIT',
-              departureTime,
-              computeAlternativeRoutes: false,
-              transitPreferences: {
-                routingPreference: 'FEWER_TRANSFERS',
-              },
-            }),
-          }).then(async (res) => (res.ok ? res.json() : null)).catch(() => null)
-        : Promise.resolve(null);
+      // 2. Fetch Transit Route (with Waypoint Injection for Ferry if active)
+      let transitPromise: Promise<unknown>;
+      let leg1Promise: Promise<unknown> = Promise.resolve(null);
 
-      const [driveData, transitData] = await Promise.all([drivePromise, transitPromise]);
+      if (shouldFetchTransit && shouldInjectFerryWaypoint) {
+        waypointInjected = true;
+        waypointTerminal = 'Hobsonville Point Ferry Terminal';
+        const firstMileGoogleMode =
+          firstMileMode === 'CYCLE' ? 'BICYCLE' : firstMileMode === 'WALK' ? 'WALK' : 'DRIVE';
+
+        // Leg 1: First-Mile from origin to Hobsonville Point Ferry Terminal
+        leg1Promise = fetch(GOOGLE_ROUTES_ENDPOINT, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Goog-Api-Key': apiKey,
+            'X-Goog-FieldMask': 'routes.duration,routes.distanceMeters,routes.legs.duration,routes.legs.distanceMeters',
+          },
+          body: JSON.stringify({
+            origin: { location: { latLng: { latitude: originLat, longitude: originLng } } },
+            destination: {
+              location: {
+                latLng: {
+                  latitude: HOBSONVILLE_FERRY_TERMINAL_COORDS[1],
+                  longitude: HOBSONVILLE_FERRY_TERMINAL_COORDS[0],
+                },
+              },
+            },
+            travelMode: firstMileGoogleMode,
+          }),
+        }).then(async (res) => (res.ok ? res.json() : null)).catch(() => null);
+
+        // Leg 2: Transit from Hobsonville Point Ferry Terminal to destination
+        transitPromise = fetch(GOOGLE_ROUTES_ENDPOINT, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Goog-Api-Key': apiKey,
+            'X-Goog-FieldMask': 'routes.duration,routes.legs.duration,routes.legs.steps.staticDuration,routes.legs.steps.travelMode,routes.legs.steps.transitDetails',
+          },
+          body: JSON.stringify({
+            origin: {
+              location: {
+                latLng: {
+                  latitude: HOBSONVILLE_FERRY_TERMINAL_COORDS[1],
+                  longitude: HOBSONVILLE_FERRY_TERMINAL_COORDS[0],
+                },
+              },
+            },
+            destination: { location: { latLng: { latitude: destinationLat, longitude: destinationLng } } },
+            travelMode: 'TRANSIT',
+            departureTime,
+            computeAlternativeRoutes: false,
+            transitPreferences: {
+              routingPreference: 'FEWER_TRANSFERS',
+            },
+          }),
+        }).then(async (res) => (res.ok ? res.json() : null)).catch(() => null);
+      } else if (shouldFetchTransit) {
+        transitPromise = fetch(GOOGLE_ROUTES_ENDPOINT, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Goog-Api-Key': apiKey,
+            'X-Goog-FieldMask': 'routes.duration,routes.legs.duration,routes.legs.steps.staticDuration,routes.legs.steps.travelMode,routes.legs.steps.transitDetails',
+          },
+          body: JSON.stringify({
+            origin: { location: { latLng: { latitude: originLat, longitude: originLng } } },
+            destination: { location: { latLng: { latitude: destinationLat, longitude: destinationLng } } },
+            travelMode: 'TRANSIT',
+            departureTime,
+            computeAlternativeRoutes: false,
+            transitPreferences: {
+              routingPreference: 'FEWER_TRANSFERS',
+            },
+          }),
+        }).then(async (res) => (res.ok ? res.json() : null)).catch(() => null);
+      } else {
+        transitPromise = Promise.resolve(null);
+      }
+
+      const [driveData, transitData, leg1Data] = (await Promise.all([
+        drivePromise,
+        transitPromise,
+        leg1Promise,
+      ])) as [
+        GoogleComputeRoutesApiResponse | null,
+        GoogleComputeRoutesApiResponse | null,
+        GoogleComputeRoutesApiResponse | null
+      ];
 
       // Parse Drive results
       if (driveData?.routes?.[0]) {
@@ -251,6 +385,57 @@ export async function GET(request: Request) {
           : (Array.isArray(route.legs) ? route.legs.length : 1);
       }
 
+      // BUG-63: If Ferry Waypoint Injection is active, parse Leg 1 and synthesize with Leg 2
+      if (shouldInjectFerryWaypoint) {
+        if (leg1Data?.routes?.[0]) {
+          const l1 = leg1Data.routes[0];
+          let dM = l1.distanceMeters;
+          if (typeof dM !== 'number' && Array.isArray(l1.legs)) {
+            dM = l1.legs.reduce((acc: number, leg: { distanceMeters?: number }) => acc + (leg.distanceMeters || 0), 0);
+          }
+          if (typeof dM === 'number' && dM > 0) {
+            firstMileDistanceKm = Math.round((dM / 1000) * 10) / 10;
+          }
+          let durSec = parseDurationSeconds(l1.duration);
+          if (durSec === 0 && Array.isArray(l1.legs)) {
+            for (const leg of l1.legs) {
+              durSec += parseDurationSeconds(leg.duration);
+            }
+          }
+          if (durSec > 0) {
+            firstMileDurationMins = Math.round(durSec / 60);
+          }
+        }
+        if (firstMileDistanceKm === null) {
+          firstMileDistanceKm = Math.round(Math.max(0.5, distToHobsonvilleTerminalKm * 1.34) * 10) / 10;
+        }
+        if (firstMileDurationMins === null) {
+          firstMileDurationMins =
+            firstMileMode === 'CYCLE'
+              ? Math.max(3, Math.round((firstMileDistanceKm / 15) * 60))
+              : firstMileMode === 'WALK'
+              ? Math.max(5, Math.round((firstMileDistanceKm / 5) * 60))
+              : Math.max(2, Math.round(firstMileDistanceKm * 2.2 + 1));
+        }
+
+        // Synthesize Leg 1 + Leg 2
+        transitDurationMins = transitDurationMins ?? 35;
+        totalDurationMins = (firstMileDurationMins ?? 0) + transitDurationMins;
+
+        if (transitSteps.length === 0) {
+          transitSteps.push({
+            line: 'Hobsonville Ferry',
+            durationMins: 35,
+            durationSeconds: 2100,
+            departureStop: 'Hobsonville Point Ferry Terminal',
+            arrivalStop: 'Downtown Ferry Terminal',
+            travelMode: 'FERRY',
+            vehicleType: 'FERRY',
+          });
+          transitLines.push('Hobsonville Ferry');
+        }
+      }
+
       // If at least one requested route returned valid data, return success
       if (drivingDistanceKm !== null || transitDurationMins !== null) {
         // If driving was requested but failed upstream, use harbour-aware road distance fallback
@@ -270,6 +455,11 @@ export async function GET(request: Request) {
           drivingDistanceMeters,
           drivingDistanceKm,
           drivingDurationMins,
+          firstMileDistanceKm,
+          firstMileDurationMins,
+          firstMileMode: waypointInjected ? firstMileMode : null,
+          waypointInjected: waypointInjected ? true : undefined,
+          waypointTerminal: waypointInjected ? waypointTerminal : undefined,
           source: 'google_routes_api',
           departureTime,
           ...(isDebug ? { debug: debugDetails } : {}),
@@ -290,6 +480,50 @@ export async function GET(request: Request) {
   // Graceful fallback: no API key or API call failed
   // Compute realistic road metrics (incorporating harbour-crossing bridge detour if applicable)
   const fallbackRoadMetrics = estimateRoadMetrics([originLng, originLat], [destinationLng, destinationLat]);
+
+  // BUG-63: Synthesize Leg 1 + Leg 2 in fallback when Ferry Waypoint Injection is active
+  if (shouldInjectFerryWaypoint) {
+    const leg1Dist = Math.round(Math.max(0.5, distToHobsonvilleTerminalKm * 1.34) * 10) / 10;
+    const leg1Dur =
+      firstMileMode === 'CYCLE'
+        ? Math.max(3, Math.round((leg1Dist / 15) * 60))
+        : firstMileMode === 'WALK'
+        ? Math.max(5, Math.round((leg1Dist / 5) * 60))
+        : Math.max(2, Math.round(leg1Dist * 2.2 + 1));
+
+    const leg2TransitMins = 35;
+    const fallbackFerrySteps: TransitStepDetail[] = [
+      {
+        line: 'Hobsonville Ferry',
+        durationMins: leg2TransitMins,
+        durationSeconds: leg2TransitMins * 60,
+        departureStop: 'Hobsonville Point Ferry Terminal',
+        arrivalStop: 'Downtown Ferry Terminal',
+        travelMode: 'FERRY',
+        vehicleType: 'FERRY',
+      },
+    ];
+
+    const result: GoogleRoutesResponse = {
+      transitDurationMins: leg2TransitMins,
+      totalDurationMins: leg1Dur + leg2TransitMins,
+      transitSteps: fallbackFerrySteps,
+      transitLines: ['Hobsonville Ferry'],
+      legCount: 2,
+      drivingDistanceMeters: Math.round(fallbackRoadMetrics.distanceKm * 1000),
+      drivingDistanceKm: fallbackRoadMetrics.distanceKm,
+      drivingDurationMins: fallbackRoadMetrics.durationMins,
+      firstMileDistanceKm: leg1Dist,
+      firstMileDurationMins: leg1Dur,
+      firstMileMode,
+      waypointInjected: true,
+      waypointTerminal: 'Hobsonville Point Ferry Terminal',
+      source: 'fallback_none',
+      ...(isDebug ? { debug: debugDetails } : {}),
+    };
+
+    return NextResponse.json(result);
+  }
 
   const result: GoogleRoutesResponse = {
     transitDurationMins: null,

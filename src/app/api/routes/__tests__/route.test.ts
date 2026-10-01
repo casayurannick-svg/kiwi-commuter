@@ -4,6 +4,7 @@ import { resolve } from 'node:path';
 import { describe, it } from 'node:test';
 import { calculateCommuteArbitrage } from '@/lib/calculator';
 import { CommuteInput } from '@/types';
+import { GET } from '../route';
 
 // Test the parseDurationSeconds helper logic directly
 function parseDurationSeconds(duration: string | undefined): number {
@@ -243,4 +244,58 @@ describe('US-21: /api/routes – Google Routes Transit Duration', () => {
       assert.ok(dashContent.includes('drivingDurationMins') || dashContent.includes('drivingTimeMins'), 'DashboardClient must inject driving time');
     });
   });
+
+  describe('BUG-63: /api/routes Park & Ride Waypoint Injection for Ferry', () => {
+    it('injects Hobsonville ferry waypoint and synthesizes two legs when origin is inland address', async () => {
+      // Inland origin in Hobsonville (e.g. 124 Hobsonville Road: lng=174.6450, lat=-36.8150)
+      // Destination in Auckland CBD (lng=174.7645, lat=-36.8485)
+      const req = new Request(
+        'http://localhost/api/routes?originLng=174.6450&originLat=-36.8150&destinationLng=174.7645&destinationLat=-36.8485&transitMode=FERRY&firstMileMode=DRIVE'
+      );
+      const res = await GET(req);
+      assert.strictEqual(res.status, 200);
+
+      const json = await res.json();
+      assert.strictEqual(json.waypointInjected, true, 'Must set waypointInjected to true');
+      assert.strictEqual(json.waypointTerminal, 'Hobsonville Point Ferry Terminal');
+      assert.ok(json.firstMileDistanceKm > 0, `firstMileDistanceKm must be > 0, got: ${json.firstMileDistanceKm}`);
+      assert.ok(json.firstMileDurationMins > 0, `firstMileDurationMins must be > 0, got: ${json.firstMileDurationMins}`);
+      assert.strictEqual(json.firstMileMode, 'DRIVE');
+      assert.ok(json.transitDurationMins > 0, `transitDurationMins must be > 0, got: ${json.transitDurationMins}`);
+      assert.strictEqual(
+        json.totalDurationMins,
+        json.firstMileDurationMins + json.transitDurationMins,
+        'totalDurationMins must synthesize Leg 1 and Leg 2 durations'
+      );
+    });
+
+    it('supports CYCLE as firstMileMode for ferry park & ride waypoint injection', async () => {
+      const req = new Request(
+        'http://localhost/api/routes?originLng=174.6450&originLat=-36.8150&destinationLng=174.7645&destinationLat=-36.8485&transitMode=FERRY&firstMileMode=CYCLE'
+      );
+      const res = await GET(req);
+      assert.strictEqual(res.status, 200);
+
+      const json = await res.json();
+      assert.strictEqual(json.waypointInjected, true);
+      assert.strictEqual(json.firstMileMode, 'CYCLE');
+      assert.ok(json.firstMileDistanceKm > 0);
+      assert.ok(json.firstMileDurationMins > 0);
+      assert.strictEqual(json.totalDurationMins, json.firstMileDurationMins + json.transitDurationMins);
+    });
+
+    it('does NOT inject waypoint if origin is already at Hobsonville Point Ferry Terminal', async () => {
+      // Exact Hobsonville Ferry Terminal coords: [174.6680, -36.7980]
+      const req = new Request(
+        'http://localhost/api/routes?originLng=174.6680&originLat=-36.7980&destinationLng=174.7645&destinationLat=-36.8485&transitMode=FERRY'
+      );
+      const res = await GET(req);
+      assert.strictEqual(res.status, 200);
+
+      const json = await res.json();
+      assert.strictEqual(json.waypointInjected, undefined, 'Must not inject waypoint when origin is already at terminal');
+      assert.strictEqual(json.firstMileDistanceKm, undefined);
+    });
+  });
 });
+

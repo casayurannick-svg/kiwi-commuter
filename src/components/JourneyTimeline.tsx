@@ -23,7 +23,7 @@ import { fetchDirectionsRoute } from '@/lib/mapbox';
 interface JourneyTimelineProps {
   arbitrage: CommuteComparisonResult;
   input: CommuteInput;
-  onFirstMileModeChange?: (mode: 'DRIVE' | 'WALK' | 'SCOOTER') => void;
+  onFirstMileModeChange?: (mode: 'DRIVE' | 'CYCLE' | 'WALK' | 'SCOOTER') => void;
 }
 
 export default function JourneyTimeline({
@@ -111,7 +111,12 @@ export default function JourneyTimeline({
         const dist = firstMileDirections?.distanceKm ?? localStop.distanceKm;
         return {
           ...leg,
-          title: firstMileMode === 'SCOOTER' ? 'Scooter to Stop' : 'Walk to Stop',
+          title:
+            firstMileMode === 'SCOOTER'
+              ? 'Scooter to Stop'
+              : firstMileMode === 'CYCLE'
+              ? 'Cycle to Stop'
+              : 'Walk to Stop',
           destinationName: localStop.name,
           durationMins: dur,
           distanceKm: dist,
@@ -150,6 +155,7 @@ export default function JourneyTimeline({
       case 'FERRY':
         return <Ship className="w-4 h-4 text-cyan-400" />;
       case 'EBIKE':
+      case 'CYCLE':
         return <Bike className="w-4 h-4 text-emerald-400" />;
       case 'SCOOTER':
         return <Zap className="w-4 h-4 text-yellow-400" />;
@@ -244,7 +250,7 @@ export default function JourneyTimeline({
         <div className="flex items-center justify-between text-xs bg-slate-900/60 p-2.5 rounded-xl border border-slate-800">
           <span className="text-slate-400 font-medium">First-Mile Mode to Station:</span>
           <div className="flex items-center gap-1">
-            {(['DRIVE', 'WALK', 'SCOOTER'] as const).map((mode) => {
+            {(['DRIVE', 'CYCLE', 'WALK', 'SCOOTER'] as const).map((mode) => {
               const active = (input.firstMileMode || 'DRIVE') === mode;
               return (
                 <button
@@ -257,7 +263,7 @@ export default function JourneyTimeline({
                       : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
                   }`}
                 >
-                  {mode === 'DRIVE' ? '🚗 Drive' : mode === 'WALK' ? '🚶 Walk' : '⚡ Scooter'}
+                  {mode === 'DRIVE' ? '🚗 Drive' : mode === 'CYCLE' ? '🚲 Cycle' : mode === 'WALK' ? '🚶 Walk' : '⚡ Scooter'}
                 </button>
               );
             })}

@@ -1466,6 +1466,133 @@ describe('src/lib/calculator.ts - calculateCommuteArbitrage', () => {
       assert.strictEqual(transitLeg.iconName, 'Ship', 'Transit leg iconName must be Ship');
       assert.strictEqual(transitLeg.title, 'Ferry HOBH Ferry Ride');
     });
+
+    it('BUG-63: inland ferry commute with firstMileMode: DRIVE synthesizes first-mile drive and ferry transit legs', () => {
+      const input: CommuteInput = {
+        originSuburbId: 'hobsonville',
+        destinationSuburbId: 'cbd',
+        originAddress: '124 Hobsonville Road, Hobsonville, Auckland',
+        originCoordinates: [174.6450, -36.8150],
+        destinationAddress: 'Auckland Ferry Terminal, CBD, Auckland',
+        destinationCoordinates: [174.7667, -36.8433],
+        daysPerWeek: 5,
+        vehicleType: 'petrol91',
+        parkingDailyRate: 0,
+        parkingDaysPerWeek: 0,
+        concession: 'adult',
+        includeMaintenanceWear: false,
+        carpoolPassengers: 1,
+        transitMode: 'FERRY',
+        firstMileMode: 'DRIVE',
+        firstMileDistanceKm: 3.2,
+        firstMileDurationMins: 6,
+        transitSteps: [
+          { line: 'HOBH Ferry', durationMins: 35, travelMode: 'FERRY' },
+        ],
+      };
+
+      const result = calculateCommuteArbitrage(input);
+
+      assert.strictEqual(result.transit.primaryMode, 'Ferry');
+      assert.strictEqual(result.nearestStation?.hasParkAndRide, true, 'Must mark hasParkAndRide as true on nearestStation');
+      assert.strictEqual(result.transit.firstMileMode, 'DRIVE');
+      assert.strictEqual(result.transit.firstMileDistanceKm, 3.2);
+      assert.strictEqual(result.transit.firstMileDurationMins, 6);
+      assert.ok(result.transit.firstMileMonthlyCost! > 0, 'First-mile driving must have fuel cost');
+
+      const legs = result.journeyLegs || [];
+      const firstMileLeg = legs.find((l) => l.type === 'FIRST_MILE');
+      assert.ok(firstMileLeg, 'Must include FIRST_MILE leg');
+      assert.strictEqual(firstMileLeg.mode, 'DRIVE');
+      assert.strictEqual(firstMileLeg.destinationName, 'Hobsonville Point Ferry Terminal');
+      assert.ok(firstMileLeg.title.includes('Drive to Ferry Terminal'), `Title should include "Drive to Ferry Terminal", got: ${firstMileLeg.title}`);
+      assert.ok(firstMileLeg.notes?.includes('Park & Ride Available'), 'Notes must mention Park & Ride Available');
+
+      const transitLeg = legs.find((l) => l.type === 'TRANSIT');
+      assert.ok(transitLeg, 'Must include TRANSIT leg');
+      assert.strictEqual(transitLeg.mode, 'FERRY');
+      assert.strictEqual(transitLeg.originName, 'Hobsonville Point Ferry Terminal');
+      assert.strictEqual(transitLeg.durationMins, 35);
+
+      // Verify total door-to-door transit minutes combines first-mile (6) + ferry (35) + walk (8) = 49
+      assert.strictEqual(result.transitTimeMins, 6 + 35 + 8);
+    });
+
+    it('BUG-63: inland ferry commute with firstMileMode: CYCLE calculates $0 first-mile cost and combined duration', () => {
+      const input: CommuteInput = {
+        originSuburbId: 'hobsonville',
+        destinationSuburbId: 'cbd',
+        originAddress: '124 Hobsonville Road, Hobsonville, Auckland',
+        originCoordinates: [174.6450, -36.8150],
+        destinationAddress: 'Auckland Ferry Terminal, CBD, Auckland',
+        destinationCoordinates: [174.7667, -36.8433],
+        daysPerWeek: 5,
+        vehicleType: 'petrol91',
+        parkingDailyRate: 0,
+        parkingDaysPerWeek: 0,
+        concession: 'adult',
+        includeMaintenanceWear: false,
+        carpoolPassengers: 1,
+        transitMode: 'FERRY',
+        firstMileMode: 'CYCLE',
+        transitSteps: [
+          { line: 'HOBH Ferry', durationMins: 35, travelMode: 'FERRY' },
+        ],
+      };
+
+      const result = calculateCommuteArbitrage(input);
+
+      assert.strictEqual(result.transit.primaryMode, 'Ferry');
+      assert.strictEqual(result.transit.firstMileMode, 'CYCLE');
+      assert.strictEqual(result.transit.firstMileMonthlyCost, undefined, 'Cycling first-mile has no fuel surcharge');
+
+      const legs = result.journeyLegs || [];
+      const firstMileLeg = legs.find((l) => l.type === 'FIRST_MILE');
+      assert.ok(firstMileLeg);
+      assert.strictEqual(firstMileLeg.mode, 'CYCLE');
+      assert.strictEqual(firstMileLeg.cost, 0, 'Cycling first-mile cost must be $0');
+      assert.strictEqual(firstMileLeg.costFormatted, 'Free');
+      assert.strictEqual(firstMileLeg.destinationName, 'Hobsonville Point Ferry Terminal');
+      assert.ok(firstMileLeg.title.includes('Cycle to Ferry Terminal'), `Title should include "Cycle to Ferry Terminal", got: ${firstMileLeg.title}`);
+      assert.ok(firstMileLeg.notes?.includes('Park & Ride Available'));
+
+      // Total time should combine first-mile cycle duration + 35 min ferry + walk
+      assert.ok(result.transitTimeMins > 35, 'Total transit time must include cycling first-mile');
+    });
+
+    it('BUG-63: ferry commute originating at terminal does not inject first-mile driving/cycling waypoint', () => {
+      const input: CommuteInput = {
+        originSuburbId: 'hobsonville',
+        destinationSuburbId: 'cbd',
+        originAddress: 'Hobsonville Point Ferry Terminal, Hobsonville, Auckland',
+        originCoordinates: [174.6680, -36.7980], // Exact ferry terminal coords
+        destinationAddress: 'Auckland Ferry Terminal, CBD, Auckland',
+        destinationCoordinates: [174.7667, -36.8433],
+        daysPerWeek: 5,
+        vehicleType: 'petrol91',
+        parkingDailyRate: 0,
+        parkingDaysPerWeek: 0,
+        concession: 'adult',
+        includeMaintenanceWear: false,
+        carpoolPassengers: 1,
+        transitMode: 'FERRY',
+        firstMileMode: 'DRIVE',
+        transitSteps: [
+          { line: 'HOBH Ferry', durationMins: 35, travelMode: 'FERRY' },
+        ],
+      };
+
+      const result = calculateCommuteArbitrage(input);
+
+      assert.strictEqual(result.transit.primaryMode, 'Ferry');
+      // When origin is already at the terminal, no Park & Ride first-mile drive is injected
+      const legs = result.journeyLegs || [];
+      const firstMileDriveLeg = legs.find((l) => l.type === 'FIRST_MILE' && l.mode === 'DRIVE');
+      assert.strictEqual(firstMileDriveLeg, undefined, 'Must not inject first-mile DRIVE when origin is terminal');
+      const transitLeg = legs.find((l) => l.type === 'TRANSIT');
+      assert.ok(transitLeg);
+      assert.strictEqual(transitLeg.mode, 'FERRY');
+    });
   });
 });
 

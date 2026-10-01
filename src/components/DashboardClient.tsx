@@ -52,6 +52,12 @@ export default function DashboardClient({ initialFuelPrices }: DashboardClientPr
           destinationLng: String(destinationCoords[0]),
           destinationLat: String(destinationCoords[1]),
         });
+        if (commuteInput.transitMode) {
+          params.set('transitMode', commuteInput.transitMode);
+        }
+        if (commuteInput.firstMileMode) {
+          params.set('firstMileMode', commuteInput.firstMileMode);
+        }
         const res = await fetch(`/api/routes?${params.toString()}`);
         if (!res.ok || cancelled) return;
         const data = await res.json();
@@ -76,12 +82,27 @@ export default function DashboardClient({ initialFuelPrices }: DashboardClientPr
             prev.transitMode !== 'EBIKE' && typeof data.transitDurationMins === 'number' && data.transitDurationMins > 0
               ? data.transitDurationMins
               : prev.transitRideDurationMins;
+          const newFirstMileDist =
+            typeof data.firstMileDistanceKm === 'number'
+              ? data.firstMileDistanceKm
+              : prev.firstMileDistanceKm;
+          const newFirstMileDur =
+            typeof data.firstMileDurationMins === 'number'
+              ? data.firstMileDurationMins
+              : prev.firstMileDurationMins;
+          const newFirstMileMode =
+            typeof data.firstMileMode === 'string' && data.firstMileMode
+              ? (data.firstMileMode as 'DRIVE' | 'CYCLE' | 'SCOOTER' | 'WALK')
+              : prev.firstMileMode;
 
           if (
             prev.drivingDistanceKm === newDrivingDist &&
             prev.drivingTimeMins === newDrivingTime &&
             prev.transitTimeMins === newTransitTime &&
-            prev.transitRideDurationMins === newTransitRide
+            prev.transitRideDurationMins === newTransitRide &&
+            prev.firstMileDistanceKm === newFirstMileDist &&
+            prev.firstMileDurationMins === newFirstMileDur &&
+            prev.firstMileMode === newFirstMileMode
           ) {
             return prev;
           }
@@ -94,6 +115,9 @@ export default function DashboardClient({ initialFuelPrices }: DashboardClientPr
             transitRideDurationMins: newTransitRide,
             transitSteps: data.transitSteps ?? prev.transitSteps,
             transitLines: data.transitLines ?? prev.transitLines,
+            firstMileDistanceKm: newFirstMileDist,
+            firstMileDurationMins: newFirstMileDur,
+            firstMileMode: newFirstMileMode,
           };
         });
       } catch (err) {
@@ -112,6 +136,7 @@ export default function DashboardClient({ initialFuelPrices }: DashboardClientPr
     commuteInput.originSuburbId,
     commuteInput.destinationSuburbId,
     commuteInput.transitMode,
+    commuteInput.firstMileMode,
     origin?.coordinates,
     destination?.coordinates,
     setCommuteInput,
