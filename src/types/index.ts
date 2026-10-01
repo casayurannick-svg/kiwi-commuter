@@ -131,7 +131,14 @@ export interface CommuteInput {
   distanceWearWeekly?: number; // Distance-based maintenance (wear) assumption ($/wk, default $3.00)
   distanceWear?: number; // Alias for distanceWearWeekly
   depreciationWeekly?: number; // Time-based vehicle depreciation ($/wk)
+  // STORY-3: Tab Navigation State
+  activeTab?: TabId;
+  tab?: TabId;
 }
+
+export type TabId = 'summary' | 'compare' | 'advanced';
+export type ActiveTab = TabId;
+
 
 export interface TransitStepDetail {
   line: string;

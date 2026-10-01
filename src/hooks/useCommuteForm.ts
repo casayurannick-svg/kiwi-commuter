@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { CommuteInput } from '@/types';
+import { CommuteInput, TabId } from '@/types';
 import { parseCommuteFromParams, serializeCommuteToParams } from '@/lib/urlParams';
 import { FuelBenchmarkDto } from '@/lib/supabase';
 
@@ -29,6 +29,8 @@ export const DEFAULT_COMMUTE_INPUT: CommuteInput = {
   evPurchasePrice: 0,
   iceTradeInValue: 0,
   horizonYears: 5,
+  activeTab: 'summary',
+  tab: 'summary',
 };
 
 export interface UseCommuteFormOptions {
@@ -42,6 +44,8 @@ export type UseCommuteFormReturn = [
 ] & {
   commuteInput: CommuteInput;
   setCommuteInput: React.Dispatch<React.SetStateAction<CommuteInput>>;
+  activeTab: TabId;
+  setActiveTab: (tab: TabId) => void;
 };
 
 /**
@@ -136,10 +140,28 @@ export function useCommuteForm(options: UseCommuteFormOptions = {}): UseCommuteF
     };
   }, [commuteInput, pathname]);
 
+  const activeTab: TabId = commuteInput.activeTab || 'summary';
+
+  const setActiveTab = (tab: TabId) => {
+    setCommuteInput((prev) => ({ ...prev, activeTab: tab, tab }));
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      if (tab === 'summary') {
+        url.searchParams.delete('tab');
+        url.searchParams.delete('activeTab');
+      } else {
+        url.searchParams.set('tab', tab);
+      }
+      window.history.pushState(null, '', url.pathname + (url.search ? url.search : ''));
+    }
+  };
+
   const tuple = [commuteInput, setCommuteInput] as const;
   return Object.assign([...tuple] as [CommuteInput, React.Dispatch<React.SetStateAction<CommuteInput>>], {
     commuteInput,
     setCommuteInput,
+    activeTab,
+    setActiveTab,
   });
 }
 

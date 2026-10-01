@@ -9,6 +9,8 @@ import FuelRadarWidget from '@/components/FuelRadarWidget';
 import JourneyTimeline from '@/components/JourneyTimeline';
 import MonthlySavingsChart from '@/components/MonthlySavingsChart';
 import RouteMap from '@/components/RouteMap';
+import Tabs from '@/components/Tabs';
+import { ArrowLeftRight, SlidersHorizontal } from 'lucide-react';
 import { getSuburbById } from '@/config/suburbs';
 import { calculateCommuteArbitrage } from '@/lib/calculator';
 import { FuelBenchmarkDto } from '@/lib/supabase';
@@ -170,62 +172,112 @@ export default function DashboardClient({ initialFuelPrices }: DashboardClientPr
         </div>
       </header>
 
+      {/* Sticky Tab Navigation Shell (STORY-3) */}
+      <Tabs
+        activeTab={commuteInput.activeTab || 'summary'}
+        onTabChange={(tab) => setCommuteInput((prev) => ({ ...prev, activeTab: tab, tab }))}
+      />
+
       {/* Main Workspace Body (Mobile First Responsive Stack & Desktop 2-Column Grid) */}
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 py-4 sm:py-6">
-        <div className="flex flex-col gap-4 lg:grid lg:grid-cols-12 lg:gap-5 items-start">
-          {/* Left Column (Desktop cols 1..5: CommuteForm + FuelRadarWidget + MonthlySavingsChart + RouteMap) */}
-          <div className="contents lg:flex lg:flex-col lg:col-span-5 lg:gap-4 w-full">
-            <div className="order-1 w-full">
-              <CommuteForm
-                input={commuteInput}
-                calculationMode={commuteInput.calculationMode}
-                onChange={setCommuteInput}
-                onInputChange={setCommuteInput}
-              />
+        {/* Tab Panel: Summary (Houses all existing dashboard components during transition) */}
+        <div
+          role="tabpanel"
+          id="panel-summary"
+          aria-labelledby="tab-summary"
+          className={commuteInput.activeTab === 'summary' || !commuteInput.activeTab ? 'block' : 'hidden'}
+        >
+          <div className="flex flex-col gap-4 lg:grid lg:grid-cols-12 lg:gap-5 items-start">
+            {/* Left Column (Desktop cols 1..5: CommuteForm + FuelRadarWidget + MonthlySavingsChart + RouteMap) */}
+            <div className="contents lg:flex lg:flex-col lg:col-span-5 lg:gap-4 w-full">
+              <div className="order-1 w-full">
+                <CommuteForm
+                  input={commuteInput}
+                  calculationMode={commuteInput.calculationMode}
+                  onChange={setCommuteInput}
+                  onInputChange={setCommuteInput}
+                />
+              </div>
+              <div className="order-6 w-full">
+                <FuelRadarWidget initialFuelData={initialFuelPrices} />
+              </div>
+              <div className="order-7 w-full">
+                <MonthlySavingsChart arbitrage={arbitrage} />
+              </div>
+              <div className="order-8 w-full">
+                <RouteMap
+                  origin={origin}
+                  destination={destination}
+                  distanceKm={arbitrage.distanceKm}
+                  drivingTimeMins={arbitrage.drivingTimeMins}
+                  transitTimeMins={arbitrage.transitTimeMins}
+                />
+              </div>
             </div>
-            <div className="order-6 w-full">
-              <FuelRadarWidget initialFuelData={initialFuelPrices} />
-            </div>
-            <div className="order-7 w-full">
-              <MonthlySavingsChart arbitrage={arbitrage} />
-            </div>
-            <div className="order-8 w-full">
-              <RouteMap
-                origin={origin}
-                destination={destination}
-                distanceKm={arbitrage.distanceKm}
-                drivingTimeMins={arbitrage.drivingTimeMins}
-                transitTimeMins={arbitrage.transitTimeMins}
-              />
+
+            {/* Right Column (Desktop cols 6..12: ComparisonCard + CommuteMatrix + EvRoiSandbox + JourneyTimeline) */}
+            <div className="contents lg:flex lg:flex-col lg:col-span-7 lg:gap-4 w-full">
+              <div className="order-2 w-full">
+                <ComparisonCard
+                  arbitrage={arbitrage}
+                  input={commuteInput}
+                  onCalculationModeChange={(mode) =>
+                    setCommuteInput((prev) => ({ ...prev, calculationMode: mode }))
+                  }
+                />
+              </div>
+              <div className="order-3 w-full">
+                <CommuteMatrix input={commuteInput} arbitrage={arbitrage} />
+              </div>
+              <div className="order-3 w-full">
+                <EvRoiSandbox input={commuteInput} onChange={setCommuteInput} />
+              </div>
+              <div className="order-4 w-full">
+                <JourneyTimeline
+                  arbitrage={arbitrage}
+                  input={commuteInput}
+                  onFirstMileModeChange={(mode) =>
+                    setCommuteInput((prev) => ({ ...prev, firstMileMode: mode }))
+                  }
+                />
+              </div>
             </div>
           </div>
+        </div>
 
-          {/* Right Column (Desktop cols 6..12: ComparisonCard + CommuteMatrix + EvRoiSandbox + JourneyTimeline) */}
-          <div className="contents lg:flex lg:flex-col lg:col-span-7 lg:gap-4 w-full">
-            <div className="order-2 w-full">
-              <ComparisonCard
-                arbitrage={arbitrage}
-                input={commuteInput}
-                onCalculationModeChange={(mode) =>
-                  setCommuteInput((prev) => ({ ...prev, calculationMode: mode }))
-                }
-              />
+        {/* Tab Panel: Compare (Placeholder for STORY-4) */}
+        <div
+          role="tabpanel"
+          id="panel-compare"
+          aria-labelledby="tab-compare"
+          className={commuteInput.activeTab === 'compare' ? 'block' : 'hidden'}
+        >
+          <div className="min-h-[500px] flex flex-col items-center justify-center p-8 text-center rounded-2xl border border-slate-800/80 bg-slate-900/40 backdrop-blur-sm">
+            <div className="p-3 bg-emerald-500/10 text-emerald-400 rounded-xl mb-4 border border-emerald-500/20">
+              <ArrowLeftRight className="w-8 h-8" />
             </div>
-            <div className="order-3 w-full">
-              <CommuteMatrix input={commuteInput} arbitrage={arbitrage} />
+            <h2 className="text-lg font-bold text-white mb-2">Mode Comparison</h2>
+            <p className="text-sm text-slate-400 max-w-md">
+              Side-by-side transit vs driving comparison, detailed route tradeoffs, and break-even timelines.
+            </p>
+          </div>
+        </div>
+
+        {/* Tab Panel: Advanced (Placeholder for STORY-5) */}
+        <div
+          role="tabpanel"
+          id="panel-advanced"
+          aria-labelledby="tab-advanced"
+          className={commuteInput.activeTab === 'advanced' ? 'block' : 'hidden'}
+        >
+          <div className="min-h-[500px] flex flex-col items-center justify-center p-8 text-center rounded-2xl border border-slate-800/80 bg-slate-900/40 backdrop-blur-sm">
+            <div className="p-3 bg-emerald-500/10 text-emerald-400 rounded-xl mb-4 border border-emerald-500/20">
+              <SlidersHorizontal className="w-8 h-8" />
             </div>
-            <div className="order-3 w-full">
-              <EvRoiSandbox input={commuteInput} onChange={setCommuteInput} />
-            </div>
-            <div className="order-4 w-full">
-              <JourneyTimeline
-                arbitrage={arbitrage}
-                input={commuteInput}
-                onFirstMileModeChange={(mode) =>
-                  setCommuteInput((prev) => ({ ...prev, firstMileMode: mode }))
-                }
-              />
-            </div>
+            <h2 className="text-lg font-bold text-white mb-2">Advanced Assumptions &amp; TCO</h2>
+            <p className="text-sm text-slate-400 max-w-md">
+              Custom depreciation curves, granular tire wear, insurance overrides, and total cost of ownership modeling.
+            </p>
           </div>
         </div>
       </main>

@@ -6,6 +6,7 @@ import {
   EVChargingSource,
   EvChargingMode,
   ParkingTier,
+  TabId,
   TransitMode,
   VehiclePowertrain,
   VehicleType,
@@ -224,6 +225,12 @@ export function serializeCommuteToParams(input: CommuteInput): URLSearchParams {
   if (horizonYears !== undefined && !isNaN(horizonYears)) {
     params.set('horizonYears', horizonYears.toString());
     params.set('horizon', horizonYears.toString());
+  }
+
+  // STORY-3: Active Tab Serialization ('summary' | 'compare' | 'advanced', default 'summary')
+  const currentTab = input.activeTab ?? input.tab;
+  if (currentTab && currentTab !== 'summary') {
+    params.set('tab', currentTab);
   }
 
   return params;
@@ -740,6 +747,27 @@ export function parseCommuteFromParams(
     mileage: resolvedAnnualMileage,
     horizonYears: resolvedHorizonYears,
     horizon: resolvedHorizonYears,
+    // STORY-3: Active Tab Parsing ('summary' | 'compare' | 'advanced', default 'summary')
+    activeTab: (() => {
+      const rawTab = params.get('tab') || params.get('activeTab');
+      if (rawTab) {
+        const norm = rawTab.toLowerCase().trim();
+        if (norm === 'summary' || norm === 'compare' || norm === 'advanced') {
+          return norm as TabId;
+        }
+      }
+      return fallback.activeTab || 'summary';
+    })(),
+    tab: (() => {
+      const rawTab = params.get('tab') || params.get('activeTab');
+      if (rawTab) {
+        const norm = rawTab.toLowerCase().trim();
+        if (norm === 'summary' || norm === 'compare' || norm === 'advanced') {
+          return norm as TabId;
+        }
+      }
+      return fallback.activeTab || 'summary';
+    })(),
   };
 }
 
