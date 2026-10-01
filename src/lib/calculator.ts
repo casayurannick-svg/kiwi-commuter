@@ -350,7 +350,7 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
   // FEAT-60: IRD True Cost Mileage Mode
   // If 'IRD_TRUE_COST' is active, calculate distance_in_km * IRD_MILEAGE_RATE_PER_KM.
   // IRD mileage rate comprehensively covers fuel, depreciation, WOF, Rego, maintenance, and insurance.
-  const calculationMode: CalculationMode = input.calculationMode || 'FUEL';
+  const calculationMode: CalculationMode = input.calculationMode || input.calcMode || 'FUEL';
   const isIrdMode = calculationMode === 'IRD_TRUE_COST';
 
   const dailyIrdCost = round2((distanceRoundTripKm * IRD_MILEAGE_RATE_PER_KM) / passengers);

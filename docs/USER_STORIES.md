@@ -48,6 +48,7 @@
 | **FEAT-60** | IRD True Cost Mileage Toggle & Formula | **DONE** | [`src/config/fares.config.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/config/fares.config.ts), [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts), [`src/components/ComparisonCard.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/ComparisonCard.tsx) | Defined standard IRD Tier 1 rate ($1.20/km), added 'FUEL' vs 'IRD_TRUE_COST' mode state, updated Driving cost formula (`distance_in_km * IRD_MILEAGE_RATE_PER_KM`), added Tailwind toggle switch with info icon and tooltip ("Includes depreciation, WOF, Rego, maintenance, and insurance."). |
 | **FEAT-75** | 3-Way Commute Cost Summary Matrix UI | **DONE** | [`src/components/CommuteMatrix.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/CommuteMatrix.tsx), [`src/components/DashboardClient.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/DashboardClient.tsx) | Responsive 3-column matrix comparing Combustion (ICE), Electric (EV), and Public Transit side-by-side across daily, weekly, and annual intervals with statutory RUC rates and energy math. |
 | **BUG-76** | CommuteMatrix Badge Cleanup, ICE RUC Math, Dynamic Fuel Rate & Sidebar Layout | **DONE** | [`src/components/CommuteMatrix.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/CommuteMatrix.tsx), [`src/components/DashboardClient.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/DashboardClient.tsx), [`src/components/__tests__/CommuteMatrix.test.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/__tests__/CommuteMatrix.test.tsx) | Removed 'FEAT-75' badge; dynamic ICE RUC rendering (only shows '(Exempt)' if 0); dynamic custom fuel price display in Column 1 footer; reordered dashboard layout to place MonthlySavingsChart under FuelRadarWidget in the left sidebar. |
+| **BUG-77** | CommuteMatrix IRD Calculation Mode Isolation | **DONE** | [`src/components/CommuteMatrix.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/CommuteMatrix.tsx), [`src/components/__tests__/CommuteMatrix.test.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/__tests__/CommuteMatrix.test.tsx), [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts) | Explicitly set calculationMode and calcMode to 'FUEL' in iceArbitrage and evArbitrage useMemo blocks to isolate CommuteMatrix from IRD True Cost mode inheritance and zeroed itemized lines. |
 
 ---
 
@@ -836,6 +837,19 @@
   - **Then** the Column 1 footer displays `Custom fuel price ($X.XX/L)` rather than the default benchmark text.
   - **Given** the desktop dashboard layout,
   - **Then** `MonthlySavingsChart` is positioned directly beneath `FuelRadarWidget` in the left sidebar column (`lg:col-span-5`).
+
+---
+
+### BUG-77: CommuteMatrix IRD Calculation Mode Isolation
+**As a** commuter comparing ICE, EV, and transit in the 3-Way Matrix,  
+**I want** itemized fuel and electricity line items to remain fully populated even when IRD True Cost mode is toggled in the Hero card,  
+**So that** drivetrain-specific fuel and energy benchmarks are never wiped out or zeroed.
+
+* **Acceptance Criteria:**
+  - **Given** `input.calculationMode === 'IRD_TRUE_COST'`,
+  - **When** `CommuteMatrix` computes `iceArbitrage` and `evArbitrage`,
+  - **Then** `calculationMode: 'FUEL'` and `calcMode: 'FUEL'` are strictly enforced in both arbitrage pipelines.
+  - **And** itemized Fuel Cost and Electricity values in the rendered matrix are greater than $0.00.
 
 ---
 

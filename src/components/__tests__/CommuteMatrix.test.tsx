@@ -129,4 +129,30 @@ describe('FEAT-75: 3-Way Commute Summary Matrix UI Component', () => {
       assert.ok(customHtml.includes('Custom fuel price ($2.95/L)'));
     });
   });
+
+  describe('BUG-77: Isolation from IRD calculation mode leakage', () => {
+    it('asserts itemized fuel and electricity values are greater than 0 when input.calculationMode is IRD_TRUE_COST', () => {
+      const irdInput: CommuteInput = {
+        ...mockInput,
+        calculationMode: 'IRD_TRUE_COST',
+      };
+      const irdArbitrage = calculateCommuteArbitrage(irdInput);
+      const html = renderToStaticMarkup(
+        React.createElement(CommuteMatrix, {
+          input: irdInput,
+          arbitrage: irdArbitrage,
+        })
+      );
+
+      const fuelMatch = html.match(/Fuel Cost:<\/span><span[^>]*>\$([0-9,.]+)/);
+      assert.ok(fuelMatch, 'Fuel cost should be rendered');
+      const fuelVal = parseFloat(fuelMatch[1].replace(/,/g, ''));
+      assert.ok(fuelVal > 0, `Expected fuel value > 0, got ${fuelVal}`);
+
+      const elecMatch = html.match(/Electricity:<\/span><span[^>]*>\$([0-9,.]+)/);
+      assert.ok(elecMatch, 'Electricity cost should be rendered');
+      const elecVal = parseFloat(elecMatch[1].replace(/,/g, ''));
+      assert.ok(elecVal > 0, `Expected electricity value > 0, got ${elecVal}`);
+    });
+  });
 });

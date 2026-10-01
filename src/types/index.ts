@@ -117,6 +117,7 @@ export interface CommuteInput {
   defaultInsurance?: number; // US-38: Default annual insurance premium (default $1,311)
   customInsurance?: number | null; // US-38: Optional custom annual insurance override (mutually exclusive with defaultInsurance)
   calculationMode?: CalculationMode; // FEAT-60: 'FUEL' | 'IRD_TRUE_COST'
+  calcMode?: CalculationMode; // BUG-77: Alias for calculationMode
 }
 
 export interface TransitStepDetail {

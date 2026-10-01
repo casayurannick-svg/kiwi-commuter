@@ -18,6 +18,8 @@ export function CommuteMatrix({ input, arbitrage }: CommuteMatrixProps) {
   const iceArbitrage = useMemo(() => {
     return calculateCommuteArbitrage({
       ...input,
+      calculationMode: 'FUEL',
+      calcMode: 'FUEL',
       vehicleType:
         input.vehicleType === 'petrol95' || input.vehicleType === 'diesel'
           ? input.vehicleType
@@ -32,6 +34,8 @@ export function CommuteMatrix({ input, arbitrage }: CommuteMatrixProps) {
   const evArbitrage = useMemo(() => {
     return calculateCommuteArbitrage({
       ...input,
+      calculationMode: 'FUEL',
+      calcMode: 'FUEL',
       vehicleType: 'bev',
       powertrain: 'BEV',
       propulsion: 'EV',
