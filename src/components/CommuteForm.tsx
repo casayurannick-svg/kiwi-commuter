@@ -89,7 +89,7 @@ export default function CommuteForm({
     return 'custom';
   });
 
-  const currentVehicle = VEHICLE_PRESETS[input.vehicleType] || VEHICLE_PRESETS.petrol91;
+  const currentVehicle = VEHICLE_PRESETS[input.vehicleType as VehicleType] || VEHICLE_PRESETS.petrol91;
   const isPureEv = input.vehicleType === 'bev' || input.powertrain === 'BEV';
   const isFuelConsuming = !isPureEv;
 

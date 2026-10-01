@@ -47,12 +47,22 @@ export function serializeCommuteToParams(input: CommuteInput): URLSearchParams {
   if (input.destinationSuburbId) params.set('to', input.destinationSuburbId);
   if (input.daysPerWeek !== undefined) params.set('days', input.daysPerWeek.toString());
 
-  const power: VehiclePowertrain =
-    input.powertrain ||
-    (input.vehicleType ? VEHICLE_TYPE_TO_POWERTRAIN[input.vehicleType] : 'PETROL_91');
+  let derivedPower: VehiclePowertrain = 'PETROL_91';
+  if (input.vehicleType) {
+    const vt = input.vehicleType.toLowerCase();
+    if (vt.includes('phev')) derivedPower = 'PHEV';
+    else if (vt.includes('bev') || vt.includes('ev') || vt.includes('electric')) derivedPower = 'BEV';
+    else if (vt.includes('diesel')) derivedPower = 'DIESEL';
+    else if (vt.includes('hybrid') || vt.includes('hev')) derivedPower = 'HEV';
+    else if (vt.includes('95')) derivedPower = 'PETROL_95';
+    else if (VEHICLE_TYPE_TO_POWERTRAIN[vt as VehicleType]) {
+      derivedPower = VEHICLE_TYPE_TO_POWERTRAIN[vt as VehicleType];
+    }
+  }
+  const power: VehiclePowertrain = input.powertrain || derivedPower;
   if (power) params.set('power', power);
 
-  const econ = input.fuelEconomy ?? input.consumptionOverride;
+  const econ = input.fuelEconomy ?? input.consumptionOverride ?? input.efficiency;
   if (econ !== undefined) params.set('econ', econ.toString());
 
   const park = input.parkingTier || 'CBD_EARLY_BIRD';
@@ -69,7 +79,9 @@ export function serializeCommuteToParams(input: CommuteInput): URLSearchParams {
     power === 'BEV' ||
     power === 'PHEV' ||
     input.vehicleType === 'bev' ||
-    input.vehicleType === 'phev';
+    input.vehicleType === 'phev' ||
+    input.vehicleType === 'EV' ||
+    input.vehicleType === 'PHEV';
 
   if (isEvOrPhev) {
     const chargeSource =
@@ -81,7 +93,7 @@ export function serializeCommuteToParams(input: CommuteInput): URLSearchParams {
     }
 
     const kwhRate =
-      input.homeKWhRate ?? input.fuelPriceOverride;
+      input.kwhRate ?? input.homeKWhRate ?? input.fuelPriceOverride;
     if (kwhRate !== undefined) params.set('kwhRate', kwhRate.toString());
   }
 
@@ -202,7 +214,17 @@ export function parseCommuteFromParams(
     params.get('drive_train');
 
   let resolvedPowertrain: VehiclePowertrain = fallback.powertrain || 'PETROL_91';
-  let resolvedVehicleType: VehicleType = fallback.vehicleType || 'petrol91';
+  let initialVehicleType: VehicleType = 'petrol91';
+  if (fallback.vehicleType) {
+    const fvt = fallback.vehicleType.toLowerCase();
+    if (fvt.includes('phev')) initialVehicleType = 'phev';
+    else if (fvt.includes('bev') || fvt.includes('ev') || fvt.includes('electric')) initialVehicleType = 'bev';
+    else if (fvt.includes('diesel')) initialVehicleType = 'diesel';
+    else if (fvt.includes('hev') || fvt.includes('hybrid')) initialVehicleType = 'hev';
+    else if (fvt.includes('95')) initialVehicleType = 'petrol95';
+    else initialVehicleType = (fallback.vehicleType as VehicleType) || 'petrol91';
+  }
+  let resolvedVehicleType: VehicleType = initialVehicleType;
 
   if (rawPower) {
     const trimmed = rawPower.trim();

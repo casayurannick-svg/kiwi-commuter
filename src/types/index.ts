@@ -64,9 +64,11 @@ export interface CommuteInput {
   originSuburbId: string;
   destinationSuburbId: string;
   daysPerWeek: number; // 1 to 7
-  vehicleType: VehicleType;
+  vehicleType: VehicleType | 'EV' | 'PHEV' | string;
   powertrain?: VehiclePowertrain;
   power?: VehiclePowertrain | string; // BUG-40: Alias for powertrain (e.g., power=DIESEL)
+  propulsion?: string; // FEAT-73: Alias for propulsion profile (e.g. EV, PHEV)
+  efficiency?: number; // FEAT-73: Alias for battery efficiency (kWh/100km)
   consumptionOverride?: number; // custom L/100km or kWh/100km
   fuelPriceOverride?: number; // custom $/L or $/kWh
   parkingDailyRate: number; // NZD
@@ -80,6 +82,7 @@ export interface CommuteInput {
   fuelEconomy?: number; // Alias for consumptionOverride
   customParkingDaily?: number; // Alias for parkingDailyRate
   homeKWhRate?: number; // Alias for BEV electricity rate
+  kwhRate?: number; // FEAT-73: Alias for charging rate ($/kWh)
   customFuelPricePerL?: number; // Alias for ICE fuel price
   evChargingSource?: EVChargingSource; // Preset: HOME_OFFPEAK, HOME_FLAT, PUBLIC_DC, CUSTOM
   evChargingMode?: EvChargingMode; // Preset: home_offpeak, home_flat, public_dc, custom

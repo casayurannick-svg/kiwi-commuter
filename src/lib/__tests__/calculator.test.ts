@@ -179,6 +179,61 @@ describe('src/lib/calculator.ts - calculateCommuteArbitrage', () => {
       assert.strictEqual(result.driving.weeklyRucCost, Math.round(expectedDailyRuc * 5 * 100) / 100);
     });
 
+    it('FEAT-73 & FEAT-74: correctly synthesizes $0.076/km RUC + energy cost (distance * (efficiency / 100) * kwhRate) for Light EV', () => {
+      const distanceRoundTripKm = 18.2;
+      const efficiency = 15.0; // kWh/100km
+      const kwhRate = 0.28; // $/kWh
+
+      const result = calculateCommuteArbitrage({
+        originSuburbId: 'takapuna', // 9.1km one way, 18.2km round trip
+        destinationSuburbId: 'cbd',
+        daysPerWeek: 5,
+        vehicleType: 'EV',
+        efficiency,
+        kwhRate,
+        parkingDailyRate: 0,
+        parkingDaysPerWeek: 0,
+        concession: 'adult',
+        includeMaintenanceWear: false,
+        carpoolPassengers: 1,
+      });
+
+      const expectedDailyRuc = Math.round(distanceRoundTripKm * 0.076 * 100) / 100; // 18.2 * 0.076 = 1.38
+      const expectedDailyEnergy = Math.round((distanceRoundTripKm * (efficiency / 100) * kwhRate) * 100) / 100; // 18.2 * 0.15 * 0.28 = 0.76
+      assert.strictEqual(result.driving.dailyRucCost, expectedDailyRuc);
+      assert.strictEqual(result.driving.dailyFuelCost, expectedDailyEnergy);
+      const runningCost = Math.round((result.driving.dailyRucCost + result.driving.dailyFuelCost) * 100) / 100;
+      assert.strictEqual(runningCost, Math.round((expectedDailyRuc + expectedDailyEnergy) * 100) / 100);
+    });
+
+    it('FEAT-73 & FEAT-74: calculates EV energy math and RUC for Park & Ride First-Mile legs', () => {
+      const firstMileDistanceKm = 4.0;
+      const firstMileRoundTripKm = 8.0;
+      const efficiency = 18.0; // kWh/100km
+      const kwhRate = 0.20; // $/kWh
+
+      const result = calculateCommuteArbitrage({
+        originCoordinates: [174.7000, -36.8000],
+        originAddress: '123 Test St',
+        destinationSuburbId: 'cbd',
+        daysPerWeek: 5,
+        transitMode: 'TRAIN',
+        firstMileMode: 'DRIVE',
+        firstMileDistanceKm,
+        vehicleType: 'EV',
+        efficiency,
+        kwhRate,
+        includeMaintenanceWear: false,
+        carpoolPassengers: 1,
+      });
+
+      const expectedFirstMileFuel = Math.round(((firstMileRoundTripKm * efficiency / 100) * kwhRate) * 100) / 100; // 8 * 0.18 * 0.20 = 0.288 -> 0.29
+      const expectedFirstMileRuc = Math.round((firstMileRoundTripKm * 0.076) * 100) / 100; // 8 * 0.076 = 0.608 -> 0.61
+      const expectedDailyCost = Math.round((expectedFirstMileFuel + expectedFirstMileRuc) * 100) / 100; // 0.90
+
+      assert.strictEqual(result.transit.firstMileDailyCost, expectedDailyCost);
+    });
+
     it('applies $0.038/km reduced RUC to PHEVs', () => {
       const result = calculateCommuteArbitrage({
         originSuburbId: 'takapuna',
@@ -186,6 +241,25 @@ describe('src/lib/calculator.ts - calculateCommuteArbitrage', () => {
         daysPerWeek: 5,
         vehicleType: 'phev',
         powertrain: 'PHEV',
+        parkingDailyRate: 0,
+        parkingDaysPerWeek: 0,
+        concession: 'adult',
+        includeMaintenanceWear: false,
+        carpoolPassengers: 1,
+      });
+
+      const expectedDailyRuc = Math.round(18.2 * 0.038 * 100) / 100;
+      assert.strictEqual(result.driving.dailyRucCost, expectedDailyRuc);
+    });
+
+    it('FEAT-73 & FEAT-74: applies $0.038/km reduced RUC to PHEV with custom propulsion profile', () => {
+      const result = calculateCommuteArbitrage({
+        originSuburbId: 'takapuna',
+        destinationSuburbId: 'cbd',
+        daysPerWeek: 5,
+        vehicleType: 'PHEV',
+        efficiency: 16.5,
+        kwhRate: 0.22,
         parkingDailyRate: 0,
         parkingDaysPerWeek: 0,
         concession: 'adult',
@@ -1269,6 +1343,33 @@ describe('src/lib/calculator.ts - calculateCommuteArbitrage', () => {
       assert.strictEqual(calculateDrivingCost(25, 'FUEL'), 4.90);
       assert.strictEqual(calculateDrivingCost(50, 'FUEL'), 9.79);
       assert.strictEqual(calculateDrivingCost(100, 'FUEL'), 19.58);
+    });
+
+    it('FEAT-73 & FEAT-74: calculateDrivingCost computes EV energy and RUC tiers correctly', () => {
+      // 50km EV: energy = (50 * 16 / 100) * 0.25 = 2.00, RUC = 50 * 0.076 = 3.80. Total = 5.80
+      const evCost = calculateDrivingCost(50, 'FUEL', {
+        vehicleType: 'EV',
+        efficiency: 16.0,
+        kwhRate: 0.25,
+        includeRuc: true,
+      });
+      assert.strictEqual(evCost, 5.80);
+
+      // 50km PHEV: RUC = 50 * 0.038 = 1.90
+      // 35km electric: (35 * 16.5 / 100) * 0.20 = 1.155
+      // 15km petrol: (15 * 6.0 / 100) * 2.80 = 2.52
+      // fuel = 3.675 -> 3.68
+      // RUC = 1.90
+      // total = 3.675 + 1.90 = 5.575 -> 5.58
+      const phevCost = calculateDrivingCost(50, 'FUEL', {
+        vehicleType: 'PHEV',
+        efficiency: 16.5,
+        kwhRate: 0.20,
+        consumption: 6.0,
+        fuelPrice: 2.80,
+        includeRuc: true,
+      });
+      assert.strictEqual(phevCost, 5.58);
     });
 
     it('verifies calculateCommuteArbitrage computes IRD True Cost when calculationMode is IRD_TRUE_COST', () => {

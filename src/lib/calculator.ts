@@ -39,6 +39,29 @@ import { haversineDistanceKm } from './routes';
 export const WEEKS_PER_MONTH = 52 / 12; // 4.33333333
 export { IRD_MILEAGE_RATE_PER_KM };
 
+/**
+ * FEAT-73 & FEAT-74: Statutory NZTA Road User Charges (RUC) Rates ($/km)
+ * - Light EV (EV / BEV): $76.00 per 1,000 km ($0.076/km)
+ * - Plug-in Hybrid (PHEV): $38.00 per 1,000 km ($0.038/km)
+ * - Diesel Light Vehicle: $76.00 per 1,000 km ($0.076/km)
+ * - Petrol (91/95) & Conventional Hybrid (HEV): Exempt ($0.00/km)
+ */
+export const NZ_RUC_LIGHT_EV_RATE_PER_KM = 0.076;
+export const NZ_RUC_PHEV_RATE_PER_KM = 0.038;
+export const NZ_RUC_DIESEL_RATE_PER_KM = 0.076;
+
+export const NZ_RUC_RATES = {
+  LIGHT_EV: NZ_RUC_LIGHT_EV_RATE_PER_KM,
+  EV: NZ_RUC_LIGHT_EV_RATE_PER_KM,
+  BEV: NZ_RUC_LIGHT_EV_RATE_PER_KM,
+  PHEV: NZ_RUC_PHEV_RATE_PER_KM,
+  DIESEL: NZ_RUC_DIESEL_RATE_PER_KM,
+  HEV: 0.0,
+  PETROL: 0.0,
+  PETROL_91: 0.0,
+  PETROL_95: 0.0,
+} as const;
+
 const POWERTRAIN_TO_VEHICLE_TYPE: Record<VehiclePowertrain, VehicleType> = {
   PETROL_91: 'petrol91',
   PETROL_95: 'petrol95',
@@ -68,20 +91,39 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
       : route.distanceKm;
   const distanceRoundTripKm = Math.round(distanceOneWayKm * 2 * 10) / 10;
 
-  // Resolve vehicle type and powertrain (BUG-40: support power=DIESEL and power=PETROL parameters and case normalization)
-  const rawPower = input.powertrain || input.power;
+  // Resolve vehicle type and powertrain (FEAT-73 & FEAT-74: support EV, BEV, PHEV propulsion profiles)
+  const rawPower = input.powertrain || input.power || input.propulsion;
   const rawPowerStr = typeof rawPower === 'string' ? rawPower.toUpperCase() : undefined;
+
+  const rawVehicleType = input.vehicleType as string | undefined;
+  const rawVehicleTypeStr = typeof rawVehicleType === 'string' ? rawVehicleType.toUpperCase() : undefined;
+
   const normalizedPower: VehiclePowertrain | undefined =
     rawPowerStr === 'PETROL'
       ? 'PETROL_91'
-      : (rawPowerStr as VehiclePowertrain | undefined);
+      : rawPowerStr === 'EV'
+      ? 'BEV'
+      : (rawPowerStr as VehiclePowertrain | undefined) ||
+        (rawVehicleTypeStr === 'EV' || rawVehicleTypeStr === 'BEV'
+          ? 'BEV'
+          : rawVehicleTypeStr === 'PHEV'
+          ? 'PHEV'
+          : undefined);
 
   const effectiveVehicleType: VehicleType =
     normalizedPower && POWERTRAIN_TO_VEHICLE_TYPE[normalizedPower]
       ? POWERTRAIN_TO_VEHICLE_TYPE[normalizedPower]
-      : input.vehicleType === 'diesel' || normalizedPower === 'DIESEL'
+      : rawVehicleTypeStr === 'DIESEL' || input.vehicleType === 'diesel' || normalizedPower === 'DIESEL'
       ? 'diesel'
-      : input.vehicleType || 'petrol91';
+      : rawVehicleTypeStr === 'EV' || rawVehicleTypeStr === 'BEV' || input.vehicleType === 'bev' || normalizedPower === 'BEV'
+      ? 'bev'
+      : rawVehicleTypeStr === 'PHEV' || input.vehicleType === 'phev' || normalizedPower === 'PHEV'
+      ? 'phev'
+      : rawVehicleTypeStr === 'HEV' || input.vehicleType === 'hev' || normalizedPower === 'HEV'
+      ? 'hev'
+      : rawVehicleTypeStr === 'PETROL95' || rawVehicleTypeStr === 'PETROL_95' || input.vehicleType === 'petrol95'
+      ? 'petrol95'
+      : (input.vehicleType as VehicleType) || 'petrol91';
 
   const effectivePowertrain: VehiclePowertrain =
     normalizedPower && STATUTORY_NZTA_RUC_RATES[normalizedPower]
@@ -99,25 +141,35 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
       : 'PETROL_91';
 
   const vehicle = VEHICLE_PRESETS[effectiveVehicleType] || VEHICLE_PRESETS.petrol91;
+  const rawEfficiency =
+    input.consumptionOverride ??
+    input.fuelEconomy ??
+    input.efficiency;
   const hasCustomConsumption =
-    typeof input.consumptionOverride === 'number' &&
-    !isNaN(input.consumptionOverride) &&
-    input.consumptionOverride > 0;
+    typeof rawEfficiency === 'number' &&
+    !isNaN(rawEfficiency) &&
+    rawEfficiency > 0;
   const consumption = hasCustomConsumption
-    ? input.consumptionOverride!
+    ? rawEfficiency!
     : vehicle.defaultConsumption;
 
   const isEbike = input.transitMode === 'EBIKE' || input.transitMode === 'E-Bike';
   const isHev = effectivePowertrain === 'HEV' || effectiveVehicleType === 'hev';
   const isDiesel = effectivePowertrain === 'DIESEL' || effectiveVehicleType === 'diesel';
 
-  // Statutory RUC rate ($/km) - HEV and Petrol (91/95) are exempt ($0.00/km)
-  // Diesel light vehicle rate is $76.00 per 1,000 km ($0.076/km)
-  // BUG-44: The private vehicle baseline retains its RUC rate regardless of the compared alternative mode.
+  // Statutory RUC rate ($/km):
+  // Light EV (EV / BEV): $0.076/km ($76.00 / 1,000 km)
+  // Plug-in Hybrid (PHEV): $0.038/km ($38.00 / 1,000 km)
+  // Diesel light vehicle: $0.076/km ($76.00 / 1,000 km)
+  // Conventional hybrid (HEV) and Petrol (91/95): Exempt ($0.00/km)
   let rucRate = 0;
   if (!isHev) {
-    if (isDiesel) {
-      rucRate = STATUTORY_NZTA_RUC_RATES.DIESEL.ratePerKm; // 0.076 ($76.00 / 1,000 km)
+    if (effectivePowertrain === 'BEV' || effectiveVehicleType === 'bev') {
+      rucRate = NZ_RUC_LIGHT_EV_RATE_PER_KM; // 0.076
+    } else if (effectivePowertrain === 'PHEV' || effectiveVehicleType === 'phev') {
+      rucRate = NZ_RUC_PHEV_RATE_PER_KM; // 0.038
+    } else if (isDiesel) {
+      rucRate = NZ_RUC_DIESEL_RATE_PER_KM; // 0.076
     } else if (STATUTORY_NZTA_RUC_RATES[effectivePowertrain]) {
       rucRate = STATUTORY_NZTA_RUC_RATES[effectivePowertrain].ratePerKm;
     } else if (NZTA_RUC_RATES[effectiveVehicleType]) {
@@ -165,6 +217,9 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
 
   // Helper to resolve EV / PHEV electricity rate ($/kWh)
   const resolveEvKwhRate = (): number => {
+    if (typeof input.kwhRate === 'number' && !isNaN(input.kwhRate) && input.kwhRate > 0) {
+      return input.kwhRate;
+    }
     if (input.evChargingSource) {
       if (input.evChargingSource === 'CUSTOM') {
         return input.homeKWhRate ?? input.fuelPriceOverride ?? 0.18;
@@ -194,7 +249,7 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
     const electricKm = Math.min(distanceRoundTripKm, 35);
     const petrolKm = Math.max(0, distanceRoundTripKm - 35);
     const evRate = resolveEvKwhRate();
-    const phevEvEfficiency = 16.5; // kWh/100km
+    const phevEvEfficiency = typeof input.efficiency === 'number' && input.efficiency > 0 ? input.efficiency : 16.5; // kWh/100km
     // US-26: Prioritize custom L/100km override if provided, falling back to 6.0 L/100km baseline average
     const phevPetrolEfficiency = hasCustomConsumption
       ? input.consumptionOverride!
@@ -713,7 +768,7 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
         firstMileFuelCost = round2((consumptionRoundTrip * evRate) / passengers);
       } else if (effectiveVehicleType === 'phev') {
         const evRate = resolveEvKwhRate();
-        const phevEvEfficiency = 16.5;
+        const phevEvEfficiency = typeof input.efficiency === 'number' && input.efficiency > 0 ? input.efficiency : 16.5;
         const consumptionRoundTrip = (phevEvEfficiency / 100) * firstMileRoundTripKm;
         firstMileFuelCost = round2((consumptionRoundTrip * evRate) / passengers);
       } else {
@@ -1117,7 +1172,10 @@ export interface DrivingCostOptions {
   consumption?: number; // L/100km or kWh/100km
   fuelPrice?: number; // $/L or $/kWh
   powertrain?: VehiclePowertrain;
-  vehicleType?: VehicleType;
+  vehicleType?: VehicleType | 'EV' | 'PHEV' | string;
+  propulsion?: string;
+  efficiency?: number; // kWh/100km
+  kwhRate?: number; // $/kWh
   passengers?: number;
   ratePerKm?: number;
   includeMaintenance?: boolean;
@@ -1153,16 +1211,59 @@ export function calculateDrivingCost(
     return round2(cost + parking);
   }
 
-  const effectiveVehicleType = options.vehicleType || 'petrol91';
+  const rawType = (
+    options.propulsion ||
+    options.vehicleType ||
+    options.powertrain ||
+    'petrol91'
+  ).toString().toLowerCase();
+
+  let effectiveVehicleType: VehicleType = 'petrol91';
+  if (rawType.includes('phev')) {
+    effectiveVehicleType = 'phev';
+  } else if (rawType.includes('bev') || rawType.includes('ev') || rawType.includes('electric')) {
+    effectiveVehicleType = 'bev';
+  } else if (rawType.includes('diesel')) {
+    effectiveVehicleType = 'diesel';
+  } else if (rawType.includes('hybrid') || rawType.includes('hev')) {
+    effectiveVehicleType = 'hev';
+  } else if (rawType.includes('95') || rawType.includes('98')) {
+    effectiveVehicleType = 'petrol95';
+  } else if (VEHICLE_PRESETS[options.vehicleType as VehicleType]) {
+    effectiveVehicleType = options.vehicleType as VehicleType;
+  }
+
   const vehicle = VEHICLE_PRESETS[effectiveVehicleType] || VEHICLE_PRESETS.petrol91;
-  const consumption = options.consumption ?? vehicle.defaultConsumption;
-  const fuelPrice = options.fuelPrice ?? vehicle.defaultFuelPrice;
-  const fuelCost = ((distanceKm * consumption) / 100) * fuelPrice;
+  const consumption = options.efficiency ?? options.consumption ?? vehicle.defaultConsumption;
+
+  let fuelCost = 0;
+  if (effectiveVehicleType === 'bev') {
+    const kwhRate = options.kwhRate ?? options.fuelPrice ?? vehicle.defaultFuelPrice;
+    fuelCost = round2(((distanceKm * consumption) / 100) * kwhRate);
+  } else if (effectiveVehicleType === 'phev') {
+    const electricKm = Math.min(distanceKm, 35);
+    const petrolKm = Math.max(0, distanceKm - 35);
+    const evRate = options.kwhRate ?? 0.18;
+    const phevEvEfficiency = options.efficiency ?? 16.5;
+    const phevPetrolEfficiency = options.consumption ?? 6.0;
+    const petrolPrice = options.fuelPrice ?? 2.72;
+    fuelCost = round2(((electricKm * phevEvEfficiency) / 100) * evRate + ((petrolKm * phevPetrolEfficiency) / 100) * petrolPrice);
+  } else {
+    const fuelPrice = options.fuelPrice ?? vehicle.defaultFuelPrice;
+    fuelCost = round2(((distanceKm * consumption) / 100) * fuelPrice);
+  }
 
   let rucCost = 0;
   if (options.includeRuc) {
-    const rucRate = vehicle.rucRatePerKm ?? 0;
-    rucCost = distanceKm * rucRate;
+    let rucRate = vehicle.rucRatePerKm ?? 0;
+    if (effectiveVehicleType === 'bev') {
+      rucRate = NZ_RUC_LIGHT_EV_RATE_PER_KM;
+    } else if (effectiveVehicleType === 'phev') {
+      rucRate = NZ_RUC_PHEV_RATE_PER_KM;
+    } else if (effectiveVehicleType === 'diesel') {
+      rucRate = NZ_RUC_DIESEL_RATE_PER_KM;
+    }
+    rucCost = round2(distanceKm * rucRate);
   }
 
   let maintenanceCost = 0;

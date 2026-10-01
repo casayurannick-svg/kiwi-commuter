@@ -2,7 +2,14 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
-import { calculateArbitrage, calculateDrivingCost, IRD_MILEAGE_RATE_PER_KM, WEEKS_PER_MONTH } from '../src/lib/calculator';
+import {
+  calculateArbitrage,
+  calculateDrivingCost,
+  IRD_MILEAGE_RATE_PER_KM,
+  NZ_RUC_LIGHT_EV_RATE_PER_KM,
+  NZ_RUC_PHEV_RATE_PER_KM,
+  WEEKS_PER_MONTH,
+} from '../src/lib/calculator';
 import {
   AT_HOP_7_DAY_CAP,
   AT_HOP_ZONE_FARES_BY_CONCESSION,
@@ -88,6 +95,44 @@ describe('Kiwi Commuter Cost & Arbitrage Math Engine', () => {
     });
 
     assert.ok(resultEv.driving.dailyRucCost > 0);
+
+    // FEAT-73 & FEAT-74: Test Light EV correctly synthesizes $0.076/km RUC + (distance * (efficiency / 100) * kwhRate)
+    const resultEvSynth = calculateArbitrage({
+      originSuburbId: 'takapuna', // 18.2 km round trip
+      destinationSuburbId: 'cbd',
+      daysPerWeek: 5,
+      vehicleType: 'EV',
+      efficiency: 15.0,
+      kwhRate: 0.28,
+      parkingDailyRate: 0,
+      parkingDaysPerWeek: 0,
+      concession: 'adult',
+      includeMaintenanceWear: false,
+      carpoolPassengers: 1,
+    });
+    // 18.2 * 0.076 = 1.3832 -> 1.38
+    assert.strictEqual(resultEvSynth.driving.dailyRucCost, 1.38);
+    // (18.2 * 0.15) * 0.28 = 0.7644 -> 0.76
+    assert.strictEqual(resultEvSynth.driving.dailyFuelCost, 0.76);
+    const runningCost = Math.round((resultEvSynth.driving.dailyRucCost + resultEvSynth.driving.dailyFuelCost) * 100) / 100;
+    assert.strictEqual(runningCost, 2.14);
+    assert.strictEqual(NZ_RUC_LIGHT_EV_RATE_PER_KM, 0.076);
+
+    // FEAT-73 & FEAT-74: Test PHEV calculations correctly synthesize $0.038/km RUC
+    const resultPhevSynth = calculateArbitrage({
+      originSuburbId: 'takapuna', // 18.2 km round trip
+      destinationSuburbId: 'cbd',
+      daysPerWeek: 5,
+      vehicleType: 'PHEV',
+      parkingDailyRate: 0,
+      parkingDaysPerWeek: 0,
+      concession: 'adult',
+      includeMaintenanceWear: false,
+      carpoolPassengers: 1,
+    });
+    // 18.2 * 0.038 = 0.6916 -> 0.69
+    assert.strictEqual(resultPhevSynth.driving.dailyRucCost, 0.69);
+    assert.strictEqual(NZ_RUC_PHEV_RATE_PER_KM, 0.038);
 
     // BUG-40: Test Diesel vehicle with ~39km round-trip: 39km * 0.076 = $2.96/day RUC
     const resultDiesel = calculateArbitrage({
