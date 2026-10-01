@@ -54,3 +54,52 @@ export function estimateRoadMetrics(
   const durationMins = Math.round(distanceKm * 2.1 + 8);
   return { distanceKm, durationMins };
 }
+
+/**
+ * Returns an ISO-8601 timestamp for the next weekday Monday at 07:30 AM Auckland time (NZST/NZDT).
+ * Ensures timetable queries never fail even if a user checks late at night or on weekends.
+ */
+export function getNextWeekdayMorningISO(referenceDate = new Date()): string {
+  // Format the reference date in Pacific/Auckland to determine Auckland calendar date & weekday
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Pacific/Auckland',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+  const aucklandDateStr = formatter.format(referenceDate);
+  const [y, m, d] = aucklandDateStr.split('-').map(Number);
+
+  const dayFormatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Pacific/Auckland',
+    weekday: 'short',
+  });
+  const weekday = dayFormatter.format(referenceDate);
+  const dayIndex = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(weekday);
+  const daysUntilNextMonday = ((1 - dayIndex + 7) % 7) || 7;
+
+  // Target Monday calendar date in Auckland
+  const targetDate = new Date(Date.UTC(y, m - 1, d + daysUntilNextMonday, 7, 30, 0));
+
+  // Determine current Auckland UTC offset (+12 in NZST, +13 in NZDT) for target date
+  const offsetParts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Pacific/Auckland',
+    timeZoneName: 'shortOffset',
+  }).formatToParts(targetDate);
+  const tzName = offsetParts.find((p) => p.type === 'timeZoneName')?.value;
+  const offsetHours = tzName?.includes('+13') ? 13 : 12;
+
+  // 07:30 Auckland time in UTC is (7.5 - offsetHours)
+  const mondayMorningUTC = new Date(
+    Date.UTC(
+      targetDate.getUTCFullYear(),
+      targetDate.getUTCMonth(),
+      targetDate.getUTCDate(),
+      7 - offsetHours,
+      30,
+      0
+    )
+  );
+
+  return mondayMorningUTC.toISOString();
+}

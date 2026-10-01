@@ -4,6 +4,7 @@ import { resolve } from 'node:path';
 import { describe, it } from 'node:test';
 import { calculateCommuteArbitrage } from '@/lib/calculator';
 import { CommuteInput } from '@/types';
+import { getNextWeekdayMorningISO } from '@/lib/routes';
 import { GET } from '../route';
 
 // Test the parseDurationSeconds helper logic directly
@@ -297,5 +298,182 @@ describe('US-21: /api/routes – Google Routes Transit Duration', () => {
       assert.strictEqual(json.firstMileDistanceKm, undefined);
     });
   });
+
+  describe('FEAT: Ferry + Bus Multimodal Connections & Departure Time Resolution', () => {
+    it('getNextWeekdayMorningISO returns a valid ISO-8601 string for next Monday 07:30 NZT', () => {
+      const iso = getNextWeekdayMorningISO();
+      assert.ok(iso, 'Must return a non-empty string');
+      const date = new Date(iso);
+      assert.ok(!isNaN(date.getTime()), 'Must parse as a valid Date');
+      assert.ok(date.getTime() > Date.now(), 'Must be in the future');
+
+      // Verify it lands on Monday morning 07:30 in Pacific/Auckland
+      const aucklandFormatter = new Intl.DateTimeFormat('en-NZ', {
+        timeZone: 'Pacific/Auckland',
+        weekday: 'short',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      });
+      const formatted = aucklandFormatter.format(date);
+      // e.g. "Mon, 07:30"
+      assert.ok(formatted.includes('Mon'), `Expected Monday, got: ${formatted}`);
+      assert.ok(formatted.includes('07:30'), `Expected 07:30 AM, got: ${formatted}`);
+    });
+
+    it('mocks a successful Ferry + Bus response in Google Routes API, ensuring it does NOT trigger fallback_none', async () => {
+      const originalFetch = globalThis.fetch;
+      const originalApiKey = process.env.GOOGLE_ROUTES_API_KEY;
+
+      process.env.GOOGLE_ROUTES_API_KEY = 'mock_google_routes_key_test';
+
+      let interceptedPayload: Record<string, unknown> | null = null;
+
+      try {
+        globalThis.fetch = (async (url: string | URL | Request, init?: RequestInit) => {
+          const urlStr = String(url);
+          if (urlStr.includes('routes.googleapis.com')) {
+            const body = JSON.parse(String(init?.body || '{}'));
+            interceptedPayload = body;
+
+            // Simulate Google Routes API returning a multimodal Ferry + Bus commute
+            // (Hobsonville Ferry to Downtown + InnerLink Bus to Parnell)
+            return {
+              ok: true,
+              json: async () => ({
+                routes: [
+                  {
+                    duration: '3300s', // 55 mins total
+                    legs: [
+                      {
+                        duration: '3300s',
+                        steps: [
+                          {
+                            travelMode: 'TRANSIT',
+                            staticDuration: '2100s', // 35m ferry
+                            transitDetails: {
+                              headsign: 'Downtown Ferry Terminal',
+                              transitLine: {
+                                name: 'Hobsonville Ferry',
+                                vehicle: { type: 'FERRY' },
+                              },
+                              stopDetails: {
+                                departureStop: { name: 'Hobsonville Point Ferry Terminal' },
+                                arrivalStop: { name: 'Downtown Ferry Terminal' },
+                              },
+                            },
+                          },
+                          {
+                            travelMode: 'WALK',
+                            staticDuration: '300s', // 5m transfer walk
+                          },
+                          {
+                            travelMode: 'TRANSIT',
+                            staticDuration: '900s', // 15m bus
+                            transitDetails: {
+                              headsign: 'InnerLink to Parnell',
+                              transitLine: {
+                                name: 'InnerLink',
+                                shortName: 'INL',
+                                vehicle: { type: 'BUS' },
+                              },
+                              stopDetails: {
+                                departureStop: { name: 'Queens Wharf / Customs St' },
+                                arrivalStop: { name: '56 Parnell Rd' },
+                              },
+                            },
+                          },
+                        ],
+                      },
+                    ],
+                  },
+                ],
+              }),
+            } as Response;
+          }
+
+          return originalFetch(url, init);
+        }) as typeof fetch;
+
+        // Origin at Hobsonville Ferry Terminal [174.6680, -36.7980]
+        // Destination at 56 Parnell Road [174.778397, -36.851663]
+        const req = new Request(
+          'http://localhost/api/routes?originLng=174.6680&originLat=-36.7980&destinationLng=174.778397&destinationLat=-36.851663&transitMode=FERRY'
+        );
+
+        const res = await GET(req);
+        assert.strictEqual(res.status, 200);
+
+        const json = await res.json();
+
+        // 1. Must use google_routes_api source and NOT fallback_none
+        assert.strictEqual(
+          json.source,
+          'google_routes_api',
+          'Must return google_routes_api source when upstream returns Ferry + Bus route'
+        );
+
+        // 2. Verify payload sent to Google Routes did not over-restrict allowedTravelModes
+        assert.ok(interceptedPayload, 'Must have made request to Google Routes API');
+        const prefs = (interceptedPayload as Record<string, unknown>).transitPreferences as
+          | Record<string, unknown>
+          | undefined;
+        assert.strictEqual(
+          prefs?.allowedTravelModes,
+          undefined,
+          'allowedTravelModes must NOT be over-restricted for FERRY so multimodal transit is allowed'
+        );
+        assert.notStrictEqual(
+          prefs?.routingPreference,
+          'FEWER_TRANSFERS',
+          'Must not enforce FEWER_TRANSFERS for FERRY so bus connections are permitted'
+        );
+
+        // 3. Verify departureTime was set to a valid weekday morning ISO string
+        const departureTime = (interceptedPayload as Record<string, unknown>).departureTime as string;
+        assert.ok(departureTime, 'Must send departureTime in request payload');
+        assert.ok(new Date(departureTime).getTime() > Date.now(), 'departureTime must be in the future');
+
+        // 4. Verify aggregated duration & multimodal steps
+        assert.strictEqual(json.transitDurationMins, 50, 'Pure transit duration must sum 35m Ferry + 15m Bus = 50m');
+        assert.strictEqual(json.totalDurationMins, 55, 'Total door-to-door duration must be 55m');
+        assert.deepStrictEqual(json.transitLines, ['Hobsonville Ferry', 'INL']);
+        assert.strictEqual(json.transitSteps?.length, 2);
+        assert.strictEqual(json.transitSteps[0].travelMode, 'FERRY');
+        assert.strictEqual(json.transitSteps[0].line, 'Hobsonville Ferry');
+        assert.strictEqual(json.transitSteps[1].vehicleType, 'BUS');
+        assert.strictEqual(json.transitSteps[1].line, 'INL');
+      } finally {
+        globalThis.fetch = originalFetch;
+        process.env.GOOGLE_ROUTES_API_KEY = originalApiKey;
+      }
+    });
+
+    it('fallback mode provides multimodal Ferry + connecting Bus steps when origin is terminal and destination is inland', async () => {
+      // Ensure GOOGLE_ROUTES_API_KEY is not set to test graceful fallback
+      const originalApiKey = process.env.GOOGLE_ROUTES_API_KEY;
+      delete process.env.GOOGLE_ROUTES_API_KEY;
+
+      try {
+        const req = new Request(
+          'http://localhost/api/routes?originLng=174.6680&originLat=-36.7980&destinationLng=174.778397&destinationLat=-36.851663&transitMode=FERRY'
+        );
+        const res = await GET(req);
+        assert.strictEqual(res.status, 200);
+
+        const json = await res.json();
+        // In fallback without key, source is fallback_none but transit duration is NOT null
+        assert.strictEqual(json.source, 'fallback_none');
+        assert.ok(json.transitDurationMins > 0, 'transitDurationMins must be populated for ferry fallback');
+        assert.ok(json.totalDurationMins > 0, 'totalDurationMins must be populated');
+        assert.ok(json.transitLines?.includes('Hobsonville Ferry'));
+        assert.ok(json.transitLines?.includes('InnerLink Bus'));
+        assert.strictEqual(json.transitSteps?.length, 2, 'Should include Ferry and Bus steps in fallback to Parnell');
+      } finally {
+        process.env.GOOGLE_ROUTES_API_KEY = originalApiKey;
+      }
+    });
+  });
 });
+
 

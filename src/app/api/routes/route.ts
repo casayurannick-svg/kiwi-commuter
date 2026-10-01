@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { estimateRoadMetrics, haversineDistanceKm } from '@/lib/routes';
+import { estimateRoadMetrics, haversineDistanceKm, getNextWeekdayMorningISO } from '@/lib/routes';
 
 export const dynamic = 'force-dynamic';
 
@@ -126,10 +126,15 @@ export async function GET(request: Request) {
   const isOriginAlreadyTerminal = distToHobsonvilleTerminalKm < 0.15;
   const shouldInjectFerryWaypoint = transitModeParam === 'FERRY' && !isOriginAlreadyTerminal;
 
-  // Use provided departure time or compute next weekday morning (Auckland time)
+  // Use provided departure time or compute next weekday morning (7:30 AM Auckland time)
   let departureTime = searchParams.get('departureTime');
-  if (!departureTime) {
-    departureTime = getNextWeekdayMorningISO();
+  const now = new Date();
+  if (
+    !departureTime ||
+    isNaN(Date.parse(departureTime)) ||
+    new Date(departureTime).getTime() <= now.getTime()
+  ) {
+    departureTime = getNextWeekdayMorningISO(now);
   }
 
   const apiKey = process.env.GOOGLE_ROUTES_API_KEY || '';
@@ -151,6 +156,15 @@ export async function GET(request: Request) {
 
   const shouldFetchDrive = travelModeParam === 'DRIVE' || travelModeParam === 'BOTH';
   const shouldFetchTransit = travelModeParam === 'TRANSIT' || travelModeParam === 'BOTH';
+
+  // Multimodal Transit Preferences:
+  // For FERRY commutes, ensure multimodal transit (FERRY + BUS + TRAIN) is allowed to reach inland destinations (e.g. Parnell).
+  // We do NOT set or restrict allowedTravelModes (Google Routes API defaults to all modes: FERRY, BUS, TRAIN).
+  // We do NOT set routingPreference: 'FEWER_TRANSFERS' for FERRY so transfers (e.g., Downtown Ferry Terminal to InnerLink Bus) are not suppressed.
+  const transitPreferences: Record<string, unknown> = {};
+  if (transitModeParam !== 'FERRY') {
+    transitPreferences.routingPreference = 'FEWER_TRANSFERS';
+  }
 
   // Attempt Google Routes API if key is configured
   if (apiKey) {
@@ -241,9 +255,7 @@ export async function GET(request: Request) {
             travelMode: 'TRANSIT',
             departureTime,
             computeAlternativeRoutes: false,
-            transitPreferences: {
-              routingPreference: 'FEWER_TRANSFERS',
-            },
+            ...(Object.keys(transitPreferences).length > 0 ? { transitPreferences } : {}),
           }),
         }).then(async (res) => (res.ok ? res.json() : null)).catch(() => null);
       } else if (shouldFetchTransit) {
@@ -260,9 +272,7 @@ export async function GET(request: Request) {
             travelMode: 'TRANSIT',
             departureTime,
             computeAlternativeRoutes: false,
-            transitPreferences: {
-              routingPreference: 'FEWER_TRANSFERS',
-            },
+            ...(Object.keys(transitPreferences).length > 0 ? { transitPreferences } : {}),
           }),
         }).then(async (res) => (res.ok ? res.json() : null)).catch(() => null);
       } else {
@@ -419,8 +429,9 @@ export async function GET(request: Request) {
         }
 
         // Synthesize Leg 1 + Leg 2
+        const leg2Duration = totalDurationMins ?? transitDurationMins ?? 35;
         transitDurationMins = transitDurationMins ?? 35;
-        totalDurationMins = (firstMileDurationMins ?? 0) + transitDurationMins;
+        totalDurationMins = (firstMileDurationMins ?? 0) + leg2Duration;
 
         if (transitSteps.length === 0) {
           transitSteps.push({
@@ -481,44 +492,73 @@ export async function GET(request: Request) {
   // Compute realistic road metrics (incorporating harbour-crossing bridge detour if applicable)
   const fallbackRoadMetrics = estimateRoadMetrics([originLng, originLat], [destinationLng, destinationLat]);
 
-  // BUG-63: Synthesize Leg 1 + Leg 2 in fallback when Ferry Waypoint Injection is active
-  if (shouldInjectFerryWaypoint) {
-    const leg1Dist = Math.round(Math.max(0.5, distToHobsonvilleTerminalKm * 1.34) * 10) / 10;
-    const leg1Dur =
-      firstMileMode === 'CYCLE'
-        ? Math.max(3, Math.round((leg1Dist / 15) * 60))
-        : firstMileMode === 'WALK'
-        ? Math.max(5, Math.round((leg1Dist / 5) * 60))
-        : Math.max(2, Math.round(leg1Dist * 2.2 + 1));
+  // Multimodal Ferry Fallback (with Waypoint Injection for inland origins or direct terminal departure)
+  if (transitModeParam === 'FERRY') {
+    const hasFirstMile = shouldInjectFerryWaypoint;
+    const leg1Dist = hasFirstMile
+      ? Math.round(Math.max(0.5, distToHobsonvilleTerminalKm * 1.34) * 10) / 10
+      : undefined;
+    const leg1Dur = hasFirstMile
+      ? (firstMileMode === 'CYCLE'
+          ? Math.max(3, Math.round((leg1Dist! / 15) * 60))
+          : firstMileMode === 'WALK'
+          ? Math.max(5, Math.round((leg1Dist! / 5) * 60))
+          : Math.max(2, Math.round(leg1Dist! * 2.2 + 1)))
+      : undefined;
 
-    const leg2TransitMins = 35;
-    const fallbackFerrySteps: TransitStepDetail[] = [
+    const ferryMins = 35;
+    // Downtown Ferry Terminal: [174.7680, -36.8430]
+    const DOWNTOWN_FERRY_COORDS: [number, number] = [174.7680, -36.8430];
+    const distDowntownToDestKm = haversineDistanceKm(DOWNTOWN_FERRY_COORDS, [destinationLng, destinationLat]);
+    const needsDowntownConnection = distDowntownToDestKm > 1.2;
+
+    const fallbackTransitSteps: TransitStepDetail[] = [
       {
         line: 'Hobsonville Ferry',
-        durationMins: leg2TransitMins,
-        durationSeconds: leg2TransitMins * 60,
+        durationMins: ferryMins,
+        durationSeconds: ferryMins * 60,
         departureStop: 'Hobsonville Point Ferry Terminal',
         arrivalStop: 'Downtown Ferry Terminal',
         travelMode: 'FERRY',
         vehicleType: 'FERRY',
       },
     ];
+    const fallbackLines: string[] = ['Hobsonville Ferry'];
+    let leg2TransitMins = ferryMins;
+
+    if (needsDowntownConnection) {
+      const busMins = Math.max(8, Math.round(distDowntownToDestKm * 4 + 4));
+      fallbackTransitSteps.push({
+        line: 'InnerLink Bus',
+        durationMins: busMins,
+        durationSeconds: busMins * 60,
+        departureStop: 'Queens Wharf / Customs St',
+        arrivalStop: 'Parnell Rd',
+        travelMode: 'TRANSIT',
+        vehicleType: 'BUS',
+      });
+      fallbackLines.push('InnerLink Bus');
+      leg2TransitMins += busMins;
+    }
+
+    const totalDur = (leg1Dur ?? 0) + leg2TransitMins + (needsDowntownConnection ? 5 : 0);
 
     const result: GoogleRoutesResponse = {
       transitDurationMins: leg2TransitMins,
-      totalDurationMins: leg1Dur + leg2TransitMins,
-      transitSteps: fallbackFerrySteps,
-      transitLines: ['Hobsonville Ferry'],
-      legCount: 2,
+      totalDurationMins: totalDur,
+      transitSteps: fallbackTransitSteps,
+      transitLines: fallbackLines,
+      legCount: fallbackTransitSteps.length + (hasFirstMile ? 1 : 0),
       drivingDistanceMeters: Math.round(fallbackRoadMetrics.distanceKm * 1000),
       drivingDistanceKm: fallbackRoadMetrics.distanceKm,
       drivingDurationMins: fallbackRoadMetrics.durationMins,
       firstMileDistanceKm: leg1Dist,
       firstMileDurationMins: leg1Dur,
-      firstMileMode,
-      waypointInjected: true,
-      waypointTerminal: 'Hobsonville Point Ferry Terminal',
+      firstMileMode: hasFirstMile ? firstMileMode : undefined,
+      waypointInjected: hasFirstMile ? true : undefined,
+      waypointTerminal: hasFirstMile ? 'Hobsonville Point Ferry Terminal' : undefined,
       source: 'fallback_none',
+      departureTime,
       ...(isDebug ? { debug: debugDetails } : {}),
     };
 
@@ -533,6 +573,7 @@ export async function GET(request: Request) {
     drivingDistanceKm: fallbackRoadMetrics.distanceKm,
     drivingDurationMins: fallbackRoadMetrics.durationMins,
     source: 'fallback_none',
+    departureTime,
     ...(isDebug ? { debug: debugDetails } : {}),
   };
 
@@ -548,21 +589,5 @@ function parseDurationSeconds(duration: string | undefined): number {
   if (match) return parseInt(match[1], 10);
   if (/^\d+$/.test(duration)) return parseInt(duration, 10);
   return 0;
-}
-
-/**
- * Returns an ISO-8601 timestamp for the next weekday Monday at 08:00 Auckland time (UTC+12).
- */
-function getNextWeekdayMorningISO(): string {
-  const now = new Date();
-  const day = now.getUTCDay();
-  const daysUntilNextMonday = ((1 - day + 7) % 7) || 7;
-  const target = new Date(now.getTime() + daysUntilNextMonday * 24 * 60 * 60 * 1000);
-  const sundayBefore = new Date(target.getTime() - 24 * 60 * 60 * 1000);
-  sundayBefore.setUTCHours(20, 0, 0, 0); // 20:00 UTC Sunday = 08:00 Monday NZST
-  if (sundayBefore.getTime() <= now.getTime()) {
-    sundayBefore.setTime(sundayBefore.getTime() + 7 * 24 * 60 * 60 * 1000);
-  }
-  return sundayBefore.toISOString();
 }
 
