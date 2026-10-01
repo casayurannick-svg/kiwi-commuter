@@ -1459,12 +1459,56 @@ describe('src/lib/calculator.ts - calculateCommuteArbitrage', () => {
       const result = calculateCommuteArbitrage(input);
 
       assert.strictEqual(result.transit.primaryMode, 'Ferry');
+      assert.strictEqual(result.transit.singleTripStandardFare, 10.40, 'Hobsonville ferry single trip standard fare must be $10.40');
+      assert.strictEqual(result.transit.singleTripConcessionFare, 10.40);
 
       const transitLeg = result.journeyLegs?.find((l) => l.type === 'TRANSIT');
       assert.ok(transitLeg);
       assert.strictEqual(transitLeg.mode, 'FERRY');
+      assert.strictEqual(transitLeg.cost, 10.40, 'Transit leg cost must reflect $10.40 Mid-Harbour fare');
       assert.strictEqual(transitLeg.iconName, 'Ship', 'Transit leg iconName must be Ship');
       assert.strictEqual(transitLeg.title, 'Ferry HOBH Ferry Ride');
+    });
+
+    it('calculates West Harbour and Half Moon Bay ferry commutes at $10.40 Mid-Harbour rate', () => {
+      // West Harbour
+      const whResult = calculateCommuteArbitrage({
+        originSuburbId: 'west-harbour',
+        destinationSuburbId: 'cbd',
+        daysPerWeek: 5,
+        vehicleType: 'petrol91',
+        parkingDailyRate: 0,
+        parkingDaysPerWeek: 0,
+        concession: 'adult',
+        includeMaintenanceWear: false,
+        carpoolPassengers: 1,
+        transitMode: 'FERRY',
+        transitSteps: [
+          { line: 'West Harbour Ferry', durationMins: 45, travelMode: 'FERRY' },
+        ],
+      });
+      assert.strictEqual(whResult.transit.primaryMode, 'Ferry');
+      assert.strictEqual(whResult.transit.singleTripStandardFare, 10.40);
+      assert.strictEqual(whResult.transit.isHopCapApplied, true);
+      assert.strictEqual(whResult.transit.weeklyTotal, 50.00);
+
+      // Half Moon Bay
+      const hmbResult = calculateCommuteArbitrage({
+        originSuburbId: 'half-moon-bay',
+        destinationSuburbId: 'cbd',
+        daysPerWeek: 5,
+        vehicleType: 'petrol91',
+        parkingDailyRate: 0,
+        parkingDaysPerWeek: 0,
+        concession: 'adult',
+        includeMaintenanceWear: false,
+        carpoolPassengers: 1,
+        transitMode: 'FERRY',
+      });
+      assert.strictEqual(hmbResult.transit.primaryMode, 'Ferry');
+      assert.strictEqual(hmbResult.transit.singleTripStandardFare, 10.40);
+      assert.strictEqual(hmbResult.transit.isHopCapApplied, true);
+      assert.strictEqual(hmbResult.transit.weeklyTotal, 50.00);
     });
 
     it('BUG-63: inland ferry commute with firstMileMode: DRIVE synthesizes first-mile drive and ferry transit legs', () => {
@@ -1494,6 +1538,7 @@ describe('src/lib/calculator.ts - calculateCommuteArbitrage', () => {
       const result = calculateCommuteArbitrage(input);
 
       assert.strictEqual(result.transit.primaryMode, 'Ferry');
+      assert.strictEqual(result.transit.singleTripStandardFare, 10.40, 'Hobsonville ferry single trip fare must be $10.40');
       assert.strictEqual(result.nearestStation?.hasParkAndRide, true, 'Must mark hasParkAndRide as true on nearestStation');
       assert.strictEqual(result.transit.firstMileMode, 'DRIVE');
       assert.strictEqual(result.transit.firstMileDistanceKm, 3.2);

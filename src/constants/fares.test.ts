@@ -82,7 +82,7 @@ describe('src/constants/fares.ts - Ferry Fare Tier Calibration', () => {
       assert.strictEqual(terminalCoordsTier.rate, 10.40);
     });
 
-    it('explicitly maps Half Moon Bay and Beach Haven to Mid Harbor ($10.40)', () => {
+    it('explicitly maps Half Moon Bay, Beach Haven, and West Harbour to Mid Harbor ($10.40)', () => {
       // Half Moon Bay
       const hmbTier = getFerryFareTier('half-moon-bay');
       assert.strictEqual(hmbTier.tier, 'MID_HARBOR');
@@ -98,9 +98,17 @@ describe('src/constants/fares.ts - Ferry Fare Tier Calibration', () => {
       assert.strictEqual(bhTier.capEligible, true);
       assert.strictEqual(getFerryFareTier('beach-haven-ferry').tier, 'MID_HARBOR');
       assert.strictEqual(getFerryFareTier([174.7000, -36.7970]).tier, 'MID_HARBOR');
+
+      // West Harbour
+      const whTier = getFerryFareTier('west-harbour');
+      assert.strictEqual(whTier.tier, 'MID_HARBOR');
+      assert.strictEqual(whTier.rate, 10.40);
+      assert.strictEqual(whTier.capEligible, true);
+      assert.strictEqual(getFerryFareTier('west-harbour-ferry').tier, 'MID_HARBOR');
+      assert.strictEqual(getFerryFareTier([174.6300, -36.8150]).tier, 'MID_HARBOR');
     });
 
-    it('explicitly maps Gulf Harbour, Pine Harbour, and West Harbour to Outer Harbor ($13.80)', () => {
+    it('explicitly maps Gulf Harbour and Pine Harbour to Outer Harbor ($13.80)', () => {
       // Gulf Harbour
       const ghTier = getFerryFareTier('gulf-harbour');
       assert.strictEqual(ghTier.tier, 'OUTER_HARBOR');
@@ -114,13 +122,6 @@ describe('src/constants/fares.ts - Ferry Fare Tier Calibration', () => {
       assert.strictEqual(phTier.rate, 13.80);
       assert.strictEqual(phTier.capEligible, false);
       assert.strictEqual(getFerryFareTier([175.0250, -36.8830]).tier, 'OUTER_HARBOR');
-
-      // West Harbour
-      const whTier = getFerryFareTier('west-harbour');
-      assert.strictEqual(whTier.tier, 'OUTER_HARBOR');
-      assert.strictEqual(whTier.rate, 13.80);
-      assert.strictEqual(whTier.capEligible, false);
-      assert.strictEqual(getFerryFareTier([174.6300, -36.8150]).tier, 'OUTER_HARBOR');
     });
 
     it('explicitly maps Devonport, Bayswater, Birkenhead, and Northcote Point to Inner Harbor ($7.80)', () => {

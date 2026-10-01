@@ -5,10 +5,10 @@
  * Includes Devonport, Bayswater, Birkenhead, Te Onewa Northcote Point
  *
  * Tier 2: Mid Harbor ($10.40)
- * Includes Half Moon Bay, Hobsonville Point, Beach Haven
+ * Includes Half Moon Bay, Hobsonville Point, Beach Haven, West Harbour
  *
  * Tier 3: Outer Harbor ($13.80)
- * Includes Gulf Harbour, Pine Harbour, West Harbour
+ * Includes Gulf Harbour, Pine Harbour
  */
 
 export type FerryFareTier = 'INNER_HARBOR' | 'MID_HARBOR' | 'OUTER_HARBOR';
@@ -58,10 +58,20 @@ export const FERRY_FARE_TIERS: Record<FerryFareTier, FerryFareTierDefinition> = 
       'hobsonville',
       'hobsonville-point',
       'hobsonville-point-ferry',
+      'hobsonville-point-ferry-terminal',
+      'hobsonville-ferry',
+      'hobh',
       'half-moon-bay',
       'half-moon-bay-ferry',
+      'half-moon-bay-ferry-terminal',
+      'hmb',
       'beach-haven',
       'beach-haven-ferry',
+      'beach-haven-wharf',
+      'west-harbour',
+      'west-harbour-ferry',
+      'west-harbour-marina',
+      'wh-ferry',
     ],
     coordinates: [
       [174.6590, -36.7920], // Hobsonville Point Suburb Centroid
@@ -70,6 +80,7 @@ export const FERRY_FARE_TIERS: Record<FerryFareTier, FerryFareTierDefinition> = 
       [174.9020, -36.8830], // Half Moon Bay Ferry Terminal
       [174.7000, -36.7970], // Beach Haven
       [174.6980, -36.7970], // Beach Haven Wharf
+      [174.6300, -36.8150], // West Harbour
     ],
   },
   OUTER_HARBOR: {
@@ -82,13 +93,10 @@ export const FERRY_FARE_TIERS: Record<FerryFareTier, FerryFareTierDefinition> = 
       'gulf-harbour-ferry',
       'pine-harbour',
       'pine-harbour-ferry',
-      'west-harbour',
-      'west-harbour-ferry',
     ],
     coordinates: [
       [174.7870, -36.6130], // Gulf Harbour
       [175.0250, -36.8830], // Pine Harbour
-      [174.6300, -36.8150], // West Harbour
     ],
   },
 };
