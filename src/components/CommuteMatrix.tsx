@@ -201,13 +201,15 @@ export function CommuteMatrix({ input, arbitrage }: CommuteMatrixProps) {
               <div className="flex justify-between text-slate-300">
                 <span className="text-slate-400">Maintenance & Wear:</span>
                 <span className="font-medium">
-                  {formatCurrency(
-                    timeframe === 'daily'
-                      ? iceArbitrage.driving.dailyMaintenanceCost
-                      : timeframe === 'weekly'
-                      ? iceArbitrage.driving.weeklyMaintenanceCost
-                      : iceArbitrage.driving.monthlyMaintenanceCost * 12
-                  )}
+                  {(() => {
+                    const cost =
+                      timeframe === 'daily'
+                        ? iceArbitrage.driving.dailyMaintenanceCost
+                        : timeframe === 'weekly'
+                        ? iceArbitrage.driving.weeklyMaintenanceCost
+                        : iceArbitrage.driving.monthlyMaintenanceCost * 12;
+                    return cost > 0 ? formatCurrency(cost) : 'Included';
+                  })()}
                 </span>
               </div>
               <div className="flex justify-between text-slate-300">
@@ -306,13 +308,15 @@ export function CommuteMatrix({ input, arbitrage }: CommuteMatrixProps) {
               <div className="flex justify-between text-slate-300">
                 <span className="text-slate-400">Maintenance & Wear:</span>
                 <span className="font-medium">
-                  {formatCurrency(
-                    timeframe === 'daily'
-                      ? evArbitrage.driving.dailyMaintenanceCost
-                      : timeframe === 'weekly'
-                      ? evArbitrage.driving.weeklyMaintenanceCost
-                      : evArbitrage.driving.monthlyMaintenanceCost * 12
-                  )}
+                  {(() => {
+                    const cost =
+                      timeframe === 'daily'
+                        ? evArbitrage.driving.dailyMaintenanceCost
+                        : timeframe === 'weekly'
+                        ? evArbitrage.driving.weeklyMaintenanceCost
+                        : evArbitrage.driving.monthlyMaintenanceCost * 12;
+                    return cost > 0 ? formatCurrency(cost) : 'Included';
+                  })()}
                 </span>
               </div>
               <div className="flex justify-between text-slate-300">

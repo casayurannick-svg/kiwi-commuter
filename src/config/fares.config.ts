@@ -366,6 +366,7 @@ export const VEHICLE_PRESETS: Record<VehicleType, VehicleConfig> = {
 };
 
 export const NZ_AA_MAINTENANCE_PER_KM = 0.18; // Amortized tires, brake pads, servicing, WOF, depreciation
+export const DEFAULT_DISTANCE_WEAR_PER_WEEK = 3.00; // Editable assumption: distance-based maintenance / wear ($3.00/week)
 
 /**
  * FEAT-60: Standard IRD Tier 1 Mileage Rate ($/km)
@@ -392,4 +393,6 @@ export const DEFAULT_ANNUAL_WOF = 85;
 export const DEFAULT_ANNUAL_REGO = 173;
 export const DEFAULT_ANNUAL_INSURANCE = 1311;
 export const FIXED_COST_COMMUTE_APPORTIONMENT = 0.70;
+
+
 

@@ -563,7 +563,9 @@ export default function ComparisonCard({
                       Wear & WOF:
                     </span>
                     <span className="font-semibold text-slate-200 tabular-nums">
-                      ${driving.monthlyMaintenanceCost.toFixed(0)}/mo
+                      {driving.monthlyMaintenanceCost > 0
+                        ? `$${driving.monthlyMaintenanceCost.toFixed(0)}/mo`
+                        : 'Included'}
                     </span>
                   </div>
                 )}

@@ -127,6 +127,10 @@ export interface CommuteInput {
   mileage?: number;
   horizonYears?: number;
   horizon?: number;
+  // STORY-1: Single Cost Model (Stops/Stays) Parameters
+  distanceWearWeekly?: number; // Distance-based maintenance (wear) assumption ($/wk, default $3.00)
+  distanceWear?: number; // Alias for distanceWearWeekly
+  depreciationWeekly?: number; // Time-based vehicle depreciation ($/wk)
 }
 
 export interface TransitStepDetail {
@@ -254,7 +258,34 @@ export interface TransitCostBreakdown {
   perPersonDailyFare?: number; // BUG-37: Per-commuter daily return fare before passenger scaling
 }
 
+export interface StopsCostBreakdown {
+  fuel: number;
+  ruc: number;
+  parking: number;
+  distanceWear: number;
+  total: number;
+}
+
+export interface StaysCostBreakdown {
+  insurance: number;
+  rego: number;
+  wof: number;
+  depreciation: number;
+  timeMaintenance: number;
+  total: number;
+}
+
 export interface CommuteComparisonResult {
+  // STORY-1: Single Cost Model (Stops / Stays / Times)
+  stops: StopsCostBreakdown;
+  stays: StaysCostBreakdown;
+  fullCost: number;
+  transitCost: number;
+  carTime: string;
+  transitTime: string;
+  carTimeMinutes?: number;
+  transitTimeMinutes?: number;
+
   driving: DrivingCostBreakdown;
   transit: TransitCostBreakdown;
   dailySavings: number;

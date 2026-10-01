@@ -20,6 +20,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Moved `MonthlySavingsChart` under `FuelRadarWidget` in the left sidebar column (`lg:col-span-5`) in `DashboardClient`.
 
 ### Added
+- **STORY-1**: Unified Single Cost Model with Stops (avoidable) vs. Stays (fixed) cost split:
+  - Refactored `calculateCommuteArbitrage` to return `stops` (fuel, RUC, parking, distance-wear), `stays` (insurance, rego, WOF, depreciation, time-maintenance), `fullCost`, `transitCost`, `carTime`, and `transitTime`.
+  - Implemented distance-based wear as an editable assumption (`DEFAULT_DISTANCE_WEAR_PER_WEEK = 3.00`).
+  - Updated UI components (`CommuteMatrix`, `ComparisonCard`) to render bundled/zero maintenance as `'Included'` instead of `'$0.00'`.
+  - Added Section 5 fixture test for Mt Roskill to Parnell corridor and zero-parking test cases.
 - **FEAT-75**: 3-Way Commute Summary Matrix UI component comparing Combustion (ICE), Electric (EV), and Public Transit side-by-side across daily, weekly, and annual intervals.
 - **FEAT-73 & FEAT-74**: Engine math for EV/PHEV energy consumption and statutory NZ RUC tiers ($0.076/km for BEV/Diesel, $0.038/km for PHEV).
 - **FEAT-72**: Bi-directional URL synchronization and form state for EV charging source, kWh rate, and battery efficiency.
