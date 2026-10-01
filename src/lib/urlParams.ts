@@ -201,6 +201,31 @@ export function serializeCommuteToParams(input: CommuteInput): URLSearchParams {
     params.set('calcMode', input.calculationMode);
   }
 
+  // FEAT-65 (Phase 2): EV ROI Sandbox / TCO URL Parameters
+  const evPurchasePrice = input.evPurchasePrice ?? input.evPrice;
+  if (evPurchasePrice !== undefined && !isNaN(evPurchasePrice)) {
+    params.set('evPurchasePrice', evPurchasePrice.toString());
+    params.set('evPrice', evPurchasePrice.toString());
+  }
+
+  const iceTradeInValue = input.iceTradeInValue ?? input.iceTrade;
+  if (iceTradeInValue !== undefined && !isNaN(iceTradeInValue)) {
+    params.set('iceTradeInValue', iceTradeInValue.toString());
+    params.set('iceTrade', iceTradeInValue.toString());
+  }
+
+  const annualMileage = input.annualMileage ?? input.mileage;
+  if (annualMileage !== undefined && !isNaN(annualMileage)) {
+    params.set('annualMileage', annualMileage.toString());
+    params.set('mileage', annualMileage.toString());
+  }
+
+  const horizonYears = input.horizonYears ?? input.horizon;
+  if (horizonYears !== undefined && !isNaN(horizonYears)) {
+    params.set('horizonYears', horizonYears.toString());
+    params.set('horizon', horizonYears.toString());
+  }
+
   return params;
 }
 
@@ -585,6 +610,45 @@ export function parseCommuteFromParams(
       ? parsedDays
       : fallback.daysPerWeek;
 
+  // FEAT-65 (Phase 2): EV ROI Sandbox / TCO URL Parameters
+  const rawEvPrice =
+    params.get('evPurchasePrice') ||
+    params.get('evPrice') ||
+    params.get('ev_purchase_price') ||
+    params.get('ev_price');
+  const resolvedEvPurchasePrice =
+    rawEvPrice !== null && !isNaN(Number(rawEvPrice))
+      ? Number(rawEvPrice)
+      : fallback.evPurchasePrice ?? fallback.evPrice ?? 0;
+
+  const rawIceTrade =
+    params.get('iceTradeInValue') ||
+    params.get('iceTrade') ||
+    params.get('ice_trade_in_value') ||
+    params.get('ice_trade');
+  const resolvedIceTradeInValue =
+    rawIceTrade !== null && !isNaN(Number(rawIceTrade))
+      ? Number(rawIceTrade)
+      : fallback.iceTradeInValue ?? fallback.iceTrade ?? 0;
+
+  const rawMileage =
+    params.get('annualMileage') ||
+    params.get('mileage') ||
+    params.get('annual_mileage');
+  const resolvedAnnualMileage =
+    rawMileage !== null && !isNaN(Number(rawMileage))
+      ? Number(rawMileage)
+      : fallback.annualMileage ?? fallback.mileage;
+
+  const rawHorizon =
+    params.get('horizonYears') ||
+    params.get('horizon') ||
+    params.get('horizon_years');
+  const resolvedHorizonYears =
+    rawHorizon !== null && !isNaN(Number(rawHorizon))
+      ? Number(rawHorizon)
+      : fallback.horizonYears ?? fallback.horizon ?? 5;
+
   return {
     originSuburbId: fromSuburb,
     destinationSuburbId: toSuburb,
@@ -668,6 +732,14 @@ export function parseCommuteFromParams(
         : (params.get('calcMode') || params.get('calculationMode'))?.toUpperCase() === 'FUEL'
         ? 'FUEL'
         : fallback.calculationMode ?? 'FUEL',
+    evPurchasePrice: resolvedEvPurchasePrice,
+    evPrice: resolvedEvPurchasePrice,
+    iceTradeInValue: resolvedIceTradeInValue,
+    iceTrade: resolvedIceTradeInValue,
+    annualMileage: resolvedAnnualMileage,
+    mileage: resolvedAnnualMileage,
+    horizonYears: resolvedHorizonYears,
+    horizon: resolvedHorizonYears,
   };
 }
 

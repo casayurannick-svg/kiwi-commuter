@@ -27,6 +27,9 @@ import {
   CommuteInput,
   DrivingCostBreakdown,
   JourneyLeg,
+  TcoArbitrageResult,
+  TcoInput,
+  TcoYearCost,
   TimeMetrics,
   TransitCostBreakdown,
   TransitStation,
@@ -1290,4 +1293,161 @@ function round2(num: number): number {
 
 function round1(num: number): number {
   return Math.round((num + Number.EPSILON) * 10) / 10;
+}
+
+/**
+ * FEAT-65 (Phase 1): EV ROI Sandbox & Total Cost of Ownership (TCO) Arbitrage
+ * Extrapolates capital investment delta against annual running costs (Fuel vs Electricity + RUC + Maintenance differential).
+ */
+export const DEFAULT_TCO_EV_MAINTENANCE_ANNUAL = 400;
+export const DEFAULT_TCO_ICE_MAINTENANCE_ANNUAL = 800;
+
+export function calculateTcoArbitrage(input: TcoInput): TcoArbitrageResult {
+  // 1. Initial capital delta
+  const evPurchasePrice =
+    typeof input.evPurchasePrice === 'number' && !isNaN(input.evPurchasePrice)
+      ? input.evPurchasePrice
+      : 0;
+  const iceTradeInValue =
+    typeof input.iceTradeInValue === 'number' && !isNaN(input.iceTradeInValue)
+      ? input.iceTradeInValue
+      : 0;
+  const initialCapitalDelta = round2(evPurchasePrice - iceTradeInValue);
+
+  // 2. Annual Mileage resolution
+  let annualMileage: number;
+  if (typeof input.annualMileage === 'number' && !isNaN(input.annualMileage) && input.annualMileage > 0) {
+    annualMileage = input.annualMileage;
+  } else {
+    const origin = getSuburbById(input.originSuburbId);
+    const destination = getSuburbById(input.destinationSuburbId);
+    const route = estimateRouteMetrics(origin, destination);
+    const distanceOneWayKm =
+      typeof input.drivingDistanceKm === 'number' && input.drivingDistanceKm > 0
+        ? input.drivingDistanceKm
+        : typeof input.distanceKm === 'number' && input.distanceKm > 0
+        ? input.distanceKm
+        : route.distanceKm;
+    const distanceRoundTripKm = distanceOneWayKm * 2;
+    const daysPerWeek = typeof input.daysPerWeek === 'number' && input.daysPerWeek > 0 ? input.daysPerWeek : 5;
+    annualMileage = distanceRoundTripKm > 0 ? round1(distanceRoundTripKm * daysPerWeek * 52) : 14000;
+  }
+
+  // 3. ICE Parameters & Operational Costs
+  const iceVehicleType: VehicleType =
+    input.vehicleType === 'diesel' || input.powertrain === 'DIESEL'
+      ? 'diesel'
+      : input.vehicleType === 'petrol95' || input.powertrain === 'PETROL_95'
+      ? 'petrol95'
+      : 'petrol91';
+  const iceVehicleConfig = VEHICLE_PRESETS[iceVehicleType] ?? VEHICLE_PRESETS.petrol91;
+  const iceConsumption =
+    typeof input.consumptionOverride === 'number' && input.consumptionOverride > 0
+      ? input.consumptionOverride
+      : iceVehicleConfig.defaultConsumption;
+
+  const rawFuelPrice =
+    input.customFuelPricePerL ??
+    (input.powertrain !== 'BEV' && input.vehicleType !== 'bev' ? input.fuelPriceOverride : undefined);
+  const iceFuelPrice =
+    typeof rawFuelPrice === 'number' && !isNaN(rawFuelPrice) && rawFuelPrice > 0
+      ? rawFuelPrice
+      : iceVehicleConfig.defaultFuelPrice || DEFAULT_FUEL_RATE;
+
+  const iceRucRate = iceVehicleType === 'diesel' ? NZ_RUC_DIESEL_RATE_PER_KM : 0;
+  const iceMaintenanceCost =
+    typeof input.iceMaintenanceAnnual === 'number' && !isNaN(input.iceMaintenanceAnnual)
+      ? input.iceMaintenanceAnnual
+      : DEFAULT_TCO_ICE_MAINTENANCE_ANNUAL;
+
+  const annualIceFuelCost = round2((annualMileage * (iceConsumption / 100)) * iceFuelPrice);
+  const annualIceRucCost = round2(annualMileage * iceRucRate);
+  const annualIceTotal = round2(annualIceFuelCost + annualIceRucCost + iceMaintenanceCost);
+
+  // 4. EV Parameters & Operational Costs
+  const evEfficiency =
+    typeof input.evEfficiency === 'number' && input.evEfficiency > 0
+      ? input.evEfficiency
+      : typeof input.efficiency === 'number' && input.efficiency > 0
+      ? input.efficiency
+      : 15;
+  const evKwhRate =
+    typeof input.kwhRate === 'number' && input.kwhRate > 0
+      ? input.kwhRate
+      : typeof input.homeKWhRate === 'number' && input.homeKWhRate > 0
+      ? input.homeKWhRate
+      : 0.33;
+
+  const evRucRate = NZ_RUC_LIGHT_EV_RATE_PER_KM;
+  const evMaintenanceCost =
+    typeof input.evMaintenanceAnnual === 'number' && !isNaN(input.evMaintenanceAnnual)
+      ? input.evMaintenanceAnnual
+      : DEFAULT_TCO_EV_MAINTENANCE_ANNUAL;
+
+  const annualEvEnergyCost = round2((annualMileage * (evEfficiency / 100)) * evKwhRate);
+  const annualEvRucCost = round2(annualMileage * evRucRate);
+  const annualEvTotal = round2(annualEvEnergyCost + annualEvRucCost + evMaintenanceCost);
+
+  // 5. Annual Operational Savings
+  const annualSavings = round2(annualIceTotal - annualEvTotal);
+
+  // 6. Horizon Years and Break-Even Timeframe
+  const horizonYears =
+    typeof input.horizonYears === 'number' && input.horizonYears > 0 ? input.horizonYears : 5;
+
+  let breakEvenYears: number | null = null;
+  let breakEvenMonths: number | null = null;
+  let isBreakEvenAchieved = false;
+
+  if (initialCapitalDelta <= 0) {
+    breakEvenYears = 0;
+    breakEvenMonths = 0;
+    isBreakEvenAchieved = true;
+  } else if (annualSavings > 0) {
+    const rawYears = initialCapitalDelta / annualSavings;
+    breakEvenYears = round2(rawYears);
+    breakEvenMonths = Math.round(rawYears * 12);
+    isBreakEvenAchieved = breakEvenYears <= horizonYears;
+  }
+
+  // 7. Cumulative Year-Over-Year Costs
+  const cumulativeCosts: TcoYearCost[] = [];
+  for (let year = 1; year <= horizonYears; year++) {
+    const iceCumulativeCost = round2(year * annualIceTotal);
+    const evCumulativeCost = round2(initialCapitalDelta + year * annualEvTotal);
+    const cumulativeSavings = round2(iceCumulativeCost - evCumulativeCost);
+
+    cumulativeCosts.push({
+      year,
+      iceAnnualCost: annualIceTotal,
+      evAnnualCost: annualEvTotal,
+      annualSavings,
+      iceCumulativeCost,
+      evCumulativeCost,
+      cumulativeSavings,
+    });
+  }
+
+  return {
+    initialCapitalDelta,
+    annualMileage,
+    horizonYears,
+    annualIceCost: {
+      fuelCost: annualIceFuelCost,
+      rucCost: annualIceRucCost,
+      maintenanceCost: iceMaintenanceCost,
+      total: annualIceTotal,
+    },
+    annualEvCost: {
+      energyCost: annualEvEnergyCost,
+      rucCost: annualEvRucCost,
+      maintenanceCost: evMaintenanceCost,
+      total: annualEvTotal,
+    },
+    annualSavings,
+    breakEvenYears,
+    breakEvenMonths,
+    isBreakEvenAchieved,
+    cumulativeCosts,
+  };
 }

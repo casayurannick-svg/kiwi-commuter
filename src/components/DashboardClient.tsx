@@ -2,6 +2,7 @@
 
 import CommuteForm from '@/components/CommuteForm';
 import CommuteMatrix from '@/components/CommuteMatrix';
+import EvRoiSandbox from '@/components/EvRoiSandbox';
 import ComparisonCard from '@/components/ComparisonCard';
 import DonationButton from '@/components/DonationButton';
 import FuelRadarWidget from '@/components/FuelRadarWidget';
@@ -203,6 +204,9 @@ export default function DashboardClient({ initialFuelPrices }: DashboardClientPr
             </div>
             <div className="order-3 w-full">
               <CommuteMatrix input={commuteInput} arbitrage={arbitrage} />
+            </div>
+            <div className="order-3 w-full">
+              <EvRoiSandbox input={commuteInput} onChange={setCommuteInput} />
             </div>
             <div className="order-4 w-full">
               <JourneyTimeline

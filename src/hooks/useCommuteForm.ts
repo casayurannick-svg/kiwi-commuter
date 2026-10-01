@@ -26,6 +26,9 @@ export const DEFAULT_COMMUTE_INPUT: CommuteInput = {
   chargeSource: 'HOME_OFFPEAK',
   kwhRate: 0.33,
   evEfficiency: 15,
+  evPurchasePrice: 0,
+  iceTradeInValue: 0,
+  horizonYears: 5,
 };
 
 export interface UseCommuteFormOptions {

@@ -520,5 +520,109 @@ describe('src/lib/urlParams.ts - URL Search Param Synchronization', () => {
       assert.strictEqual(parsedDefaults.evEfficiency, 15);
     });
   });
+
+  describe('FEAT-65 (Phase 2): EV ROI Sandbox (TCO) URL Parameter Synchronization', () => {
+    it('serializes evPurchasePrice, iceTradeInValue, annualMileage, and horizonYears', () => {
+      const input: CommuteInput = {
+        ...defaultFallback,
+        evPurchasePrice: 48000,
+        iceTradeInValue: 18000,
+        annualMileage: 16000,
+        horizonYears: 7,
+      };
+
+      const params = serializeCommuteToParams(input);
+      assert.strictEqual(params.get('evPurchasePrice'), '48000');
+      assert.strictEqual(params.get('evPrice'), '48000');
+      assert.strictEqual(params.get('iceTradeInValue'), '18000');
+      assert.strictEqual(params.get('iceTrade'), '18000');
+      assert.strictEqual(params.get('annualMileage'), '16000');
+      assert.strictEqual(params.get('mileage'), '16000');
+      assert.strictEqual(params.get('horizonYears'), '7');
+      assert.strictEqual(params.get('horizon'), '7');
+    });
+
+    it('serializes alias input fields evPrice, iceTrade, mileage, and horizon', () => {
+      const input: CommuteInput = {
+        ...defaultFallback,
+        evPrice: 35000,
+        iceTrade: 12000,
+        mileage: 14000,
+        horizon: 3,
+      };
+
+      const params = serializeCommuteToParams(input);
+      assert.strictEqual(params.get('evPurchasePrice'), '35000');
+      assert.strictEqual(params.get('evPrice'), '35000');
+      assert.strictEqual(params.get('iceTradeInValue'), '12000');
+      assert.strictEqual(params.get('iceTrade'), '12000');
+      assert.strictEqual(params.get('annualMileage'), '14000');
+      assert.strictEqual(params.get('mileage'), '14000');
+      assert.strictEqual(params.get('horizonYears'), '3');
+      assert.strictEqual(params.get('horizon'), '3');
+    });
+
+    it('parses primary query parameters into cast numbers', () => {
+      const params = new URLSearchParams('evPurchasePrice=52000&iceTradeInValue=22000&annualMileage=18000&horizonYears=6');
+      const parsed = parseCommuteFromParams(params, defaultFallback);
+
+      assert.strictEqual(typeof parsed.evPurchasePrice, 'number');
+      assert.strictEqual(parsed.evPurchasePrice, 52000);
+      assert.strictEqual(typeof parsed.iceTradeInValue, 'number');
+      assert.strictEqual(parsed.iceTradeInValue, 22000);
+      assert.strictEqual(typeof parsed.annualMileage, 'number');
+      assert.strictEqual(parsed.annualMileage, 18000);
+      assert.strictEqual(typeof parsed.horizonYears, 'number');
+      assert.strictEqual(parsed.horizonYears, 6);
+    });
+
+    it('parses alias query parameters into cast numbers', () => {
+      const params = new URLSearchParams('evPrice=39000&iceTrade=15000&mileage=20000&horizon=4');
+      const parsed = parseCommuteFromParams(params, defaultFallback);
+
+      assert.strictEqual(typeof parsed.evPurchasePrice, 'number');
+      assert.strictEqual(parsed.evPurchasePrice, 39000);
+      assert.strictEqual(parsed.evPrice, 39000);
+      assert.strictEqual(typeof parsed.iceTradeInValue, 'number');
+      assert.strictEqual(parsed.iceTradeInValue, 15000);
+      assert.strictEqual(parsed.iceTrade, 15000);
+      assert.strictEqual(typeof parsed.annualMileage, 'number');
+      assert.strictEqual(parsed.annualMileage, 20000);
+      assert.strictEqual(parsed.mileage, 20000);
+      assert.strictEqual(typeof parsed.horizonYears, 'number');
+      assert.strictEqual(parsed.horizonYears, 4);
+      assert.strictEqual(parsed.horizon, 4);
+    });
+
+    it('falls back to default values when TCO parameters are omitted: horizonYears=5, evPurchasePrice=0, iceTradeInValue=0', () => {
+      const params = new URLSearchParams();
+      const parsed = parseCommuteFromParams(params, defaultFallback);
+
+      assert.strictEqual(parsed.horizonYears, 5);
+      assert.strictEqual(parsed.horizon, 5);
+      assert.strictEqual(parsed.evPurchasePrice, 0);
+      assert.strictEqual(parsed.evPrice, 0);
+      assert.strictEqual(parsed.iceTradeInValue, 0);
+      assert.strictEqual(parsed.iceTrade, 0);
+    });
+
+    it('round-trips TCO parameters bidirectionally through serialize and parse', () => {
+      const initial: CommuteInput = {
+        ...defaultFallback,
+        evPurchasePrice: 42000,
+        iceTradeInValue: 16000,
+        annualMileage: 15000,
+        horizonYears: 8,
+      };
+
+      const serialized = serializeCommuteToParams(initial);
+      const parsed = parseCommuteFromParams(serialized, defaultFallback);
+
+      assert.strictEqual(parsed.evPurchasePrice, 42000);
+      assert.strictEqual(parsed.iceTradeInValue, 16000);
+      assert.strictEqual(parsed.annualMileage, 15000);
+      assert.strictEqual(parsed.horizonYears, 8);
+    });
+  });
 });
 

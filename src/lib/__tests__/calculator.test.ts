@@ -1,8 +1,14 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert';
-import { calculateCommuteArbitrage, calculateDrivingCost, IRD_MILEAGE_RATE_PER_KM, WEEKS_PER_MONTH } from '../calculator';
+import {
+  calculateCommuteArbitrage,
+  calculateDrivingCost,
+  calculateTcoArbitrage,
+  IRD_MILEAGE_RATE_PER_KM,
+  WEEKS_PER_MONTH,
+} from '../calculator';
 import { AT_HOP_7_DAY_CAP, PARKING_TIER_RATES } from '../../config/fares.config';
-import { CommuteInput } from '@/types';
+import { CommuteInput, TcoInput } from '@/types';
 
 describe('src/lib/calculator.ts - calculateCommuteArbitrage', () => {
   it('computes exact daily, weekly, monthly, and annual financial figures', () => {
@@ -1738,6 +1744,148 @@ describe('src/lib/calculator.ts - calculateCommuteArbitrage', () => {
       const transitLeg = legs.find((l) => l.type === 'TRANSIT');
       assert.ok(transitLeg);
       assert.strictEqual(transitLeg.mode, 'FERRY');
+    });
+  });
+
+  describe('FEAT-65 (Phase 1): calculateTcoArbitrage (EV ROI Sandbox & TCO)', () => {
+    const baseTcoInput: TcoInput = {
+      originSuburbId: 'albany',
+      destinationSuburbId: 'cbd',
+      daysPerWeek: 5,
+      vehicleType: 'petrol91',
+      powertrain: 'PETROL_91',
+      parkingDailyRate: 0,
+      parkingDaysPerWeek: 0,
+      concession: 'adult',
+      includeMaintenanceWear: false,
+      carpoolPassengers: 1,
+      evPurchasePrice: 45000,
+      iceTradeInValue: 20000,
+      annualMileage: 15000,
+      horizonYears: 5,
+      evEfficiency: 15, // 15 kWh / 100 km
+      kwhRate: 0.30, // $0.30 / kWh
+      customFuelPricePerL: 2.70, // $2.70 / L
+      consumptionOverride: 8.0, // 8.0 L / 100 km
+    };
+
+    it('calculates initial capital delta accurately', () => {
+      const result = calculateTcoArbitrage(baseTcoInput);
+      // 45,000 - 20,000 = 25,000
+      assert.strictEqual(result.initialCapitalDelta, 25000);
+      assert.strictEqual(result.annualMileage, 15000);
+      assert.strictEqual(result.horizonYears, 5);
+    });
+
+    it('extrapolates annual operational costs for ICE and EV with maintenance differential', () => {
+      const result = calculateTcoArbitrage(baseTcoInput);
+
+      // ICE calculations:
+      // Fuel: 15,000 km * (8.0 / 100) * 2.70 = 1,200 L * 2.70 = $3,240.00
+      // RUC: $0.00 (petrol)
+      // Maintenance: $800.00
+      // Total ICE: 3,240 + 0 + 800 = $4,040.00
+      assert.strictEqual(result.annualIceCost.fuelCost, 3240.00);
+      assert.strictEqual(result.annualIceCost.rucCost, 0.00);
+      assert.strictEqual(result.annualIceCost.maintenanceCost, 800.00);
+      assert.strictEqual(result.annualIceCost.total, 4040.00);
+
+      // EV calculations:
+      // Electricity: 15,000 km * (15 / 100) * 0.30 = 2,250 kWh * 0.30 = $675.00
+      // RUC: 15,000 km * $0.076 = $1,140.00
+      // Maintenance: $400.00
+      // Total EV: 675 + 1,140 + 400 = $2,215.00
+      assert.strictEqual(result.annualEvCost.energyCost, 675.00);
+      assert.strictEqual(result.annualEvCost.rucCost, 1140.00);
+      assert.strictEqual(result.annualEvCost.maintenanceCost, 400.00);
+      assert.strictEqual(result.annualEvCost.total, 2215.00);
+
+      // Annual Savings: 4,040 - 2,215 = $1,825.00
+      assert.strictEqual(result.annualSavings, 1825.00);
+    });
+
+    it('computes exact break-even timeframe (years and months)', () => {
+      const result = calculateTcoArbitrage(baseTcoInput);
+
+      // Capital Delta: 25,000
+      // Annual Savings: 1,825
+      // Break-even years: 25,000 / 1,825 = 13.7 years
+      // Break-even months: 13.6986... * 12 = ~164 months
+      const expectedYears = Math.round((25000 / 1825) * 100) / 100;
+      const expectedMonths = Math.round((25000 / 1825) * 12);
+      assert.strictEqual(result.breakEvenYears, expectedYears);
+      assert.strictEqual(result.breakEvenMonths, expectedMonths);
+      assert.strictEqual(result.isBreakEvenAchieved, false); // 13.7 > 5 year horizon
+    });
+
+    it('identifies achieved break-even within horizon when savings cover delta', () => {
+      const fastBreakEvenInput: TcoInput = {
+        ...baseTcoInput,
+        evPurchasePrice: 28000,
+        iceTradeInValue: 24000, // Delta = $4,000
+        annualMileage: 20000,
+      };
+
+      const result = calculateTcoArbitrage(fastBreakEvenInput);
+      // Capital Delta: 4,000
+      // ICE Fuel: 20,000 * 0.08 * 2.70 = 4,320 + 800 = 5,120
+      // EV Energy: 20,000 * 0.15 * 0.30 = 900 + 20,000 * 0.076 = 1,520 + 400 = 2,820
+      // Annual Savings: 5,120 - 2,820 = 2,300
+      // Break-even: 4,000 / 2,300 = 1.74 years (21 months)
+      assert.strictEqual(result.initialCapitalDelta, 4000);
+      assert.strictEqual(result.annualSavings, 2300);
+      assert.strictEqual(result.breakEvenYears, 1.74);
+      assert.strictEqual(result.breakEvenMonths, 21);
+      assert.strictEqual(result.isBreakEvenAchieved, true);
+    });
+
+    it('generates cumulative year-over-year costs across the horizon', () => {
+      const result = calculateTcoArbitrage(baseTcoInput);
+
+      assert.strictEqual(result.cumulativeCosts.length, 5);
+      // Year 1
+      assert.strictEqual(result.cumulativeCosts[0].year, 1);
+      assert.strictEqual(result.cumulativeCosts[0].iceCumulativeCost, 4040.00);
+      assert.strictEqual(result.cumulativeCosts[0].evCumulativeCost, 27215.00); // 25,000 capital + 2,215 op
+      assert.strictEqual(result.cumulativeCosts[0].cumulativeSavings, 4040 - 27215);
+
+      // Year 5
+      assert.strictEqual(result.cumulativeCosts[4].year, 5);
+      assert.strictEqual(result.cumulativeCosts[4].iceCumulativeCost, 4040 * 5); // 20,200.00
+      assert.strictEqual(result.cumulativeCosts[4].evCumulativeCost, 25000 + 2215 * 5); // 36,075.00
+    });
+
+    it('handles zero or negative capital delta (immediate break-even)', () => {
+      const equalValueInput: TcoInput = {
+        ...baseTcoInput,
+        evPurchasePrice: 20000,
+        iceTradeInValue: 20000,
+      };
+
+      const result = calculateTcoArbitrage(equalValueInput);
+      assert.strictEqual(result.initialCapitalDelta, 0);
+      assert.strictEqual(result.breakEvenYears, 0);
+      assert.strictEqual(result.breakEvenMonths, 0);
+      assert.strictEqual(result.isBreakEvenAchieved, true);
+    });
+
+    it('applies statutory diesel RUC ($0.076/km) when ICE vehicle is diesel', () => {
+      const dieselInput: TcoInput = {
+        ...baseTcoInput,
+        vehicleType: 'diesel',
+        powertrain: 'DIESEL',
+        consumptionOverride: 7.0, // 7.0 L / 100 km
+        customFuelPricePerL: 2.20,
+      };
+
+      const result = calculateTcoArbitrage(dieselInput);
+      // Diesel RUC: 15,000 * 0.076 = 1,140.00
+      // Diesel Fuel: 15,000 * 0.07 * 2.20 = 2,310.00
+      // Maintenance: 800.00
+      // Total: 2,310 + 1,140 + 800 = 4,250.00
+      assert.strictEqual(result.annualIceCost.rucCost, 1140.00);
+      assert.strictEqual(result.annualIceCost.fuelCost, 2310.00);
+      assert.strictEqual(result.annualIceCost.total, 4250.00);
     });
   });
 });

@@ -118,6 +118,15 @@ export interface CommuteInput {
   customInsurance?: number | null; // US-38: Optional custom annual insurance override (mutually exclusive with defaultInsurance)
   calculationMode?: CalculationMode; // FEAT-60: 'FUEL' | 'IRD_TRUE_COST'
   calcMode?: CalculationMode; // BUG-77: Alias for calculationMode
+  // FEAT-65: EV ROI Sandbox & TCO Parameters
+  evPurchasePrice?: number;
+  evPrice?: number;
+  iceTradeInValue?: number;
+  iceTrade?: number;
+  annualMileage?: number;
+  mileage?: number;
+  horizonYears?: number;
+  horizon?: number;
 }
 
 export interface TransitStepDetail {
@@ -300,4 +309,47 @@ export interface RouteGeometry {
     distanceKm: number;
     durationMins: number;
   };
+}
+
+// FEAT-65: EV ROI Sandbox & Total Cost of Ownership (TCO)
+export interface TcoInput extends CommuteInput {
+  evPurchasePrice: number;
+  iceTradeInValue: number;
+  annualMileage?: number;
+  horizonYears?: number;
+  evMaintenanceAnnual?: number;
+  iceMaintenanceAnnual?: number;
+}
+
+export interface TcoYearCost {
+  year: number;
+  iceAnnualCost: number;
+  evAnnualCost: number;
+  annualSavings: number;
+  iceCumulativeCost: number;
+  evCumulativeCost: number;
+  cumulativeSavings: number;
+}
+
+export interface TcoArbitrageResult {
+  initialCapitalDelta: number;
+  annualMileage: number;
+  horizonYears: number;
+  annualIceCost: {
+    fuelCost: number;
+    rucCost: number;
+    maintenanceCost: number;
+    total: number;
+  };
+  annualEvCost: {
+    energyCost: number;
+    rucCost: number;
+    maintenanceCost: number;
+    total: number;
+  };
+  annualSavings: number;
+  breakEvenYears: number | null;
+  breakEvenMonths: number | null;
+  isBreakEvenAchieved: boolean;
+  cumulativeCosts: TcoYearCost[];
 }
