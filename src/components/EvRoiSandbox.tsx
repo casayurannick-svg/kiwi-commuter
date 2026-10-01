@@ -10,6 +10,34 @@ export interface EvRoiSandboxProps {
   onChange?: (updated: CommuteInput) => void;
 }
 
+/**
+ * Format the EV break-even verdict into plain language without hardcoding numbers.
+ * Generates natural sentences based on real calculations (STORY-6).
+ */
+export function formatEvVerdictSentence(
+  annualMileage: number,
+  annualSavings: number,
+  initialCapitalDelta: number,
+  breakEvenYears: number | null
+): string {
+  const formattedMileage = Math.round(annualMileage).toLocaleString('en-NZ');
+
+  // Trade-in equals or exceeds purchase price
+  if (initialCapitalDelta <= 0) {
+    return 'An electric car would pay for itself immediately as your trade-in covers the purchase.';
+  }
+
+  // Operating costs never recover capital delta within a realistic human ownership timeframe
+  if (annualSavings <= 0 || breakEvenYears === null || breakEvenYears >= 20) {
+    return `At about ${formattedMileage} km a year, an electric car wouldn't pay itself back for decades.`;
+  }
+
+  // Achievable break-even within < 20 years
+  const roundedYears = Math.round(breakEvenYears);
+  const yearsPhrase = roundedYears <= 1 ? '1 year' : `${roundedYears} years`;
+  return `An electric car would pay for itself in about ${yearsPhrase}.`;
+}
+
 export function EvRoiSandbox({ input, onChange }: EvRoiSandboxProps) {
   // Local state with fallback defaults for interactive responsiveness
   const [localEvPrice, setLocalEvPrice] = useState<number>(
@@ -58,14 +86,23 @@ export function EvRoiSandbox({ input, onChange }: EvRoiSandboxProps) {
 
   const {
     initialCapitalDelta,
+    annualMileage,
     annualIceCost,
     annualEvCost,
     annualSavings,
     breakEvenYears,
-    breakEvenMonths,
     isBreakEvenAchieved,
     cumulativeCosts,
   } = tcoResult;
+
+  const evVerdictSentence = useMemo(() => {
+    return formatEvVerdictSentence(
+      annualMileage,
+      annualSavings,
+      initialCapitalDelta,
+      breakEvenYears
+    );
+  }, [annualMileage, annualSavings, initialCapitalDelta, breakEvenYears]);
 
   return (
     <div
@@ -88,31 +125,23 @@ export function EvRoiSandbox({ input, onChange }: EvRoiSandboxProps) {
           </p>
         </div>
 
-        {/* Break-even Highlight Badge */}
-        <div className="self-start sm:self-auto">
-          {isBreakEvenAchieved ? (
-            <div
-              data-testid="breakeven-badge"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-semibold"
-            >
-              <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
-              <span>
-                Break-even: {breakEvenYears === 0 ? 'Immediate' : `${breakEvenYears} yrs (${breakEvenMonths} mos)`}
-              </span>
-            </div>
-          ) : (
-            <div
-              data-testid="breakeven-badge"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs font-semibold"
-            >
-              <AlertCircle className="w-3.5 h-3.5 text-amber-400" />
-              <span>
-                {annualSavings > 0
-                  ? `Break-even: ${breakEvenYears} yrs (> ${localHorizon} yr horizon)`
-                  : 'No operational savings'}
-              </span>
-            </div>
-          )}
+        {/* Break-even Plain-Language Sentence Badge */}
+        <div className="self-start sm:self-auto max-w-md">
+          <div
+            data-testid="breakeven-badge"
+            className={`flex items-start sm:items-center gap-2 px-3 py-2 rounded-lg border text-xs sm:text-sm font-semibold leading-snug ${
+              isBreakEvenAchieved
+                ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300'
+                : 'bg-amber-500/15 border-amber-500/30 text-amber-300'
+            }`}
+          >
+            {isBreakEvenAchieved ? (
+              <CheckCircle className="w-4 h-4 shrink-0 mt-0.5 sm:mt-0 text-emerald-400" />
+            ) : (
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 sm:mt-0 text-amber-400" />
+            )}
+            <span data-testid="ev-verdict-sentence">{evVerdictSentence}</span>
+          </div>
         </div>
       </div>
 

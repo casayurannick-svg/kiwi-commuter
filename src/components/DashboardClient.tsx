@@ -1,13 +1,10 @@
 'use client';
 
-import CommuteForm from '@/components/CommuteForm';
-import EvRoiSandbox from '@/components/EvRoiSandbox';
 import DonationButton from '@/components/DonationButton';
-import FuelRadarWidget from '@/components/FuelRadarWidget';
-import RouteMap from '@/components/RouteMap';
 import Tabs from '@/components/Tabs';
 import SummaryTab from '@/components/SummaryTab';
 import CompareTab from '@/components/CompareTab';
+import AdvancedTab from '@/components/AdvancedTab';
 import { getSuburbById } from '@/config/suburbs';
 import { calculateCommuteArbitrage } from '@/lib/calculator';
 import { FuelBenchmarkDto } from '@/lib/supabase';
@@ -206,43 +203,21 @@ export default function DashboardClient({ initialFuelPrices }: DashboardClientPr
           />
         </div>
 
-        {/* Tab Panel: Advanced (Granular Inputs, TCO Sandbox, Fuel Radar & Route Map) */}
+        {/* Tab Panel: Advanced (STORY-6 Collapsible Disclosure Rows) */}
         <div
           role="tabpanel"
           id="panel-advanced"
           aria-labelledby="tab-advanced"
           className={commuteInput.activeTab === 'advanced' ? 'block' : 'hidden'}
         >
-          <div className="flex flex-col gap-4 lg:grid lg:grid-cols-12 lg:gap-5 items-start">
-            <div className="contents lg:flex lg:flex-col lg:col-span-5 lg:gap-4 w-full">
-              <div className="w-full">
-                <CommuteForm
-                  input={commuteInput}
-                  calculationMode={commuteInput.calculationMode}
-                  onChange={setCommuteInput}
-                  onInputChange={setCommuteInput}
-                />
-              </div>
-              <div className="w-full">
-                <FuelRadarWidget initialFuelData={initialFuelPrices} />
-              </div>
-              <div className="w-full">
-                <RouteMap
-                  origin={origin}
-                  destination={destination}
-                  distanceKm={arbitrage.distanceKm}
-                  drivingTimeMins={arbitrage.drivingTimeMins}
-                  transitTimeMins={arbitrage.transitTimeMins}
-                />
-              </div>
-            </div>
-
-            <div className="contents lg:flex lg:flex-col lg:col-span-7 lg:gap-4 w-full">
-              <div className="w-full">
-                <EvRoiSandbox input={commuteInput} onChange={setCommuteInput} />
-              </div>
-            </div>
-          </div>
+          <AdvancedTab
+            commuteInput={commuteInput}
+            setCommuteInput={setCommuteInput}
+            arbitrage={arbitrage}
+            initialFuelPrices={initialFuelPrices}
+            origin={origin}
+            destination={destination}
+          />
         </div>
       </main>
 
