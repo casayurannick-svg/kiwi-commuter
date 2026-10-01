@@ -134,6 +134,9 @@ export interface CommuteInput {
   // STORY-3: Tab Navigation State
   activeTab?: TabId;
   tab?: TabId;
+  // STORY-7: First-Run Setup Flow Parameters
+  hasCar?: boolean; // False if commuter does not own/drive a car (transit-only mode)
+  isParkingAssumed?: boolean; // True if parking defaulted to $24.50/day via "Not sure"
 }
 
 export type TabId = 'summary' | 'compare' | 'advanced';

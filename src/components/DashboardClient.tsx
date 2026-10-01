@@ -12,7 +12,10 @@ import ShareButton from '@/components/ShareButton';
 import FeedbackButton from '@/components/FeedbackButton';
 import FeedbackModal from '@/components/FeedbackModal';
 import KiwiPathwayIcon from '@/components/icons/KiwiPathwayIcon';
+import SetupModal from '@/components/SetupModal';
+import { SetupResult } from '@/components/SetupFlow';
 import { useCommuteForm } from '@/hooks/useCommuteForm';
+import { useSearchParams } from 'next/navigation';
 import React, { useEffect, useMemo, useState } from 'react';
 
 interface DashboardClientProps {
@@ -20,8 +23,33 @@ interface DashboardClientProps {
 }
 
 export default function DashboardClient({ initialFuelPrices }: DashboardClientProps) {
+  const searchParams = useSearchParams();
   const { commuteInput, setCommuteInput } = useCommuteForm({ initialFuelPrices });
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
+
+  // STORY-7: Returning users bypass the setup modal
+  const isReturningUser = useMemo(() => {
+    if (!searchParams) return false;
+    return searchParams.toString().length > 0;
+  }, [searchParams]);
+
+  const [isSetupOpen, setIsSetupOpen] = useState<boolean>(() => !isReturningUser);
+
+  const handleSetupComplete = (result: SetupResult) => {
+    setCommuteInput((prev) => ({
+      ...prev,
+      originSuburbId: result.originSuburbId,
+      destinationSuburbId: result.destinationSuburbId,
+      daysPerWeek: result.daysPerWeek,
+      vehicleType: result.vehicleType,
+      powertrain: result.powertrain,
+      power: result.powertrain,
+      hasCar: result.hasCar,
+      parkingDailyRate: result.parkingDailyRate,
+      isParkingAssumed: result.isParkingAssumed,
+    }));
+    setIsSetupOpen(false);
+  };
 
   const origin = useMemo(() => getSuburbById(commuteInput.originSuburbId), [commuteInput.originSuburbId]);
   const destination = useMemo(
@@ -263,6 +291,15 @@ export default function DashboardClient({ initialFuelPrices }: DashboardClientPr
 
       {/* In-App Feedback Reporter Modal */}
       <FeedbackModal isOpen={isFeedbackOpen} onClose={() => setIsFeedbackOpen(false)} />
+
+      {/* First-Run Onboarding Setup Modal (STORY-7) */}
+      <SetupModal
+        isOpen={isSetupOpen}
+        onComplete={handleSetupComplete}
+        onClose={() => setIsSetupOpen(false)}
+        initialFrom={commuteInput.originSuburbId}
+        initialTo={commuteInput.destinationSuburbId}
+      />
     </div>
   );
 }

@@ -66,9 +66,16 @@ export function useCommuteForm(options: UseCommuteFormOptions = {}): UseCommuteF
   const hasHydratedRef = useRef(false);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const isSyncingFromPopstateRef = useRef(false);
+  const isInitialUrlEmptyRef = useRef(
+    !Boolean(
+      (searchParams && searchParams.toString()) ||
+      (typeof window !== 'undefined' && window.location.search)
+    )
+  );
+  const hasUserInteractedRef = useRef(false);
 
   // 1. Lazy-initialize the form state from URL parameters to prevent hydration mismatches
-  const [commuteInput, setCommuteInput] = useState<CommuteInput>(() => {
+  const [commuteInput, setCommuteInputRaw] = useState<CommuteInput>(() => {
     const base: CommuteInput = {
       ...DEFAULT_COMMUTE_INPUT,
       fuelPriceOverride: options.initialFuelPrices?.regular_91,
@@ -85,6 +92,11 @@ export function useCommuteForm(options: UseCommuteFormOptions = {}): UseCommuteF
     return base;
   });
 
+  const setCommuteInput: React.Dispatch<React.SetStateAction<CommuteInput>> = (action) => {
+    hasUserInteractedRef.current = true;
+    setCommuteInputRaw(action);
+  };
+
   // 2. Mark initial hydration complete on mount
   useEffect(() => {
     hasHydratedRef.current = true;
@@ -96,7 +108,7 @@ export function useCommuteForm(options: UseCommuteFormOptions = {}): UseCommuteF
       if (typeof window === 'undefined') return;
       isSyncingFromPopstateRef.current = true;
       const currentUrlParams = new URLSearchParams(window.location.search);
-      setCommuteInput((prev) => parseCommuteFromParams(currentUrlParams, prev));
+      setCommuteInputRaw((prev) => parseCommuteFromParams(currentUrlParams, prev));
       setTimeout(() => {
         isSyncingFromPopstateRef.current = false;
       }, 50);
@@ -112,6 +124,8 @@ export function useCommuteForm(options: UseCommuteFormOptions = {}): UseCommuteF
     if (!hasHydratedRef.current) return;
     // Guard: do not echo back to URL when state change originated from browser popstate
     if (isSyncingFromPopstateRef.current) return;
+    // Guard: do not auto-populate default params into a clean initial URL until user interacts
+    if (isInitialUrlEmptyRef.current && !hasUserInteractedRef.current) return;
 
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);

@@ -190,6 +190,36 @@ export default function SummaryTab({
         </div>
       )}
 
+      {/* 1.5 Transit-Only Commute Banner (STORY-7) */}
+      {commuteInput.hasCar === false && (
+        <div
+          data-testid="transit-only-banner"
+          className="p-4 sm:p-5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-100 flex items-start gap-3.5 backdrop-blur-sm"
+        >
+          <div className="p-2 rounded-lg bg-emerald-500/20 text-emerald-400 shrink-0">
+            <Bus className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="text-base font-bold text-white tracking-tight">
+              Transit-Only Commute
+            </h3>
+            <p className="text-xs sm:text-sm text-slate-300 mt-1">
+              You do not own or drive a car for this commute. Public transit costs ${arbitrage.transitCost.toFixed(2)} a week (${Math.round(arbitrage.transitCost * 52).toLocaleString('en-NZ')} a year) in fares with zero vehicle depreciation, fuel, parking, or maintenance costs.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* 1.6 Parking Assumption Flag (STORY-7) */}
+      {commuteInput.isParkingAssumed && (
+        <div
+          data-testid="parking-assumption-badge"
+          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300 font-medium"
+        >
+          <span>Assumed $24.50/day parking at work (Auckland typical weekday cap).</span>
+        </div>
+      )}
+
       {/* 2. Verdict Card (Headline + Natural Language Support Copy) */}
       <VerdictCard verdict={arbitrage.verdict} />
 

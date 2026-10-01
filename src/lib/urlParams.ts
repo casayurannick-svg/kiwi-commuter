@@ -233,6 +233,14 @@ export function serializeCommuteToParams(input: CommuteInput): URLSearchParams {
     params.set('tab', currentTab);
   }
 
+  // STORY-7: First-Run Setup Flow Parameters
+  if (input.hasCar !== undefined) {
+    params.set('hasCar', input.hasCar ? '1' : '0');
+  }
+  if (input.isParkingAssumed) {
+    params.set('parkingAssumed', '1');
+  }
+
   return params;
 }
 
@@ -768,6 +776,17 @@ export function parseCommuteFromParams(
       }
       return fallback.activeTab || 'summary';
     })(),
+    // STORY-7: First-Run Setup Flow Parameters
+    hasCar:
+      params.has('hasCar')
+        ? params.get('hasCar') === '1' || params.get('hasCar') === 'true'
+        : params.get('vehicle') === 'none' || params.get('car') === 'none'
+        ? false
+        : fallback.hasCar ?? true,
+    isParkingAssumed:
+      params.get('parkingAssumed') === '1' || params.get('parkingAssumed') === 'true'
+        ? true
+        : fallback.isParkingAssumed ?? false,
   };
 }
 
