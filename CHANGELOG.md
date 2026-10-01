@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Refactor (UI)**: Moved `RouteMap` from the right column to the left sidebar column beneath `MonthlySavingsChart` in `DashboardClient` to optimize layout balance across widescreen displays.
+
 ### Fixed
 - **BUG-77**: Isolated `CommuteMatrix` from IRD calculation mode leakage by explicitly setting `calculationMode: 'FUEL'` and `calcMode: 'FUEL'` in `iceArbitrage` and `evArbitrage` useMemo blocks, ensuring itemized fuel and electricity values render accurately when IRD True Cost mode is toggled.
 - **BUG-76**: Cleaned up `CommuteMatrix` UI and layout:
