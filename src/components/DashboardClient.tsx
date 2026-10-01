@@ -1,6 +1,7 @@
 'use client';
 
 import CommuteForm from '@/components/CommuteForm';
+import CommuteMatrix from '@/components/CommuteMatrix';
 import ComparisonCard from '@/components/ComparisonCard';
 import DonationButton from '@/components/DonationButton';
 import FuelRadarWidget from '@/components/FuelRadarWidget';
@@ -198,6 +199,9 @@ export default function DashboardClient({ initialFuelPrices }: DashboardClientPr
               />
             </div>
             <div className="order-3 w-full">
+              <CommuteMatrix input={commuteInput} arbitrage={arbitrage} />
+            </div>
+            <div className="order-4 w-full">
               <JourneyTimeline
                 arbitrage={arbitrage}
                 input={commuteInput}
@@ -206,7 +210,7 @@ export default function DashboardClient({ initialFuelPrices }: DashboardClientPr
                 }
               />
             </div>
-            <div className="order-4 w-full">
+            <div className="order-5 w-full">
               <RouteMap
                 origin={origin}
                 destination={destination}
@@ -215,7 +219,7 @@ export default function DashboardClient({ initialFuelPrices }: DashboardClientPr
                 transitTimeMins={arbitrage.transitTimeMins}
               />
             </div>
-            <div className="order-5 w-full">
+            <div className="order-6 w-full">
               <MonthlySavingsChart arbitrage={arbitrage} />
             </div>
           </div>
