@@ -827,6 +827,125 @@ describe('US-21: /api/routes – Google Routes Transit Duration', () => {
         }
       }
     });
+
+    it('BUG-71: asserts that walking first-mile legs use API response metrics (~2.1km / 27m) instead of straight-line math (1.5km / 20m)', async () => {
+      const originalFetch = globalThis.fetch;
+      const originalApiKey = process.env.GOOGLE_ROUTES_API_KEY;
+
+      process.env.GOOGLE_ROUTES_API_KEY = 'mock_google_routes_key_bug71';
+
+      const queriedRequests: Array<{ travelMode: string; origin: unknown; destination: unknown }> = [];
+
+      try {
+        globalThis.fetch = (async (url: string | URL | Request, init?: RequestInit) => {
+          const urlStr = String(url);
+          if (urlStr.includes('routes.googleapis.com')) {
+            const body = JSON.parse(String(init?.body || '{}'));
+            queriedRequests.push({
+              travelMode: body.travelMode,
+              origin: body.origin?.location?.latLng,
+              destination: body.destination?.location?.latLng,
+            });
+
+            if (body.travelMode === 'WALK') {
+              // Street network pedestrian pathing returns 2,100 meters (~2.1km) and 27 minutes (1,620s),
+              // whereas straight-line haversine distance is only ~1.5km (which would be ~18-20 mins)
+              return {
+                ok: true,
+                json: async () => ({
+                  routes: [
+                    {
+                      duration: '1620s', // 27 mins
+                      distanceMeters: 2100, // 2.1 km
+                      legs: [
+                        {
+                          duration: '1620s',
+                          distanceMeters: 2100,
+                        },
+                      ],
+                    },
+                  ],
+                }),
+              };
+            }
+
+            if (body.travelMode === 'TRANSIT') {
+              // Ferry Leg A: Hobsonville to Downtown Ferry Terminal
+              return {
+                ok: true,
+                json: async () => ({
+                  routes: [
+                    {
+                      duration: '2100s', // 35 mins
+                      legs: [
+                        {
+                          duration: '2100s',
+                          steps: [
+                            {
+                              travelMode: 'TRANSIT',
+                              staticDuration: '2100s',
+                              transitDetails: {
+                                transitLine: {
+                                  name: 'Hobsonville Ferry',
+                                  shortName: 'HOBH',
+                                  vehicle: { type: 'FERRY' },
+                                },
+                                stopDetails: {
+                                  departureStop: { name: 'Hobsonville Point Ferry Terminal' },
+                                  arrivalStop: { name: 'Downtown Ferry Terminal' },
+                                },
+                              },
+                            },
+                          ],
+                        },
+                      ],
+                    },
+                  ],
+                }),
+              };
+            }
+          }
+          return { ok: true, json: async () => ({ routes: [] }) };
+        }) as unknown as typeof fetch;
+
+        // Origin at [174.6560, -36.8070] (~1.5km straight-line from Hobsonville Ferry Terminal [174.6680, -36.7980])
+        const req = new Request(
+          'http://localhost/api/routes?originLng=174.6560&originLat=-36.8070&destinationLng=174.7670&destinationLat=-36.8430&transitMode=FERRY&firstMileMode=WALK'
+        );
+        const res = await GET(req);
+        assert.strictEqual(res.status, 200);
+
+        const json = await res.json();
+
+        // 1. Verify routing API was queried strictly with travelMode: 'WALK'
+        const walkRequests = queriedRequests.filter((r) => r.travelMode === 'WALK');
+        assert.strictEqual(walkRequests.length, 1, 'Must strictly query Google Routes API with travelMode: WALK');
+
+        // 2. Verify source is google_routes_api and mode is WALK
+        assert.strictEqual(json.source, 'google_routes_api');
+        assert.strictEqual(json.firstMileMode, 'WALK');
+        assert.strictEqual(json.waypointInjected, true);
+
+        // 3. Assert distance uses API response metric (~2.1km) instead of straight-line haversine math (~1.5km)
+        assert.strictEqual(json.firstMileDistanceKm, 2.1, 'Must use API response distance 2.1km');
+        assert.notStrictEqual(json.firstMileDistanceKm, 1.5, 'Must not fall back to straight-line distance (1.5km)');
+
+        // 4. Assert duration uses API response metric (27m) instead of straight-line math (~18-20m)
+        assert.strictEqual(json.firstMileDurationMins, 27, 'Must use API response duration 27 mins');
+        assert.notStrictEqual(json.firstMileDurationMins, 20, 'Must not fall back to straight-line duration (20 mins)');
+        assert.notStrictEqual(json.firstMileDurationMins, 18, 'Must not fall back to straight-line duration (18 mins)');
+
+        // 5. Total door-to-door duration synthesizes first-mile walk (27m) + ferry transit (35m) + terminal egress walk (2m) = 64 mins
+        assert.strictEqual(json.totalDurationMins, 27 + 35 + 2);
+      } finally {
+        globalThis.fetch = originalFetch;
+        if (originalApiKey === undefined) {
+          delete process.env.GOOGLE_ROUTES_API_KEY;
+        } else {
+          process.env.GOOGLE_ROUTES_API_KEY = originalApiKey;
+        }
+      }
+    });
   });
 });
 

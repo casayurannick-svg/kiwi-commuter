@@ -69,12 +69,14 @@ interface GoogleRouteLegStep {
 interface GoogleRouteLeg {
   distanceMeters?: number;
   duration?: string;
+  staticDuration?: string;
   steps?: GoogleRouteLegStep[];
 }
 
 interface GoogleRoute {
   distanceMeters?: number;
   duration?: string;
+  staticDuration?: string;
   legs?: GoogleRouteLeg[];
 }
 
@@ -232,7 +234,7 @@ export async function GET(request: Request) {
             headers: {
               'Content-Type': 'application/json',
               'X-Goog-Api-Key': apiKey,
-              'X-Goog-FieldMask': 'routes.duration,routes.distanceMeters,routes.legs.duration,routes.legs.distanceMeters',
+              'X-Goog-FieldMask': 'routes.duration,routes.staticDuration,routes.distanceMeters,routes.legs.duration,routes.legs.staticDuration,routes.legs.distanceMeters,routes.legs.steps.staticDuration,routes.legs.steps.distanceMeters',
             },
             body: JSON.stringify({
               origin: { location: { latLng: { latitude: originLat, longitude: originLng } } },
@@ -371,16 +373,29 @@ export async function GET(request: Request) {
           if (leg1Data?.routes?.[0]) {
             const l1 = leg1Data.routes[0];
             let dM = l1.distanceMeters;
-            if (typeof dM !== 'number' && Array.isArray(l1.legs)) {
-              dM = l1.legs.reduce((acc: number, leg: { distanceMeters?: number }) => acc + (leg.distanceMeters || 0), 0);
+            if ((typeof dM !== 'number' || dM <= 0) && Array.isArray(l1.legs)) {
+              dM = l1.legs.reduce((acc: number, leg: GoogleRouteLeg) => {
+                let legDist = leg.distanceMeters || 0;
+                if (!legDist && Array.isArray(leg.steps)) {
+                  legDist = leg.steps.reduce((sAcc, step) => sAcc + ((step as { distanceMeters?: number }).distanceMeters || 0), 0);
+                }
+                return acc + legDist;
+              }, 0);
             }
             if (typeof dM === 'number' && dM > 0) {
               firstMileDistanceKm = Math.round((dM / 1000) * 10) / 10;
             }
-            let durSec = parseDurationSeconds(l1.duration);
+            let durSec = parseDurationSeconds(l1.duration || l1.staticDuration);
             if (durSec === 0 && Array.isArray(l1.legs)) {
               for (const leg of l1.legs) {
-                durSec += parseDurationSeconds(leg.duration);
+                const legDur = parseDurationSeconds(leg.duration || leg.staticDuration);
+                if (legDur > 0) {
+                  durSec += legDur;
+                } else if (Array.isArray(leg.steps)) {
+                  for (const step of leg.steps) {
+                    durSec += parseDurationSeconds(step.staticDuration);
+                  }
+                }
               }
             }
             if (durSec > 0) {
