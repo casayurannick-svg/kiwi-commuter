@@ -1,16 +1,13 @@
 'use client';
 
 import CommuteForm from '@/components/CommuteForm';
-import CommuteMatrix from '@/components/CommuteMatrix';
 import EvRoiSandbox from '@/components/EvRoiSandbox';
-import ComparisonCard from '@/components/ComparisonCard';
 import DonationButton from '@/components/DonationButton';
 import FuelRadarWidget from '@/components/FuelRadarWidget';
-import JourneyTimeline from '@/components/JourneyTimeline';
-import MonthlySavingsChart from '@/components/MonthlySavingsChart';
 import RouteMap from '@/components/RouteMap';
 import Tabs from '@/components/Tabs';
 import SummaryTab from '@/components/SummaryTab';
+import CompareTab from '@/components/CompareTab';
 import { getSuburbById } from '@/config/suburbs';
 import { calculateCommuteArbitrage } from '@/lib/calculator';
 import { FuelBenchmarkDto } from '@/lib/supabase';
@@ -195,41 +192,18 @@ export default function DashboardClient({ initialFuelPrices }: DashboardClientPr
           />
         </div>
 
-        {/* Tab Panel: Compare (Detailed Side-by-Side Comparison & Commute Matrix) */}
+        {/* Tab Panel: Compare (STORY-5 Side-by-Side Cost Base Analysis) */}
         <div
           role="tabpanel"
           id="panel-compare"
           aria-labelledby="tab-compare"
           className={commuteInput.activeTab === 'compare' ? 'block' : 'hidden'}
         >
-          <div className="flex flex-col gap-4 lg:grid lg:grid-cols-12 lg:gap-5 items-start">
-            <div className="contents lg:flex lg:flex-col lg:col-span-6 lg:gap-4 w-full">
-              <div className="w-full">
-                <ComparisonCard
-                  arbitrage={arbitrage}
-                  input={commuteInput}
-                  onCalculationModeChange={(mode) =>
-                    setCommuteInput((prev) => ({ ...prev, calculationMode: mode }))
-                  }
-                />
-              </div>
-              <div className="w-full">
-                <JourneyTimeline
-                  arbitrage={arbitrage}
-                  input={commuteInput}
-                  onFirstMileModeChange={(mode) =>
-                    setCommuteInput((prev) => ({ ...prev, firstMileMode: mode }))
-                  }
-                />
-              </div>
-            </div>
-
-            <div className="contents lg:flex lg:flex-col lg:col-span-6 lg:gap-4 w-full">
-              <div className="w-full">
-                <CommuteMatrix input={commuteInput} arbitrage={arbitrage} />
-              </div>
-            </div>
-          </div>
+          <CompareTab
+            commuteInput={commuteInput}
+            setCommuteInput={setCommuteInput}
+            arbitrage={arbitrage}
+          />
         </div>
 
         {/* Tab Panel: Advanced (Granular Inputs, TCO Sandbox, Fuel Radar & Route Map) */}
@@ -266,9 +240,6 @@ export default function DashboardClient({ initialFuelPrices }: DashboardClientPr
             <div className="contents lg:flex lg:flex-col lg:col-span-7 lg:gap-4 w-full">
               <div className="w-full">
                 <EvRoiSandbox input={commuteInput} onChange={setCommuteInput} />
-              </div>
-              <div className="w-full">
-                <MonthlySavingsChart arbitrage={arbitrage} />
               </div>
             </div>
           </div>
