@@ -467,6 +467,57 @@ describe('src/lib/urlParams.ts - URL Search Param Synchronization', () => {
       assert.strictEqual(parsedIrd.annualRego, 173);
       assert.strictEqual(parsedIrd.insuranceEnabled, true);
       assert.strictEqual(parsedIrd.includeMaintenanceWear, true);
+
+      // 3. FEAT-72: EV parameters fallback to standard defaults when omitted (kwhRate default 0.33, evEfficiency default 15)
+      const evParams = new URLSearchParams('power=BEV');
+      const parsedEv = parseCommuteFromParams(evParams, defaultFallback);
+      assert.strictEqual(parsedEv.chargeSource, 'HOME_OFFPEAK');
+      assert.strictEqual(parsedEv.kwhRate, 0.33);
+      assert.strictEqual(parsedEv.evEfficiency, 15);
+
+      const phevParams = new URLSearchParams('power=PHEV');
+      const parsedPhev = parseCommuteFromParams(phevParams, defaultFallback);
+      assert.strictEqual(parsedPhev.chargeSource, 'HOME_OFFPEAK');
+      assert.strictEqual(parsedPhev.kwhRate, 0.33);
+      assert.strictEqual(parsedPhev.evEfficiency, 15);
+    });
+
+    it('FEAT-72: bi-directional URL synchronization for chargeSource, kwhRate, and evEfficiency', () => {
+      // Custom values serialization and deserialization
+      const customEv: CommuteInput = {
+        ...defaultFallback,
+        vehicleType: 'bev',
+        powertrain: 'BEV',
+        chargeSource: 'PUBLIC_DC',
+        kwhRate: 0.85,
+        evEfficiency: 17.5,
+      };
+
+      const params = serializeCommuteToParams(customEv);
+      assert.strictEqual(params.get('chargeSource'), 'PUBLIC_DC');
+      assert.strictEqual(params.get('kwhRate'), '0.85');
+      assert.strictEqual(params.get('evEfficiency'), '17.5');
+
+      const roundTripped = parseCommuteFromParams(params, defaultFallback);
+      assert.strictEqual(roundTripped.chargeSource, 'PUBLIC_DC');
+      assert.strictEqual(roundTripped.kwhRate, 0.85);
+      assert.strictEqual(roundTripped.evEfficiency, 17.5);
+
+      // Default fallback synchronization
+      const defaultEv: CommuteInput = {
+        ...defaultFallback,
+        vehicleType: 'bev',
+        powertrain: 'BEV',
+      };
+      const defaultEvParams = serializeCommuteToParams(defaultEv);
+      assert.strictEqual(defaultEvParams.get('chargeSource'), 'HOME_OFFPEAK');
+      assert.strictEqual(defaultEvParams.get('kwhRate'), '0.33');
+      assert.strictEqual(defaultEvParams.get('evEfficiency'), '15');
+
+      const parsedDefaults = parseCommuteFromParams(defaultEvParams, defaultFallback);
+      assert.strictEqual(parsedDefaults.chargeSource, 'HOME_OFFPEAK');
+      assert.strictEqual(parsedDefaults.kwhRate, 0.33);
+      assert.strictEqual(parsedDefaults.evEfficiency, 15);
     });
   });
 });

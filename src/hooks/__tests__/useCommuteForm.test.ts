@@ -43,6 +43,9 @@ describe('src/hooks/useCommuteForm.ts - URL State Synchronization Hook', () => {
     assert.strictEqual(DEFAULT_COMMUTE_INPUT.annualRego, 173);
     assert.strictEqual(DEFAULT_COMMUTE_INPUT.insuranceEnabled, true);
     assert.strictEqual(DEFAULT_COMMUTE_INPUT.defaultInsurance, 1311);
+    assert.strictEqual(DEFAULT_COMMUTE_INPUT.chargeSource, 'HOME_OFFPEAK');
+    assert.strictEqual(DEFAULT_COMMUTE_INPUT.kwhRate, 0.33);
+    assert.strictEqual(DEFAULT_COMMUTE_INPUT.evEfficiency, 15);
   });
 
   it('renders consumer with default base state during SSR / static rendering', () => {

@@ -172,7 +172,7 @@ export default function DashboardClient({ initialFuelPrices }: DashboardClientPr
       {/* Main Workspace Body (Mobile First Responsive Stack & Desktop 2-Column Grid) */}
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 py-4 sm:py-6">
         <div className="flex flex-col gap-4 lg:grid lg:grid-cols-12 lg:gap-5 items-start">
-          {/* Left Column (Desktop cols 1..5: CommuteForm + FuelRadarWidget) */}
+          {/* Left Column (Desktop cols 1..5: CommuteForm + FuelRadarWidget + MonthlySavingsChart) */}
           <div className="contents lg:flex lg:flex-col lg:col-span-5 lg:gap-4 w-full">
             <div className="order-1 w-full">
               <CommuteForm
@@ -182,12 +182,15 @@ export default function DashboardClient({ initialFuelPrices }: DashboardClientPr
                 onInputChange={setCommuteInput}
               />
             </div>
-            <div className="order-5 w-full">
+            <div className="order-6 w-full">
               <FuelRadarWidget initialFuelData={initialFuelPrices} />
+            </div>
+            <div className="order-7 w-full">
+              <MonthlySavingsChart arbitrage={arbitrage} />
             </div>
           </div>
 
-          {/* Right Column (Desktop cols 6..12: ComparisonCard + JourneyTimeline + RouteMap + MonthlySavingsChart) */}
+          {/* Right Column (Desktop cols 6..12: ComparisonCard + CommuteMatrix + JourneyTimeline + RouteMap) */}
           <div className="contents lg:flex lg:flex-col lg:col-span-7 lg:gap-4 w-full">
             <div className="order-2 w-full">
               <ComparisonCard
@@ -218,9 +221,6 @@ export default function DashboardClient({ initialFuelPrices }: DashboardClientPr
                 drivingTimeMins={arbitrage.drivingTimeMins}
                 transitTimeMins={arbitrage.transitTimeMins}
               />
-            </div>
-            <div className="order-6 w-full">
-              <MonthlySavingsChart arbitrage={arbitrage} />
             </div>
           </div>
         </div>

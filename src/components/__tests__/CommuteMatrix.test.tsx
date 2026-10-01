@@ -69,4 +69,64 @@ describe('FEAT-75: 3-Way Commute Summary Matrix UI Component', () => {
   it('exports CommuteSummaryMatrix as an alias', () => {
     assert.strictEqual(CommuteMatrix, CommuteSummaryMatrix);
   });
+
+  describe('BUG-76: Badge removal, ICE RUC calculation, and dynamic custom fuel price', () => {
+    it('removes FEAT-75 badge from the header', () => {
+      const html = renderToStaticMarkup(
+        React.createElement(CommuteMatrix, {
+          input: mockInput,
+          arbitrage: mockArbitrage,
+        })
+      );
+
+      assert.strictEqual(html.includes('FEAT-75'), false);
+    });
+
+    it('displays (Exempt) when ICE RUC is 0 for petrol, but displays calculated RUC without (Exempt) for diesel', () => {
+      const petrolHtml = renderToStaticMarkup(
+        React.createElement(CommuteMatrix, {
+          input: mockInput,
+          arbitrage: mockArbitrage,
+        })
+      );
+      assert.ok(petrolHtml.includes('(Exempt)'));
+
+      const dieselInput: CommuteInput = {
+        ...mockInput,
+        vehicleType: 'diesel',
+        powertrain: 'DIESEL',
+      };
+      const dieselArbitrage = calculateCommuteArbitrage(dieselInput);
+      const dieselHtml = renderToStaticMarkup(
+        React.createElement(CommuteMatrix, {
+          input: dieselInput,
+          arbitrage: dieselArbitrage,
+        })
+      );
+      assert.strictEqual(dieselHtml.includes('(Exempt)'), false);
+    });
+
+    it('dynamically displays custom fuel price in footer when provided, and default benchmark when omitted', () => {
+      const defaultHtml = renderToStaticMarkup(
+        React.createElement(CommuteMatrix, {
+          input: mockInput,
+          arbitrage: mockArbitrage,
+        })
+      );
+      assert.ok(defaultHtml.includes('Standard petrol rate benchmark ($2.72/L default)'));
+
+      const customInput: CommuteInput = {
+        ...mockInput,
+        customFuelPricePerL: 2.95,
+      };
+      const customArbitrage = calculateCommuteArbitrage(customInput);
+      const customHtml = renderToStaticMarkup(
+        React.createElement(CommuteMatrix, {
+          input: customInput,
+          arbitrage: customArbitrage,
+        })
+      );
+      assert.ok(customHtml.includes('Custom fuel price ($2.95/L)'));
+    });
+  });
 });

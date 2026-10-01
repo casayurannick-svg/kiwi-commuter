@@ -22,6 +22,7 @@ This repository strictly enforces a **Docs-as-Code** standard. All functional sp
 | [**SYSTEM_DESIGN.md**](./docs/SYSTEM_DESIGN.md) | Technical architecture, data pipelines, Supabase schema, and API contracts | Engineers & Architects |
 | [**CONTRIBUTING.md**](./docs/CONTRIBUTING.md) | Contributor setup, test instructions, and the **Living Documentation Protocol** | All Contributors |
 | [**ADR 0001**](./docs/adr/0001-free-tier-stack-and-caching.md) | Architectural Decision Record: Zero-Cost Serverless Stack & Geodesic Fallbacks | Architecture Review |
+| [**CHANGELOG.md**](./CHANGELOG.md) | Chronological release notes, features, and bug fixes | All |
 | [**docs/README.md**](./docs/README.md) | Full documentation index and Mermaid architecture workflows | General |
 
 ---

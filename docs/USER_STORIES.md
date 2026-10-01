@@ -46,6 +46,8 @@
 | **BUG-43** | Decouple Micromobility from Carpool Multiplier | **DONE** | [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts), [`src/components/ComparisonCard.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/ComparisonCard.tsx), [`src/components/JourneyTimeline.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/JourneyTimeline.tsx), [`src/lib/calculator.test.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.test.ts) | Introduced `transitPassengers` variable locked to 1 for EBIKE/Scooter modes; prevents carpool multiplier from scaling E-Bike energy costs or Scooter AT HOP fares; removed `(X pax)` UI badges from micromobility tiles; preserves BUG-37 carpool scaling for Bus/Train/Ferry. |
 | **BUG-44** | Decouple Private Vehicle Baseline from Alternative Modes | **DONE** | [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts), [`src/components/CommuteForm.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/CommuteForm.tsx), [`src/types/index.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/types/index.ts), [`src/lib/calculator.test.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.test.ts), [`tests/ui.spec.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/tests/ui.spec.ts) | Decoupled private vehicle baseline parameters (Powertrain, RUC, Parking, Fuel/Consumption) from alternative modes; refactored sidebar UI with persistent, independently collapsible "Private Vehicle Baseline" section; verified Diesel RUC applies to baseline in E-Bike mode and Powertrain selector remains functional when E-Bike active. |
 | **FEAT-60** | IRD True Cost Mileage Toggle & Formula | **DONE** | [`src/config/fares.config.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/config/fares.config.ts), [`src/lib/calculator.ts`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/lib/calculator.ts), [`src/components/ComparisonCard.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/ComparisonCard.tsx) | Defined standard IRD Tier 1 rate ($1.20/km), added 'FUEL' vs 'IRD_TRUE_COST' mode state, updated Driving cost formula (`distance_in_km * IRD_MILEAGE_RATE_PER_KM`), added Tailwind toggle switch with info icon and tooltip ("Includes depreciation, WOF, Rego, maintenance, and insurance."). |
+| **FEAT-75** | 3-Way Commute Cost Summary Matrix UI | **DONE** | [`src/components/CommuteMatrix.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/CommuteMatrix.tsx), [`src/components/DashboardClient.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/DashboardClient.tsx) | Responsive 3-column matrix comparing Combustion (ICE), Electric (EV), and Public Transit side-by-side across daily, weekly, and annual intervals with statutory RUC rates and energy math. |
+| **BUG-76** | CommuteMatrix Badge Cleanup, ICE RUC Math, Dynamic Fuel Rate & Sidebar Layout | **DONE** | [`src/components/CommuteMatrix.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/CommuteMatrix.tsx), [`src/components/DashboardClient.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/DashboardClient.tsx), [`src/components/__tests__/CommuteMatrix.test.tsx`](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/components/__tests__/CommuteMatrix.test.tsx) | Removed 'FEAT-75' badge; dynamic ICE RUC rendering (only shows '(Exempt)' if 0); dynamic custom fuel price display in Column 1 footer; reordered dashboard layout to place MonthlySavingsChart under FuelRadarWidget in the left sidebar. |
 
 ---
 
@@ -814,6 +816,26 @@
     - Added Tailwind-styled toggle switch with `role="switch"` and `data-testid="ird-mode-toggle"`.
     - Added accessible `Info` icon with collision-aware `Tooltip` displaying exact copy: *"Includes depreciation, WOF, Rego, maintenance, and insurance."*
     - Dynamic re-computation of arbitrage balance sheet and hero metrics upon toggling.
+
+---
+
+### BUG-76: CommuteMatrix Badge Cleanup, ICE RUC Math, Dynamic Fuel Rate & Sidebar Layout
+**As a** commuter comparing vehicle drivetrains and transit,  
+**I want** clean matrix headers without internal feature tags, accurate ICE RUC charges for diesel vehicles, real-time reflection of custom fuel prices, and an optimized dashboard sidebar layout,  
+**So that** my commute cost calculations are transparent, complete, and logically organized.
+
+* **Acceptance Criteria:**
+  - **Given** the 3-Way Commute Matrix is rendered,
+  - **Then** the internal `FEAT-75` badge is omitted from the header.
+  - **Given** an ICE commute input,
+  - **When** vehicle powertrain is Petrol 91/95 (RUC = $0.00),
+  - **Then** NZ RUC shows `$0.00 (Exempt)`.
+  - **When** vehicle powertrain is Diesel (RUC > 0),
+  - **Then** NZ RUC displays the calculated statutory RUC cost without the `(Exempt)` label.
+  - **Given** a custom fuel price is entered (`customFuelPricePerL`),
+  - **Then** the Column 1 footer displays `Custom fuel price ($X.XX/L)` rather than the default benchmark text.
+  - **Given** the desktop dashboard layout,
+  - **Then** `MonthlySavingsChart` is positioned directly beneath `FuelRadarWidget` in the left sidebar column (`lg:col-span-5`).
 
 ---
 

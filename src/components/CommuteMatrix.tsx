@@ -65,6 +65,26 @@ export function CommuteMatrix({ input, arbitrage }: CommuteMatrixProps) {
   const evSavingsVsIce = Math.round((iceCost - evCost) * 100) / 100;
   const transitSavingsVsIce = Math.round((iceCost - transitCost) * 100) / 100;
 
+  const iceRucCost =
+    timeframe === 'daily'
+      ? iceArbitrage.driving.dailyRucCost ?? 0
+      : timeframe === 'weekly'
+      ? iceArbitrage.driving.weeklyRucCost ?? 0
+      : (iceArbitrage.driving.monthlyRucCost ?? 0) * 12;
+
+  const customFuelPrice =
+    typeof input.customFuelPricePerL === 'number' &&
+    !isNaN(input.customFuelPricePerL) &&
+    input.customFuelPricePerL > 0
+      ? input.customFuelPricePerL
+      : typeof input.fuelPriceOverride === 'number' &&
+        !isNaN(input.fuelPriceOverride) &&
+        input.fuelPriceOverride > 0 &&
+        input.powertrain !== 'BEV' &&
+        input.vehicleType !== 'bev'
+      ? input.fuelPriceOverride
+      : undefined;
+
   const formatCurrency = (val: number | undefined | null) =>
     `$${(val ?? 0).toLocaleString('en-NZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -82,9 +102,6 @@ export function CommuteMatrix({ input, arbitrage }: CommuteMatrixProps) {
             <h3 className="text-base sm:text-lg font-bold text-white tracking-tight">
               3-Way Commute Cost Matrix
             </h3>
-            <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-              FEAT-75
-            </span>
           </div>
           <p className="text-xs text-slate-400 mt-0.5">
             Side-by-side cost breakdown comparing Combustion (ICE), Electric (EV), and Public Transit.
@@ -155,8 +172,14 @@ export function CommuteMatrix({ input, arbitrage }: CommuteMatrixProps) {
               </div>
               <div className="flex justify-between text-slate-300">
                 <span className="text-slate-400">NZ RUC:</span>
-                <span className="font-medium text-slate-400">
-                  $0.00 <span className="text-[10px]">(Exempt)</span>
+                <span className={`font-medium ${iceRucCost > 0 ? 'text-amber-300' : 'text-slate-400'}`}>
+                  {iceRucCost > 0 ? (
+                    formatCurrency(iceRucCost)
+                  ) : (
+                    <>
+                      $0.00 <span className="text-[10px]">(Exempt)</span>
+                    </>
+                  )}
                 </span>
               </div>
               <div className="flex justify-between text-slate-300">
@@ -199,7 +222,9 @@ export function CommuteMatrix({ input, arbitrage }: CommuteMatrixProps) {
           </div>
 
           <div className="mt-4 pt-3 border-t border-slate-800/60 text-[11px] text-slate-400">
-            Standard petrol rate benchmark ($2.72/L default)
+            {customFuelPrice !== undefined
+              ? `Custom fuel price ($${customFuelPrice.toFixed(2)}/L)`
+              : 'Standard petrol rate benchmark ($2.72/L default)'}
           </div>
         </div>
 
