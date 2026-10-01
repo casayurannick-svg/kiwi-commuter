@@ -336,60 +336,81 @@ describe('US-21: /api/routes – Google Routes Transit Duration', () => {
             const body = JSON.parse(String(init?.body || '{}'));
             interceptedPayload = body;
 
-            // Simulate Google Routes API returning a multimodal Ferry + Bus commute
-            // (Hobsonville Ferry to Downtown + InnerLink Bus to Parnell)
-            return {
-              ok: true,
-              json: async () => ({
-                routes: [
-                  {
-                    duration: '3300s', // 55 mins total
-                    legs: [
-                      {
-                        duration: '3300s',
-                        steps: [
-                          {
-                            travelMode: 'TRANSIT',
-                            staticDuration: '2100s', // 35m ferry
-                            transitDetails: {
-                              headsign: 'Downtown Ferry Terminal',
-                              transitLine: {
-                                name: 'Hobsonville Ferry',
-                                vehicle: { type: 'FERRY' },
-                              },
-                              stopDetails: {
-                                departureStop: { name: 'Hobsonville Point Ferry Terminal' },
-                                arrivalStop: { name: 'Downtown Ferry Terminal' },
-                              },
-                            },
-                          },
-                          {
-                            travelMode: 'WALK',
-                            staticDuration: '300s', // 5m transfer walk
-                          },
-                          {
-                            travelMode: 'TRANSIT',
-                            staticDuration: '900s', // 15m bus
-                            transitDetails: {
-                              headsign: 'InnerLink to Parnell',
-                              transitLine: {
-                                name: 'InnerLink',
-                                shortName: 'INL',
-                                vehicle: { type: 'BUS' },
-                              },
-                              stopDetails: {
-                                departureStop: { name: 'Queens Wharf / Customs St' },
-                                arrivalStop: { name: '56 Parnell Rd' },
+            const isLegA = body.destination?.location?.latLng?.latitude === -36.8430;
+            if (isLegA) {
+              // Leg A: Hobsonville to Downtown Ferry Terminal (Ferry)
+              return {
+                ok: true,
+                json: async () => ({
+                  routes: [
+                    {
+                      duration: '2100s', // 35 mins
+                      legs: [
+                        {
+                          duration: '2100s',
+                          steps: [
+                            {
+                              travelMode: 'TRANSIT',
+                              staticDuration: '2100s',
+                              transitDetails: {
+                                headsign: 'Downtown Ferry Terminal',
+                                transitLine: {
+                                  name: 'Hobsonville Ferry',
+                                  vehicle: { type: 'FERRY' },
+                                },
+                                stopDetails: {
+                                  departureStop: { name: 'Hobsonville Point Ferry Terminal' },
+                                  arrivalStop: { name: 'Downtown Ferry Terminal' },
+                                },
                               },
                             },
-                          },
-                        ],
-                      },
-                    ],
-                  },
-                ],
-              }),
-            } as Response;
+                          ],
+                        },
+                      ],
+                    },
+                  ],
+                }),
+              } as Response;
+            } else {
+              // Leg B: Downtown Ferry Terminal to Parnell (InnerLink Bus)
+              return {
+                ok: true,
+                json: async () => ({
+                  routes: [
+                    {
+                      duration: '1200s', // 20 mins door to door
+                      legs: [
+                        {
+                          duration: '1200s',
+                          steps: [
+                            {
+                              travelMode: 'WALK',
+                              staticDuration: '300s', // 5m walk
+                            },
+                            {
+                              travelMode: 'TRANSIT',
+                              staticDuration: '900s', // 15m bus
+                              transitDetails: {
+                                headsign: 'InnerLink to Parnell',
+                                transitLine: {
+                                  name: 'InnerLink',
+                                  shortName: 'INL',
+                                  vehicle: { type: 'BUS' },
+                                },
+                                stopDetails: {
+                                  departureStop: { name: 'Queens Wharf / Customs St' },
+                                  arrivalStop: { name: '56 Parnell Rd' },
+                                },
+                              },
+                            },
+                          ],
+                        },
+                      ],
+                    },
+                  ],
+                }),
+              } as Response;
+            }
           }
 
           return originalFetch(url, init);
@@ -443,6 +464,150 @@ describe('US-21: /api/routes – Google Routes Transit Duration', () => {
         assert.strictEqual(json.transitSteps[0].line, 'Hobsonville Ferry');
         assert.strictEqual(json.transitSteps[1].vehicleType, 'BUS');
         assert.strictEqual(json.transitSteps[1].line, 'INL');
+      } finally {
+        globalThis.fetch = originalFetch;
+        process.env.GOOGLE_ROUTES_API_KEY = originalApiKey;
+      }
+    });
+
+    it('BUG-69: forces strict ferry transit leg and prevents all-bus overrides for inland destinations', async () => {
+      const originalFetch = globalThis.fetch;
+      const originalApiKey = process.env.GOOGLE_ROUTES_API_KEY;
+      process.env.GOOGLE_ROUTES_API_KEY = 'mock_google_routes_key_test';
+
+      const queriedRequests: Array<{ origin: unknown; destination: unknown; travelMode?: string }> = [];
+
+      try {
+        globalThis.fetch = (async (url: string | URL | Request, init?: RequestInit) => {
+          const urlStr = String(url);
+          if (urlStr.includes('routes.googleapis.com')) {
+            const body = JSON.parse(String(init?.body || '{}'));
+            queriedRequests.push({
+              origin: body.origin?.location?.latLng,
+              destination: body.destination?.location?.latLng,
+              travelMode: body.travelMode,
+            });
+
+            const isLegA = body.destination?.location?.latLng?.latitude === -36.8430;
+            if (isLegA) {
+              // Leg A forced to Downtown Ferry Terminal (Queens Wharf)
+              return {
+                ok: true,
+                json: async () => ({
+                  routes: [
+                    {
+                      duration: '2100s',
+                      legs: [
+                        {
+                          duration: '2100s',
+                          steps: [
+                            {
+                              travelMode: 'TRANSIT',
+                              staticDuration: '2100s',
+                              transitDetails: {
+                                headsign: 'Downtown Ferry Terminal',
+                                transitLine: { name: 'Hobsonville Ferry', vehicle: { type: 'FERRY' } },
+                                stopDetails: {
+                                  departureStop: { name: 'Hobsonville Point Ferry Terminal' },
+                                  arrivalStop: { name: 'Downtown Ferry Terminal' },
+                                },
+                              },
+                            },
+                          ],
+                        },
+                      ],
+                    },
+                  ],
+                }),
+              } as Response;
+            } else if (body.travelMode === 'TRANSIT') {
+              // Leg B forced from Downtown Ferry Terminal to destination
+              return {
+                ok: true,
+                json: async () => ({
+                  routes: [
+                    {
+                      duration: '1020s',
+                      legs: [
+                        {
+                          duration: '1020s',
+                          steps: [
+                            {
+                              travelMode: 'TRANSIT',
+                              staticDuration: '720s',
+                              transitDetails: {
+                                headsign: 'InnerLink to Parnell',
+                                transitLine: { name: 'InnerLink', shortName: 'INL', vehicle: { type: 'BUS' } },
+                                stopDetails: {
+                                  departureStop: { name: 'Customs St' },
+                                  arrivalStop: { name: '56 Parnell Rd' },
+                                },
+                              },
+                            },
+                          ],
+                        },
+                      ],
+                    },
+                  ],
+                }),
+              } as Response;
+            } else {
+              // Drive route
+              return {
+                ok: true,
+                json: async () => ({
+                  routes: [
+                    {
+                      duration: '1800s',
+                      distanceMeters: 25000,
+                    },
+                  ],
+                }),
+              } as Response;
+            }
+          }
+
+          return originalFetch(url, init);
+        }) as typeof fetch;
+
+        // Query an inland destination with transitMode=FERRY
+        const req = new Request(
+          'http://localhost/api/routes?originLng=174.6680&originLat=-36.7980&destinationLng=174.778397&destinationLat=-36.851663&transitMode=FERRY'
+        );
+        const res = await GET(req);
+        assert.strictEqual(res.status, 200);
+
+        const json = await res.json();
+
+        // Verify that intermediate Downtown Ferry Terminal (Queens Wharf: -36.8430) was injected
+        const transitRequests = queriedRequests.filter((r) => r.travelMode === 'TRANSIT');
+        assert.ok(transitRequests.length >= 2, 'Must query both Ferry Leg A and Connecting Transit Leg B');
+        assert.strictEqual(
+          (transitRequests[0].destination as { latitude: number })?.latitude,
+          -36.8430,
+          'Leg A must force destination to Downtown Ferry Terminal'
+        );
+        assert.strictEqual(
+          (transitRequests[1].origin as { latitude: number })?.latitude,
+          -36.8430,
+          'Leg B must force origin from Downtown Ferry Terminal'
+        );
+
+        // Verify that the route contains a strict Ferry step and was not overridden by an all-bus route
+        assert.strictEqual(json.transitSteps?.[0]?.travelMode, 'FERRY');
+        assert.strictEqual(json.transitSteps?.[0]?.vehicleType, 'FERRY');
+        assert.strictEqual(json.transitSteps?.[0]?.line, 'Hobsonville Ferry');
+        assert.strictEqual(json.transitSteps?.[0]?.arrivalStop, 'Downtown Ferry Terminal');
+
+        // Verify connecting transit leg is bus
+        assert.strictEqual(json.transitSteps?.[1]?.travelMode, 'TRANSIT');
+        assert.strictEqual(json.transitSteps?.[1]?.vehicleType, 'BUS');
+
+        // Verify total transit lines and metrics
+        assert.ok(json.transitLines.includes('Hobsonville Ferry'));
+        assert.ok(json.transitLines.includes('INL'));
+        assert.strictEqual(json.transitDurationMins, 47); // 35m + 12m
+        assert.strictEqual(json.totalDurationMins, 52); // 35m + 17m
       } finally {
         globalThis.fetch = originalFetch;
         process.env.GOOGLE_ROUTES_API_KEY = originalApiKey;
