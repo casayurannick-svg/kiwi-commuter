@@ -71,7 +71,7 @@ export interface CommuteInput {
   fuelPriceOverride?: number; // custom $/L or $/kWh
   parkingDailyRate: number; // NZD
   parkingDaysPerWeek: number; // days paying parking
-  parkingTier?: ParkingTier;
+  parkingTier?: ParkingTier | 'CUSTOM';
   concession: ConcessionType;
   fareConcession?: FareConcession;
   includeMaintenanceWear: boolean;

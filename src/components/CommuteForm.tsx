@@ -230,6 +230,15 @@ export default function CommuteForm({
         ...input,
         parkingTier: tier,
         parkingDailyRate: defaultRate,
+        customParkingDaily: undefined,
+      };
+      notifyChange(updated);
+    } else {
+      const updated: CommuteInput = {
+        ...input,
+        parkingTier: 'CUSTOM',
+        parkingDailyRate: input.parkingDailyRate || defaultRate,
+        customParkingDaily: input.parkingDailyRate || defaultRate,
       };
       notifyChange(updated);
     }
@@ -970,7 +979,15 @@ export default function CommuteForm({
                   <span className="text-xs text-slate-400">Rate:</span>
                   <input
                     value={input.parkingDailyRate}
-                    onChange={(e) => handleFieldChange('parkingDailyRate', parseFloat(e.target.value) || 0)}
+                    onChange={(e) => {
+                      const rate = parseFloat(e.target.value) || 0;
+                      notifyChange({
+                        ...input,
+                        parkingTier: 'CUSTOM',
+                        parkingDailyRate: rate,
+                        customParkingDaily: rate,
+                      });
+                    }}
                     className="w-24 min-h-[44px] bg-slate-900 border border-slate-700 rounded-xl px-3 py-1 text-sm text-slate-100"
                   />
                   <span className="text-xs text-slate-400">$/day</span>

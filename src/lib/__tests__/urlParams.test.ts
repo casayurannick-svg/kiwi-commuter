@@ -29,7 +29,9 @@ describe('src/lib/urlParams.ts - URL Search Param Synchronization', () => {
     assert.strictEqual(params.get('power'), 'PETROL_91');
     assert.strictEqual(params.get('econ'), '7.6');
     assert.strictEqual(params.get('park'), 'CBD_EARLY_BIRD');
-    assert.strictEqual(params.get('customPark'), '22');
+    assert.strictEqual(params.has('customPark'), false, 'customPark must be omitted when park is not CUSTOM');
+    assert.strictEqual(params.has('kwhRate'), false, 'kwhRate must be omitted for combustion powertrain');
+    assert.strictEqual(params.has('chargeSource'), false, 'chargeSource must be omitted for combustion powertrain');
     assert.strictEqual(params.get('fuelRate'), '2.72');
   });
 
@@ -289,6 +291,183 @@ describe('src/lib/urlParams.ts - URL Search Param Synchronization', () => {
       [174.6590, -36.7920],
       'Origin coordinates must default to inland Hobsonville centroid for bus'
     );
+  });
+
+  describe('BUG-64: Clean up URL state hoarding and prune inactive query parameters', () => {
+    it('omits customPark when park is not CUSTOM and serializes customPark when park is CUSTOM', () => {
+      // Non-custom parking tiers
+      const nonCustomTiers: Array<CommuteInput['parkingTier']> = [
+        'CBD_EARLY_BIRD',
+        'CBD_CASUAL',
+        'SUBURBAN_HUB',
+        'FREE',
+      ];
+
+      for (const tier of nonCustomTiers) {
+        const input: CommuteInput = {
+          ...defaultFallback,
+          parkingTier: tier,
+          parkingDailyRate: 35,
+          customParkingDaily: 35,
+        };
+        const params = serializeCommuteToParams(input);
+        assert.strictEqual(params.get('park'), tier);
+        assert.strictEqual(
+          params.has('customPark'),
+          false,
+          `customPark must be omitted when park is ${tier}`
+        );
+      }
+
+      // CUSTOM parking tier
+      const customInput: CommuteInput = {
+        ...defaultFallback,
+        parkingTier: 'CUSTOM',
+        parkingDailyRate: 27.5,
+        customParkingDaily: 27.5,
+      };
+      const customParams = serializeCommuteToParams(customInput);
+      assert.strictEqual(customParams.get('park'), 'CUSTOM');
+      assert.strictEqual(customParams.get('customPark'), '27.5');
+    });
+
+    it('omits wof, rego, ins, customIns, and wear when calcMode is IRD_TRUE_COST', () => {
+      const irdInput: CommuteInput = {
+        ...defaultFallback,
+        calculationMode: 'IRD_TRUE_COST',
+        annualWof: 85,
+        annualRego: 173,
+        insuranceEnabled: true,
+        customInsurance: 1450,
+        includeMaintenanceWear: false,
+      };
+
+      const params = serializeCommuteToParams(irdInput);
+      assert.strictEqual(params.get('calcMode'), 'IRD_TRUE_COST');
+      assert.strictEqual(params.has('wof'), false, 'wof must be omitted in IRD mode');
+      assert.strictEqual(params.has('rego'), false, 'rego must be omitted in IRD mode');
+      assert.strictEqual(params.has('ins'), false, 'ins must be omitted in IRD mode');
+      assert.strictEqual(params.has('customIns'), false, 'customIns must be omitted in IRD mode');
+      assert.strictEqual(params.has('wear'), false, 'wear must be omitted in IRD mode');
+    });
+
+    it('retains wof, rego, ins, customIns, and wear when calcMode is FUEL', () => {
+      const fuelInput: CommuteInput = {
+        ...defaultFallback,
+        calculationMode: 'FUEL',
+        annualWof: 90,
+        annualRego: 180,
+        insuranceEnabled: true,
+        customInsurance: 1200,
+        includeMaintenanceWear: false,
+      };
+
+      const params = serializeCommuteToParams(fuelInput);
+      assert.strictEqual(params.has('calcMode'), false, 'FUEL is default calcMode and should not be serialized');
+      assert.strictEqual(params.get('wof'), '90');
+      assert.strictEqual(params.get('rego'), '180');
+      assert.strictEqual(params.get('ins'), '1');
+      assert.strictEqual(params.get('customIns'), '1200');
+      assert.strictEqual(params.get('wear'), '0');
+    });
+
+    it('omits EV-specific parameters (chargeSource, evChargeMode, kwhRate) for non-EV/PHEV powertrains', () => {
+      // Petrol 91 with leftover EV properties in state
+      const petrolInput: CommuteInput = {
+        ...defaultFallback,
+        vehicleType: 'petrol91',
+        powertrain: 'PETROL_91',
+        evChargingSource: 'HOME_OFFPEAK',
+        evChargingMode: 'home_offpeak',
+        homeKWhRate: 0.18,
+      };
+
+      const petrolParams = serializeCommuteToParams(petrolInput);
+      assert.strictEqual(petrolParams.has('chargeSource'), false, 'chargeSource must be omitted for Petrol');
+      assert.strictEqual(petrolParams.has('evChargeMode'), false, 'evChargeMode must be omitted for Petrol');
+      assert.strictEqual(petrolParams.has('kwhRate'), false, 'kwhRate must be omitted for Petrol');
+
+      // HEV (conventional hybrid) with leftover EV properties
+      const hevInput: CommuteInput = {
+        ...defaultFallback,
+        vehicleType: 'hev',
+        powertrain: 'HEV',
+        evChargingSource: 'HOME_OFFPEAK',
+        evChargingMode: 'home_offpeak',
+        homeKWhRate: 0.18,
+      };
+
+      const hevParams = serializeCommuteToParams(hevInput);
+      assert.strictEqual(hevParams.has('chargeSource'), false, 'chargeSource must be omitted for HEV');
+      assert.strictEqual(hevParams.has('evChargeMode'), false, 'evChargeMode must be omitted for HEV');
+      assert.strictEqual(hevParams.has('kwhRate'), false, 'kwhRate must be omitted for HEV');
+
+      // BEV must serialize EV properties
+      const bevInput: CommuteInput = {
+        ...defaultFallback,
+        vehicleType: 'bev',
+        powertrain: 'BEV',
+        evChargingSource: 'PUBLIC_DC',
+        evChargingMode: 'public_dc',
+        homeKWhRate: 0.85,
+      };
+
+      const bevParams = serializeCommuteToParams(bevInput);
+      assert.strictEqual(bevParams.get('chargeSource'), 'PUBLIC_DC');
+      assert.strictEqual(bevParams.get('evChargeMode'), 'public_dc');
+      assert.strictEqual(bevParams.get('kwhRate'), '0.85');
+
+      // PHEV must serialize EV properties
+      const phevInput: CommuteInput = {
+        ...defaultFallback,
+        vehicleType: 'phev',
+        powertrain: 'PHEV',
+        evChargingSource: 'HOME_OFFPEAK',
+        homeKWhRate: 0.18,
+      };
+
+      const phevParams = serializeCommuteToParams(phevInput);
+      assert.strictEqual(phevParams.get('chargeSource'), 'HOME_OFFPEAK');
+      assert.strictEqual(phevParams.get('kwhRate'), '0.18');
+    });
+
+    it('verifies URL deserialization handles omitted parameters gracefully by falling back to standard defaults', () => {
+      // 1. Parking tiers fallback to standard rates when customPark is omitted
+      const casualParams = new URLSearchParams('park=CBD_CASUAL');
+      const parsedCasual = parseCommuteFromParams(casualParams, defaultFallback);
+      assert.strictEqual(parsedCasual.parkingTier, 'CBD_CASUAL');
+      assert.strictEqual(parsedCasual.parkingDailyRate, 35, 'CBD_CASUAL should fall back to $35/day default');
+
+      const earlyBirdParams = new URLSearchParams('park=CBD_EARLY_BIRD');
+      const parsedEarlyBird = parseCommuteFromParams(earlyBirdParams, defaultFallback);
+      assert.strictEqual(parsedEarlyBird.parkingTier, 'CBD_EARLY_BIRD');
+      assert.strictEqual(parsedEarlyBird.parkingDailyRate, 22, 'CBD_EARLY_BIRD should fall back to $22/day default');
+
+      const suburbanParams = new URLSearchParams('park=SUBURBAN_HUB');
+      const parsedSuburban = parseCommuteFromParams(suburbanParams, defaultFallback);
+      assert.strictEqual(parsedSuburban.parkingTier, 'SUBURBAN_HUB');
+      assert.strictEqual(parsedSuburban.parkingDailyRate, 8, 'SUBURBAN_HUB should fall back to $8/day default');
+
+      const freeParams = new URLSearchParams('park=FREE');
+      const parsedFree = parseCommuteFromParams(freeParams, defaultFallback);
+      assert.strictEqual(parsedFree.parkingTier, 'FREE');
+      assert.strictEqual(parsedFree.parkingDailyRate, 0, 'FREE should fall back to $0/day default');
+
+      // 2. IRD mode fallback to standard defaults when wof/rego/ins/wear are omitted
+      const irdParams = new URLSearchParams('calcMode=IRD_TRUE_COST');
+      const parsedIrd = parseCommuteFromParams(irdParams, {
+        ...defaultFallback,
+        annualWof: 85,
+        annualRego: 173,
+        insuranceEnabled: true,
+        includeMaintenanceWear: true,
+      });
+      assert.strictEqual(parsedIrd.calculationMode, 'IRD_TRUE_COST');
+      assert.strictEqual(parsedIrd.annualWof, 85);
+      assert.strictEqual(parsedIrd.annualRego, 173);
+      assert.strictEqual(parsedIrd.insuranceEnabled, true);
+      assert.strictEqual(parsedIrd.includeMaintenanceWear, true);
+    });
   });
 });
 

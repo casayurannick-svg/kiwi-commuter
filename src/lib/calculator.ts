@@ -157,7 +157,7 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
     typeof input.parkingDailyRate === 'number'
       ? input.parkingDailyRate
       : 0;
-  if (input.parkingTier && PARKING_TIER_RATES[input.parkingTier]) {
+  if (input.parkingTier && input.parkingTier !== 'CUSTOM' && PARKING_TIER_RATES[input.parkingTier]) {
     if (typeof input.parkingDailyRate !== 'number' || input.parkingDailyRate === 0) {
       effectiveParkingRate = PARKING_TIER_RATES[input.parkingTier].rate;
     }

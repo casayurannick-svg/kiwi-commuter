@@ -529,7 +529,7 @@ describe('US-06: URL Search Param State Synchronization & Share Link', () => {
     assert.strictEqual(params.get('power'), 'BEV');
     assert.strictEqual(params.get('econ'), '15.5');
     assert.strictEqual(params.get('park'), 'CBD_CASUAL');
-    assert.strictEqual(params.get('customPark'), '35');
+    assert.strictEqual(params.get('customPark'), null); // BUG-64: omitted when park !== 'CUSTOM'
     assert.strictEqual(params.get('kwhRate'), '0.18');
     assert.strictEqual(params.get('conc'), 'tertiary');
     assert.strictEqual(params.get('carpool'), '2');

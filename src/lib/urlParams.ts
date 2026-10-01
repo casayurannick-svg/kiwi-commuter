@@ -29,6 +29,14 @@ const VEHICLE_TYPE_TO_POWERTRAIN: Record<VehicleType, VehiclePowertrain> = {
   hev: 'HEV',
 };
 
+export const PARKING_TIER_DEFAULT_RATES: Record<ParkingTier | 'CUSTOM', number> = {
+  CBD_EARLY_BIRD: 22.0,
+  CBD_CASUAL: 35.0,
+  SUBURBAN_HUB: 8.0,
+  FREE: 0.0,
+  CUSTOM: 18.0,
+};
+
 /**
  * Serializes a CommuteInput object to URLSearchParams.
  */
@@ -50,27 +58,36 @@ export function serializeCommuteToParams(input: CommuteInput): URLSearchParams {
   const park = input.parkingTier || 'CBD_EARLY_BIRD';
   if (park) params.set('park', park);
 
+  // BUG-64: When park !== 'CUSTOM', delete or omit customPark
   const customPark = input.customParkingDaily ?? input.parkingDailyRate;
-  if (customPark !== undefined) params.set('customPark', customPark.toString());
-
-  const chargeSource =
-    input.evChargingSource ||
-    (input.evChargingMode ? (input.evChargingMode.toUpperCase() as EVChargingSource) : undefined);
-  if (
-    chargeSource &&
-    (power === 'BEV' || power === 'PHEV' || input.vehicleType === 'bev' || input.vehicleType === 'phev')
-  ) {
-    params.set('chargeSource', chargeSource);
-    params.set('evChargeMode', chargeSource.toLowerCase());
+  if (park === 'CUSTOM' && customPark !== undefined) {
+    params.set('customPark', customPark.toString());
   }
 
-  const kwhRate =
-    input.homeKWhRate ?? (power === 'BEV' || power === 'PHEV' ? input.fuelPriceOverride : undefined);
-  if (kwhRate !== undefined) params.set('kwhRate', kwhRate.toString());
+  // BUG-64: When propulsion type is not EV/PHEV, omit EV-specific parameters (chargeSource, evChargeMode, kwhRate)
+  const isEvOrPhev =
+    power === 'BEV' ||
+    power === 'PHEV' ||
+    input.vehicleType === 'bev' ||
+    input.vehicleType === 'phev';
+
+  if (isEvOrPhev) {
+    const chargeSource =
+      input.evChargingSource ||
+      (input.evChargingMode ? (input.evChargingMode.toUpperCase() as EVChargingSource) : undefined);
+    if (chargeSource) {
+      params.set('chargeSource', chargeSource);
+      params.set('evChargeMode', chargeSource.toLowerCase());
+    }
+
+    const kwhRate =
+      input.homeKWhRate ?? input.fuelPriceOverride;
+    if (kwhRate !== undefined) params.set('kwhRate', kwhRate.toString());
+  }
 
   const fuelRate =
-    input.customFuelPricePerL ?? (power !== 'BEV' && power !== 'PHEV' ? input.fuelPriceOverride : undefined);
-  if (fuelRate !== undefined) params.set('fuelRate', fuelRate.toString());
+    input.customFuelPricePerL ?? (power !== 'BEV' ? input.fuelPriceOverride : undefined);
+  if (fuelRate !== undefined && power !== 'BEV') params.set('fuelRate', fuelRate.toString());
 
   if (input.concession && input.concession !== 'adult') {
     params.set('conc', input.concession);
@@ -78,10 +95,6 @@ export function serializeCommuteToParams(input: CommuteInput): URLSearchParams {
 
   if (input.carpoolPassengers && input.carpoolPassengers > 1) {
     params.set('carpool', input.carpoolPassengers.toString());
-  }
-
-  if (input.includeMaintenanceWear !== undefined && !input.includeMaintenanceWear) {
-    params.set('wear', '0');
   }
 
   if (input.hourlyTimeValue && input.hourlyTimeValue > 0) {
@@ -141,19 +154,28 @@ export function serializeCommuteToParams(input: CommuteInput): URLSearchParams {
     params.set('transitTime', input.transitTimeMins.toString());
   }
 
-  // US-38: Fixed Vehicle Ownership Costs Serialization
-  if (input.annualWof !== undefined) {
-    params.set('wof', input.annualWof.toString());
+  // BUG-64: When calcMode === 'IRD_TRUE_COST', delete or omit wof, rego, ins, customIns, and wear
+  const isIrdMode = input.calculationMode === 'IRD_TRUE_COST';
+
+  if (!isIrdMode) {
+    if (input.includeMaintenanceWear !== undefined && !input.includeMaintenanceWear) {
+      params.set('wear', '0');
+    }
+    // US-38: Fixed Vehicle Ownership Costs Serialization
+    if (input.annualWof !== undefined) {
+      params.set('wof', input.annualWof.toString());
+    }
+    if (input.annualRego !== undefined) {
+      params.set('rego', input.annualRego.toString());
+    }
+    if (input.insuranceEnabled !== undefined) {
+      params.set('ins', input.insuranceEnabled ? '1' : '0');
+    }
+    if (input.customInsurance !== undefined && input.customInsurance !== null) {
+      params.set('customIns', input.customInsurance.toString());
+    }
   }
-  if (input.annualRego !== undefined) {
-    params.set('rego', input.annualRego.toString());
-  }
-  if (input.insuranceEnabled !== undefined) {
-    params.set('ins', input.insuranceEnabled ? '1' : '0');
-  }
-  if (input.customInsurance !== undefined && input.customInsurance !== null) {
-    params.set('customIns', input.customInsurance.toString());
-  }
+
   if (input.calculationMode && input.calculationMode !== 'FUEL') {
     params.set('calcMode', input.calculationMode);
   }
@@ -231,7 +253,7 @@ export function parseCommuteFromParams(
     params.get('parkingTier') ||
     params.get('parking_tier') ||
     params.get('tier');
-  let parkTierParam: ParkingTier | undefined = undefined;
+  let parkTierParam: ParkingTier | 'CUSTOM' | undefined = undefined;
   if (rawParkTier) {
     const upperTier = rawParkTier.trim().toUpperCase();
     if (
@@ -241,7 +263,7 @@ export function parseCommuteFromParams(
       upperTier === 'FREE' ||
       upperTier === 'CUSTOM'
     ) {
-      parkTierParam = upperTier as ParkingTier;
+      parkTierParam = upperTier as ParkingTier | 'CUSTOM';
     } else if (upperTier === 'EARLY_BIRD' || upperTier === 'EARLYBIRD') {
       parkTierParam = 'CBD_EARLY_BIRD';
     } else if (upperTier === 'CASUAL') {
@@ -512,6 +534,8 @@ export function parseCommuteFromParams(
     parkingDailyRate:
       customParkVal !== undefined && !isNaN(customParkVal)
         ? customParkVal
+        : parkTierParam && parkTierParam !== 'CUSTOM' && PARKING_TIER_DEFAULT_RATES[parkTierParam] !== undefined
+        ? PARKING_TIER_DEFAULT_RATES[parkTierParam]
         : fallback.parkingDailyRate,
     customParkingDaily:
       customParkVal !== undefined && !isNaN(customParkVal)
