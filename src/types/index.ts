@@ -275,6 +275,8 @@ export interface StaysCostBreakdown {
   total: number;
 }
 
+export * from './commute';
+
 export interface CommuteComparisonResult {
   // STORY-1: Single Cost Model (Stops / Stays / Times)
   stops: StopsCostBreakdown;
@@ -285,6 +287,9 @@ export interface CommuteComparisonResult {
   transitTime: string;
   carTimeMinutes?: number;
   transitTimeMinutes?: number;
+
+  // STORY-2: Verdict Engine
+  verdict?: import('./commute').CommuteVerdict;
 
   driving: DrivingCostBreakdown;
   transit: TransitCostBreakdown;

@@ -458,3 +458,54 @@ The test suite runs via Node.js native test runner executed through `tsx` (`npm 
 2. **Prevent Powertrain State Bleed**: When switching between ICE and EV modes in tabs or inputs, ensure vehicle-specific consumption overrides (`consumptionOverride`) are scoped or reset to the respective vehicle preset defaults (e.g., reset diesel to `8.4 L/100km` and EV to `15 kWh/100km`).
 3. **Lazy Render Heavy Elements**: Mapbox GL (`RouteMap`) and Recharts (`MonthlySavingsChart`) should use tab-based lazy mounting or layout triggers to avoid canvas reflow or container sizing bugs when hidden behind inactive tabs.
 4. **IRD Rate Synchronization**: Before launching the tabbed UI, update `IRD_MILEAGE_RATE_PER_KM` in `src/config/fares.config.ts` if adopting the newly gazetted 2026–2027 Inland Revenue rates.
+
+---
+
+## 9. Verdict Engine Threshold Formula & Copy Bank Rules (STORY-2)
+
+### 9.1 Pure Engine Architecture: `src/lib/verdict.ts`
+The verdict engine decouples copy generation from UI presentation components. It accepts weekly avoidable car cost (`stops.total`), weekly transit fare (`transitCost`), and daily commute times (`carMinutesDaily`, `transitMinutesDaily`):
+
+```typescript
+export function calculateVerdict(
+  stopsWeekly: number,
+  transitWeekly: number,
+  carMinutesDaily: number,
+  transitMinutesDaily: number,
+  options?: VerdictOptions
+): CommuteVerdict;
+```
+
+### 9.2 Band Threshold Formula (Section 6)
+The indifference band establishes whether financial differences are statistically meaningful or "about the same" (a wash):
+$$\text{Band} = \max\left(\$3.00, \quad 0.10 \times \max(\text{Cost}_{\text{stops, weekly}}, \text{Cost}_{\text{transit, weekly}})\right)$$
+
+### 9.3 The Three Copy States (Section 7)
+1. **Transit Cheaper** (`transitWeekly < stopsWeekly - band`):
+   - **Headline**: `"The bus would save you about $X a week"`
+   - **Support**: `"That's roughly $Y a year, and the bus takes N minutes longer each day."`
+   - *Rules*: Whole dollars for $X$; $Y = X \times 52$; $N = \text{transitMinutes} - \text{carMinutes}$.
+2. **About the Same (Wash)** ($|\text{stopsWeekly} - \text{transitWeekly}| \le \text{band}$):
+   - **Headline**: `"Pretty much a wash"`
+   - **Support**: `"You'd stop paying $S a week for the car and pay $T in fares."`
+   - **Time Clause**: Append `" The bus takes N minutes longer each day."` **ONLY** if $(\text{transitMinutesDaily} - \text{carMinutesDaily}) > 20$.
+   - *Rules*: Whole dollars for $S$ (stops) and $T$ (transit).
+3. **Driving Cheaper** (`stopsWeekly < transitWeekly - band`):
+   - **Headline**: `"Driving is cheaper by about $X a week"`
+   - **Support**: `"And it saves you N minutes a day."`
+   - *Rules*: Whole dollars for $X$; $N = \text{transitMinutes} - \text{carMinutes}$.
+
+### 9.4 Formatting & Style Constraints
+- Strict sentence case.
+- Conversational contractions (`"That's"`, `"You'd"`).
+- Written intervals: `"a week"` and `"a year"` (never `"/week"` or `"/year"`).
+- No hardcoded dollar amounts; dynamic integer interpolation.
+
+### 9.5 Section 5 Corridor Verification
+For **Mt Roskill to Parnell** (Diesel, 3 days/wk, $4.00 parking):
+- $S = \$29.58$, $T = \$29.40$
+- Difference = $\$0.18 \le \text{Band } \$3.00$ -> **Pretty much a wash**
+- Time delta = $92\text{m} - 36\text{m} = 56\text{m} > 20\text{m}$ -> Includes time clause
+- Output Support: `"You'd stop paying $30 a week for the car and pay $29 in fares. The bus takes 56 minutes longer each day."`
+
+

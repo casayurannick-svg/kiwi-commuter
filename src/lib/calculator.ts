@@ -41,9 +41,10 @@ import {
 } from '@/types';
 import { findNearestTransitStation } from './stations';
 import { haversineDistanceKm } from './routes';
+import { calculateVerdict } from './verdict';
 
 export const WEEKS_PER_MONTH = 52 / 12; // 4.33333333
-export { IRD_MILEAGE_RATE_PER_KM };
+export { IRD_MILEAGE_RATE_PER_KM, calculateVerdict };
 
 /**
  * FEAT-73 & FEAT-74: Statutory NZTA Road User Charges (RUC) Rates ($/km)
@@ -1222,6 +1223,16 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
   const carTime = `${totalCarMinutes}m`;
   const transitTime = `${totalTransitMinutes}m`;
 
+  const verdict = calculateVerdict(
+    stopsTotal,
+    transitCost,
+    totalCarMinutes,
+    totalTransitMinutes,
+    {
+      modeLabel: transitBreakdown.primaryMode,
+    }
+  );
+
   return {
     stops,
     stays,
@@ -1231,6 +1242,7 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
     transitTime,
     carTimeMinutes: totalCarMinutes,
     transitTimeMinutes: totalTransitMinutes,
+    verdict,
     driving: drivingBreakdown,
     transit: transitBreakdown,
     dailySavings,
