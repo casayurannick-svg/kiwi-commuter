@@ -218,7 +218,13 @@ export async function GET(request: Request) {
           waypointInjected = true;
           waypointTerminal = 'Hobsonville Point Ferry Terminal';
           const firstMileGoogleMode =
-            firstMileMode === 'CYCLE' ? 'BICYCLE' : firstMileMode === 'WALK' ? 'WALK' : 'DRIVE';
+            firstMileMode === 'CYCLE'
+              ? 'BICYCLE'
+              : firstMileMode === 'SCOOTER'
+              ? 'BICYCLE'
+              : firstMileMode === 'WALK'
+              ? 'WALK'
+              : 'DRIVE';
 
           // Leg 1: First-Mile from origin to Hobsonville Point Ferry Terminal
           leg1Promise = fetch(GOOGLE_ROUTES_ENDPOINT, {
@@ -667,6 +673,8 @@ export async function GET(request: Request) {
       : undefined;
     const leg1Dur = hasFirstMile
       ? (firstMileMode === 'CYCLE'
+          ? Math.max(3, Math.round((leg1Dist! / 15) * 60))
+          : firstMileMode === 'SCOOTER'
           ? Math.max(3, Math.round((leg1Dist! / 15) * 60))
           : firstMileMode === 'WALK'
           ? Math.max(5, Math.round((leg1Dist! / 5) * 60))

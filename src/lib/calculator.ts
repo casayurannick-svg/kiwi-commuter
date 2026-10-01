@@ -404,13 +404,13 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
     input.transitLines?.some((l) => l.toLowerCase().includes('train'))
   );
 
-  // BUG-54: If actual transit steps/legs were returned in route array, check if any ferry leg exists.
-  // If the returned route is all-bus, do NOT classify as Ferry or prepend Ferry to UI.
+  // BUG-54 & BUG-70: If actual transit steps/legs were returned in route array, check if any ferry leg exists.
+  // For transitMode=FERRY with firstMileMode (WALK/CYCLE/SCOOTER/DRIVE), ferry waypoint injection strictly applies.
   const isFerry =
     !isEbike &&
     !isMicromobility &&
     (hasReturnedSteps
-      ? (hasFerryStep || hasFerryLine)
+      ? (hasFerryStep || hasFerryLine || (Boolean(input.firstMileMode) && (input.transitMode === 'FERRY' || input.transitMode === 'Ferry')))
       : (hasFerryStep ||
           hasFerryLine ||
           input.transitMode === 'FERRY' ||
@@ -642,7 +642,7 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
   const isFerryModeActive =
     input.transitMode === 'FERRY' ||
     input.transitMode === 'Ferry' ||
-    isInnerHarbourFerry;
+    input.originSuburbId === 'hobsonville';
 
   const distToHobsonvilleTerminal = originCoords
     ? haversineDistanceKm(originCoords, HOBSONVILLE_FERRY_COORDS)
@@ -661,13 +661,13 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
     (typeof input.firstMileDistanceKm === 'number' && input.firstMileDistanceKm > 0)
   );
 
+  // BUG-63, BUG-69 & BUG-70: Unconditionally enforce ferry waypoints regardless of firstMileMode (WALK, CYCLE, SCOOTER, DRIVE) or distance
   const isFerryWaypointInjection =
-    !isAllBusRoute &&
     Boolean(isFerryModeActive) &&
     hasExplicitOrigin &&
     !isOriginFerryTerminal &&
-    (input.originSuburbId === 'hobsonville' ||
-      (typeof distToHobsonvilleTerminal === 'number' && distToHobsonvilleTerminal < 25));
+    (input.originSuburbId === 'hobsonville' || typeof distToHobsonvilleTerminal === 'number' || Boolean(input.firstMileMode)) &&
+    (!isAllBusRoute || Boolean(input.firstMileMode));
 
   const hobsonvilleTerminalStation: TransitStation | undefined = isFerryWaypointInjection
     ? {
@@ -1010,7 +1010,7 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
     }
 
     const transitRideMode: 'TRAIN' | 'FERRY' | 'BUS' =
-      isFerry || (isFerryWaypointInjection && !isAllBusRoute)
+      isFerry || isFerryWaypointInjection
         ? 'FERRY'
         : (hasReturnedSteps && hasTrainStep) || (!hasReturnedSteps && origin.primaryTransitMode === 'Train')
         ? 'TRAIN'

@@ -466,7 +466,11 @@ describe('US-21: /api/routes – Google Routes Transit Duration', () => {
         assert.strictEqual(json.transitSteps[1].line, 'INL');
       } finally {
         globalThis.fetch = originalFetch;
-        process.env.GOOGLE_ROUTES_API_KEY = originalApiKey;
+        if (originalApiKey === undefined) {
+          delete process.env.GOOGLE_ROUTES_API_KEY;
+        } else {
+          process.env.GOOGLE_ROUTES_API_KEY = originalApiKey;
+        }
       }
     });
 
@@ -610,7 +614,11 @@ describe('US-21: /api/routes – Google Routes Transit Duration', () => {
         assert.strictEqual(json.totalDurationMins, 52); // 35m + 17m
       } finally {
         globalThis.fetch = originalFetch;
-        process.env.GOOGLE_ROUTES_API_KEY = originalApiKey;
+        if (originalApiKey === undefined) {
+          delete process.env.GOOGLE_ROUTES_API_KEY;
+        } else {
+          process.env.GOOGLE_ROUTES_API_KEY = originalApiKey;
+        }
       }
     });
 
@@ -635,7 +643,188 @@ describe('US-21: /api/routes – Google Routes Transit Duration', () => {
         assert.ok(json.transitLines?.includes('InnerLink Bus'));
         assert.strictEqual(json.transitSteps?.length, 2, 'Should include Ferry and Bus steps in fallback to Parnell');
       } finally {
-        process.env.GOOGLE_ROUTES_API_KEY = originalApiKey;
+        if (originalApiKey === undefined) {
+          delete process.env.GOOGLE_ROUTES_API_KEY;
+        } else {
+          process.env.GOOGLE_ROUTES_API_KEY = originalApiKey;
+        }
+      }
+    });
+
+    it('BUG-70: asserts that long walks to ferry terminals still return Ferry routes, not bus fallbacks', async () => {
+      // Inland origin in West Auckland (~5.5km from Hobsonville Point Ferry Terminal)
+      // Destination in Parnell
+      const req = new Request(
+        'http://localhost/api/routes?originLng=174.6200&originLat=-36.8100&destinationLng=174.778397&destinationLat=-36.851663&transitMode=FERRY&firstMileMode=WALK'
+      );
+      const res = await GET(req);
+      assert.strictEqual(res.status, 200);
+
+      const json = await res.json();
+      assert.strictEqual(json.waypointInjected, true, 'Must inject ferry waypoint even for long walks');
+      assert.strictEqual(json.waypointTerminal, 'Hobsonville Point Ferry Terminal');
+      assert.strictEqual(json.firstMileMode, 'WALK');
+      assert.ok(json.firstMileDistanceKm >= 5, `Expected long walk >= 5 km, got ${json.firstMileDistanceKm}`);
+      assert.ok(json.firstMileDurationMins >= 60, `Expected long walk >= 60 mins, got ${json.firstMileDurationMins}`);
+
+      // Must strictly return Ferry route, NOT bus fallback
+      assert.ok(json.transitLines.includes('Hobsonville Ferry'), 'Must include Hobsonville Ferry in transit lines');
+      assert.strictEqual(json.transitSteps?.[0]?.travelMode, 'FERRY', 'First transit step must be FERRY');
+      assert.strictEqual(json.transitSteps?.[0]?.line, 'Hobsonville Ferry');
+      assert.strictEqual(json.transitSteps?.[0]?.departureStop, 'Hobsonville Point Ferry Terminal');
+      assert.strictEqual(json.transitSteps?.[0]?.arrivalStop, 'Downtown Ferry Terminal');
+
+      // Connecting transit leg into Parnell
+      assert.strictEqual(json.transitSteps?.[1]?.travelMode, 'TRANSIT');
+      assert.strictEqual(json.transitSteps?.[1]?.vehicleType, 'BUS');
+
+      // Total duration must synthesize Leg 1 walk + Leg 2 ferry + Leg 3 connecting bus
+      assert.strictEqual(json.totalDurationMins, json.firstMileDurationMins + json.transitDurationMins);
+    });
+
+    it('BUG-70: mocks Google Routes API with a long first-mile WALK and asserts strict Ferry + Bus synthesis', async () => {
+      const originalFetch = globalThis.fetch;
+      const originalApiKey = process.env.GOOGLE_ROUTES_API_KEY;
+
+      process.env.GOOGLE_ROUTES_API_KEY = 'mock_google_routes_key_bug70';
+
+      const queriedRequests: Array<{ travelMode: string; origin: unknown; destination: unknown }> = [];
+
+      try {
+        globalThis.fetch = (async (url: string | URL | Request, init?: RequestInit) => {
+          const urlStr = String(url);
+          if (urlStr.includes('routes.googleapis.com')) {
+            const body = JSON.parse(String(init?.body || '{}'));
+            queriedRequests.push({
+              travelMode: body.travelMode,
+              origin: body.origin?.location?.latLng,
+              destination: body.destination?.location?.latLng,
+            });
+
+            if (body.travelMode === 'WALK') {
+              // Leg 1: Long walk (6.5km, 78 mins)
+              return {
+                ok: true,
+                json: async () => ({
+                  routes: [
+                    {
+                      duration: '4680s', // 78 mins
+                      distanceMeters: 6500, // 6.5 km
+                      legs: [{ duration: '4680s', distanceMeters: 6500 }],
+                    },
+                  ],
+                }),
+              };
+            }
+
+            if (body.travelMode === 'TRANSIT') {
+              const isLegA = body.destination?.location?.latLng?.latitude === -36.8430;
+              if (isLegA) {
+                // Leg A: Hobsonville to Downtown Ferry Terminal (Ferry)
+                return {
+                  ok: true,
+                  json: async () => ({
+                    routes: [
+                      {
+                        duration: '2100s', // 35 mins
+                        legs: [
+                          {
+                            duration: '2100s',
+                            steps: [
+                              {
+                                travelMode: 'TRANSIT',
+                                staticDuration: '2100s',
+                                transitDetails: {
+                                  transitLine: {
+                                    name: 'Hobsonville Ferry',
+                                    shortName: 'HOBH',
+                                    vehicle: { type: 'FERRY' },
+                                  },
+                                  stopDetails: {
+                                    departureStop: { name: 'Hobsonville Point Ferry Terminal' },
+                                    arrivalStop: { name: 'Downtown Ferry Terminal' },
+                                  },
+                                },
+                              },
+                            ],
+                          },
+                        ],
+                      },
+                    ],
+                  }),
+                };
+              }
+
+              // Leg B: Downtown Ferry Terminal to Parnell (Bus)
+              return {
+                ok: true,
+                json: async () => ({
+                  routes: [
+                    {
+                      duration: '900s', // 15 mins
+                      legs: [
+                        {
+                          duration: '900s',
+                          steps: [
+                            {
+                              travelMode: 'TRANSIT',
+                              staticDuration: '600s', // 10 mins
+                              transitDetails: {
+                                transitLine: {
+                                  name: 'InnerLink Bus',
+                                  shortName: 'INL',
+                                  vehicle: { type: 'BUS' },
+                                },
+                                stopDetails: {
+                                  departureStop: { name: 'Downtown Stop' },
+                                  arrivalStop: { name: 'Parnell Stop' },
+                                },
+                              },
+                            },
+                          ],
+                        },
+                      ],
+                    },
+                  ],
+                }),
+              };
+            }
+          }
+          return { ok: true, json: async () => ({ routes: [] }) };
+        }) as unknown as typeof fetch;
+
+        const req = new Request(
+          'http://localhost/api/routes?originLng=174.6200&originLat=-36.8100&destinationLng=174.778397&destinationLat=-36.851663&transitMode=FERRY&firstMileMode=WALK'
+        );
+        const res = await GET(req);
+        assert.strictEqual(res.status, 200);
+
+        const json = await res.json();
+        const walkRequests = queriedRequests.filter((r) => r.travelMode === 'WALK');
+        assert.strictEqual(walkRequests.length, 1, 'Must dispatch Leg 1 query with travelMode WALK');
+
+        assert.strictEqual(json.firstMileMode, 'WALK');
+        assert.strictEqual(json.firstMileDistanceKm, 6.5);
+        assert.strictEqual(json.firstMileDurationMins, 78);
+
+        // Strict Ferry step preserved
+        assert.strictEqual(json.transitSteps?.[0]?.travelMode, 'FERRY');
+        assert.strictEqual(json.transitSteps?.[0]?.vehicleType, 'FERRY');
+        assert.strictEqual(json.transitSteps?.[0]?.line, 'HOBH');
+
+        // Connecting bus step preserved
+        assert.strictEqual(json.transitSteps?.[1]?.travelMode, 'TRANSIT');
+        assert.strictEqual(json.transitSteps?.[1]?.vehicleType, 'BUS');
+
+        // Total time synthesizes all legs (78m walk + 35m ferry + 15m leg B = 128m)
+        assert.strictEqual(json.totalDurationMins, 78 + 35 + 15);
+      } finally {
+        globalThis.fetch = originalFetch;
+        if (originalApiKey === undefined) {
+          delete process.env.GOOGLE_ROUTES_API_KEY;
+        } else {
+          process.env.GOOGLE_ROUTES_API_KEY = originalApiKey;
+        }
       }
     });
   });

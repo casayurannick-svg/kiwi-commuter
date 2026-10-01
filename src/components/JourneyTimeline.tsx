@@ -53,8 +53,8 @@ export default function JourneyTimeline({
   } | null>(null);
 
   useEffect(() => {
-    // US-30: Retain offline Turf.js station logic exclusively for DRIVE
-    if (firstMileMode === 'DRIVE' || !originCoords || input.transitMode === 'EBIKE') {
+    const isFerry = input.transitMode === 'FERRY' || input.transitMode === 'Ferry';
+    if (firstMileMode === 'DRIVE' || !originCoords || input.transitMode === 'EBIKE' || isFerry) {
       setLocalStop(null);
       setFirstMileDirections(null);
       return;
