@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Refactor (UI)**: Moved `RouteMap` from the right column to the left sidebar column beneath `MonthlySavingsChart` in `DashboardClient` to optimize layout balance across widescreen displays.
 
 ### Fixed
+- **BUG-78**: Fixed zero-value trade-in handling in `EvRoiSandbox` to properly reflect `$0` ICE trade-in/resale values without falling back to the `$15k` default, and removed internal `FEAT-65` badge from the sandbox header.
 - **BUG-77**: Isolated `CommuteMatrix` from IRD calculation mode leakage by explicitly setting `calculationMode: 'FUEL'` and `calcMode: 'FUEL'` in `iceArbitrage` and `evArbitrage` useMemo blocks, ensuring itemized fuel and electricity values render accurately when IRD True Cost mode is toggled.
 - **BUG-76**: Cleaned up `CommuteMatrix` UI and layout:
   - Removed internal `FEAT-75` badge from matrix header.

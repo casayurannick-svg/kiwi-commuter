@@ -13,13 +13,13 @@ export interface EvRoiSandboxProps {
 export function EvRoiSandbox({ input, onChange }: EvRoiSandboxProps) {
   // Local state with fallback defaults for interactive responsiveness
   const [localEvPrice, setLocalEvPrice] = useState<number>(
-    input.evPurchasePrice && input.evPurchasePrice > 0 ? input.evPurchasePrice : 45000
+    typeof input.evPurchasePrice === 'number' && input.evPurchasePrice > 0 ? input.evPurchasePrice : 45000
   );
   const [localTradeIn, setLocalTradeIn] = useState<number>(
-    input.iceTradeInValue !== undefined && input.iceTradeInValue > 0 ? input.iceTradeInValue : 15000
+    typeof input.iceTradeInValue === 'number' ? input.iceTradeInValue : 15000
   );
   const [localHorizon, setLocalHorizon] = useState<number>(
-    input.horizonYears && input.horizonYears > 0 ? input.horizonYears : 5
+    typeof input.horizonYears === 'number' && input.horizonYears > 0 ? input.horizonYears : 5
   );
 
   const tcoInput: TcoInput = useMemo(() => {
@@ -82,9 +82,6 @@ export function EvRoiSandbox({ input, onChange }: EvRoiSandboxProps) {
             <h3 className="text-base sm:text-lg font-bold text-white tracking-tight">
               EV ROI &amp; TCO Sandbox
             </h3>
-            <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
-              FEAT-65
-            </span>
           </div>
           <p className="text-xs text-slate-400 mt-0.5">
             Model upfront vehicle capital delta against annual fuel, energy, RUC, and maintenance savings.
@@ -154,7 +151,7 @@ export function EvRoiSandbox({ input, onChange }: EvRoiSandboxProps) {
               type="number"
               step="1000"
               min="0"
-              value={localTradeIn || ''}
+              value={localTradeIn !== undefined ? localTradeIn : ''}
               onChange={(e) => handleTradeInChange(Number(e.target.value))}
               data-testid="tco-ice-trade-input"
               className="w-full bg-slate-900 border border-slate-700/80 rounded-md py-1.5 pl-6 pr-2.5 text-xs text-white font-semibold focus:outline-none focus:border-amber-500"
