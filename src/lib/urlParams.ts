@@ -74,7 +74,7 @@ export function serializeCommuteToParams(input: CommuteInput): URLSearchParams {
     params.set('customPark', customPark.toString());
   }
 
-  // BUG-64: When propulsion type is not EV/PHEV, omit EV-specific parameters (chargeSource, evChargeMode, kwhRate)
+  // BUG-64 & FEAT-72: When propulsion type is not EV/PHEV, omit EV-specific parameters (chargeSource, evChargeMode, kwhRate, evEfficiency)
   const isEvOrPhev =
     power === 'BEV' ||
     power === 'PHEV' ||
@@ -85,16 +85,25 @@ export function serializeCommuteToParams(input: CommuteInput): URLSearchParams {
 
   if (isEvOrPhev) {
     const chargeSource =
+      input.chargeSource ||
       input.evChargingSource ||
-      (input.evChargingMode ? (input.evChargingMode.toUpperCase() as EVChargingSource) : undefined);
+      (input.evChargingMode ? (input.evChargingMode.toUpperCase() as EVChargingSource) : undefined) ||
+      'HOME_OFFPEAK';
     if (chargeSource) {
       params.set('chargeSource', chargeSource);
       params.set('evChargeMode', chargeSource.toLowerCase());
     }
 
     const kwhRate =
-      input.kwhRate ?? input.homeKWhRate ?? input.fuelPriceOverride;
+      input.kwhRate ??
+      input.homeKWhRate ??
+      (input.fuelPriceOverride !== undefined && input.fuelPriceOverride <= 1.50 ? input.fuelPriceOverride : undefined) ??
+      0.33;
     if (kwhRate !== undefined) params.set('kwhRate', kwhRate.toString());
+
+    const evEfficiency =
+      input.evEfficiency ?? input.efficiency ?? 15;
+    if (evEfficiency !== undefined) params.set('evEfficiency', evEfficiency.toString());
   }
 
   const fuelRate =
@@ -317,9 +326,23 @@ export function parseCommuteFromParams(
       ? Number(rawCustomPark)
       : undefined;
 
-  const kwhRateVal = params.has('kwhRate') && !isNaN(Number(params.get('kwhRate')))
-    ? Number(params.get('kwhRate'))
-    : undefined;
+  const rawKwhRate =
+    params.get('kwhRate') ||
+    params.get('kwh_rate') ||
+    params.get('kwhPrice');
+  const kwhRateVal =
+    rawKwhRate !== null && !isNaN(Number(rawKwhRate))
+      ? Number(rawKwhRate)
+      : undefined;
+
+  const rawEvEfficiency =
+    params.get('evEfficiency') ||
+    params.get('ev_efficiency') ||
+    params.get('efficiency');
+  const evEfficiencyVal =
+    rawEvEfficiency !== null && !isNaN(Number(rawEvEfficiency))
+      ? Number(rawEvEfficiency)
+      : undefined;
 
   const fuelRateVal =
     params.has('fuelRate') && !isNaN(Number(params.get('fuelRate')))
@@ -494,8 +517,11 @@ export function parseCommuteFromParams(
       ? Number(rawTransitTime)
       : fallback.transitTimeMins;
 
-  const rawChargeSource = params.get('chargeSource') || params.get('evChargeMode');
-  let evChargingSource: EVChargingSource | undefined = fallback.evChargingSource;
+  const rawChargeSource =
+    params.get('chargeSource') ||
+    params.get('evChargeMode') ||
+    params.get('evChargingSource');
+  let evChargingSource: EVChargingSource | undefined = fallback.chargeSource || fallback.evChargingSource;
   let evChargingMode: EvChargingMode | undefined = fallback.evChargingMode;
   if (rawChargeSource) {
     const upper = rawChargeSource.toUpperCase() as EVChargingSource;
@@ -508,6 +534,8 @@ export function parseCommuteFromParams(
     evChargingMode = 'home_offpeak';
   }
 
+  const isEvPhev = resolvedVehicleType === 'bev' || resolvedVehicleType === 'phev';
+
   const defaultKwhRate =
     evChargingSource && evChargingSource !== 'CUSTOM'
       ? NZ_EV_CHARGING_RATES[evChargingSource]
@@ -515,15 +543,33 @@ export function parseCommuteFromParams(
       ? EV_CHARGING_PRESETS[evChargingMode]?.rate
       : undefined;
 
+  const resolvedKwhRate =
+    kwhRateVal !== undefined
+      ? kwhRateVal
+      : fallback.kwhRate !== undefined
+      ? fallback.kwhRate
+      : isEvPhev
+      ? (params.has('chargeSource') && defaultKwhRate !== undefined ? defaultKwhRate : 0.33)
+      : undefined;
+
+  const resolvedEvEfficiency =
+    evEfficiencyVal !== undefined
+      ? evEfficiencyVal
+      : fallback.evEfficiency !== undefined
+      ? fallback.evEfficiency
+      : fallback.efficiency !== undefined
+      ? fallback.efficiency
+      : isEvPhev
+      ? 15
+      : undefined;
+
   const fuelPriceOverride =
     resolvedVehicleType === 'bev'
-      ? (kwhRateVal ?? defaultKwhRate ?? fallback.fuelPriceOverride)
+      ? (resolvedKwhRate ?? defaultKwhRate ?? fallback.fuelPriceOverride)
       : (fuelRateVal ?? fallback.fuelPriceOverride);
 
   const homeKWhRate =
-    kwhRateVal !== undefined && !isNaN(kwhRateVal)
-      ? kwhRateVal
-      : (defaultKwhRate ?? fallback.homeKWhRate);
+    resolvedKwhRate ?? (defaultKwhRate ?? fallback.homeKWhRate);
 
   // Alias support for commute days per week
   const rawDays =
@@ -572,6 +618,10 @@ export function parseCommuteFromParams(
         : fallback.carpoolPassengers,
     fuelPriceOverride,
     homeKWhRate,
+    kwhRate: resolvedKwhRate,
+    evEfficiency: resolvedEvEfficiency,
+    efficiency: resolvedEvEfficiency ?? econVal ?? fallback.efficiency,
+    chargeSource: evChargingSource,
     customFuelPricePerL:
       fuelRateVal !== undefined && !isNaN(fuelRateVal) ? fuelRateVal : fallback.customFuelPricePerL,
     evChargingSource,

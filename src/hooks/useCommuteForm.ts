@@ -23,6 +23,9 @@ export const DEFAULT_COMMUTE_INPUT: CommuteInput = {
   insuranceEnabled: true,
   defaultInsurance: 1311,
   calculationMode: 'FUEL',
+  chargeSource: 'HOME_OFFPEAK',
+  kwhRate: 0.33,
+  evEfficiency: 15,
 };
 
 export interface UseCommuteFormOptions {

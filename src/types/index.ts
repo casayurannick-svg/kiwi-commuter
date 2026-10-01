@@ -83,6 +83,8 @@ export interface CommuteInput {
   customParkingDaily?: number; // Alias for parkingDailyRate
   homeKWhRate?: number; // Alias for BEV electricity rate
   kwhRate?: number; // FEAT-73: Alias for charging rate ($/kWh)
+  evEfficiency?: number; // FEAT-72: EV battery efficiency (kWh/100km, default 15)
+  chargeSource?: EVChargingSource; // FEAT-72: EV charging source preset
   customFuelPricePerL?: number; // Alias for ICE fuel price
   evChargingSource?: EVChargingSource; // Preset: HOME_OFFPEAK, HOME_FLAT, PUBLIC_DC, CUSTOM
   evChargingMode?: EvChargingMode; // Preset: home_offpeak, home_flat, public_dc, custom
