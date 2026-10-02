@@ -6,6 +6,7 @@ import {
   calculateTcoArbitrage,
   IRD_MILEAGE_RATE_PER_KM,
   WEEKS_PER_MONTH,
+  ANNUAL_COMMUTE_WEEKS,
 } from '../calculator';
 import { AT_HOP_7_DAY_CAP, PARKING_TIER_RATES } from '../../config/fares.config';
 import { CommuteInput, TcoInput } from '@/types';
@@ -43,9 +44,10 @@ describe('src/lib/calculator.ts - calculateCommuteArbitrage', () => {
       result.driving.monthlyTotal,
       Math.round(result.driving.weeklyTotal * WEEKS_PER_MONTH * 100) / 100
     );
+    // STORY-13: Annual driving total is weeklyTotal × 47 active commute weeks
     assert.strictEqual(
       result.driving.annualTotal,
-      Math.round(result.driving.monthlyTotal * 12 * 100) / 100
+      Math.round(result.driving.weeklyTotal * 47 * 100) / 100
     );
 
     // Transit relationships
@@ -56,9 +58,10 @@ describe('src/lib/calculator.ts - calculateCommuteArbitrage', () => {
       result.transit.monthlyTotal,
       Math.round(50.00 * WEEKS_PER_MONTH * 100) / 100
     );
+    // STORY-13: Annual transit total is weeklyTotal × 47 active commute weeks
     assert.strictEqual(
       result.transit.annualTotal,
-      Math.round(result.transit.monthlyTotal * 12 * 100) / 100
+      Math.round(result.transit.weeklyTotal * 47 * 100) / 100
     );
 
     // Savings relationships
@@ -66,9 +69,10 @@ describe('src/lib/calculator.ts - calculateCommuteArbitrage', () => {
       result.monthlySavings,
       Math.round((result.driving.monthlyTotal - result.transit.monthlyTotal) * 100) / 100
     );
+    // STORY-13: Annual savings is weeklySavings × 47 active commute weeks
     assert.strictEqual(
       result.annualSavings,
-      Math.round(result.monthlySavings * 12 * 100) / 100
+      Math.round(result.weeklySavings * 47 * 100) / 100
     );
   });
 
@@ -1410,8 +1414,8 @@ describe('src/lib/calculator.ts - calculateCommuteArbitrage', () => {
       assert.strictEqual(result.driving.monthlyIrdCost, 1040.00);
       assert.strictEqual(result.driving.monthlyTotal, 1040.00);
 
-      // Annual: 1040.00 * 12 = 12480.00
-      assert.strictEqual(result.driving.annualTotal, 12480.00);
+      // Annual: 240.00 * 47 = 11280.00 (STORY-13: 47 active commute weeks)
+      assert.strictEqual(result.driving.annualTotal, 11280.00);
       assert.strictEqual(result.driving.calculationMode, 'IRD_TRUE_COST');
       assert.strictEqual(result.calculationMode, 'IRD_TRUE_COST');
     });
@@ -1960,3 +1964,93 @@ describe('src/lib/calculator.ts - calculateCommuteArbitrage', () => {
 
 
 
+
+describe('STORY-13: 47-Week Annual Commute Multiplier & Time Opportunity Cost', () => {
+  it('ANNUAL_COMMUTE_WEEKS constant equals 47', () => {
+    assert.strictEqual(ANNUAL_COMMUTE_WEEKS, 47);
+  });
+
+  it('annualizes variable costs over 47 weeks (driving.annualTotal = weeklyTotal × 47)', () => {
+    const result = calculateCommuteArbitrage({
+      originSuburbId: 'epsom',
+      destinationSuburbId: 'cbd',
+      daysPerWeek: 3,
+      vehicleType: 'petrol91',
+      parkingDailyRate: 18.0,
+      parkingDaysPerWeek: 3,
+      concession: 'adult',
+      includeMaintenanceWear: false,
+      carpoolPassengers: 1,
+    });
+
+    assert.strictEqual(
+      result.driving.annualTotal,
+      Math.round(result.driving.weeklyTotal * 47 * 100) / 100
+    );
+    assert.strictEqual(
+      result.transit.annualTotal,
+      Math.round(result.transit.weeklyTotal * 47 * 100) / 100
+    );
+    assert.strictEqual(
+      result.annualSavings,
+      Math.round(result.weeklySavings * 47 * 100) / 100
+    );
+  });
+
+  it('annualOpportunityCost is zero when hourlyTimeValue is not set', () => {
+    const result = calculateCommuteArbitrage({
+      originSuburbId: 'manurewa',
+      destinationSuburbId: 'cbd',
+      daysPerWeek: 5,
+      vehicleType: 'petrol91',
+      parkingDailyRate: 0,
+      parkingDaysPerWeek: 0,
+      concession: 'adult',
+      includeMaintenanceWear: false,
+      carpoolPassengers: 1,
+    });
+    assert.ok(result.timeMetrics !== undefined);
+    assert.strictEqual(result.timeMetrics!.annualOpportunityCost, 0);
+  });
+
+  it('annualOpportunityCost is positive when transit is slower and hourlyTimeValue > 0', () => {
+    // manurewa → cbd: transit (10 min) is slower than driving (8 min)
+    const result = calculateCommuteArbitrage({
+      originSuburbId: 'manurewa',
+      destinationSuburbId: 'cbd',
+      daysPerWeek: 5,
+      vehicleType: 'petrol91',
+      parkingDailyRate: 0,
+      parkingDaysPerWeek: 0,
+      concession: 'adult',
+      includeMaintenanceWear: false,
+      carpoolPassengers: 1,
+      hourlyTimeValue: 34.25,
+    });
+    assert.ok(result.timeMetrics !== undefined);
+    const tm = result.timeMetrics!;
+    const dailyDeltaHrs = Math.max(0, ((tm.oneWayTransitMinutes - tm.oneWayDriveMinutes) * 2) / 60);
+    const expectedOpCost = Math.round(dailyDeltaHrs * 34.25 * 5 * 47 * 100) / 100;
+    assert.strictEqual(tm.annualOpportunityCost, expectedOpCost);
+    assert.ok(tm.annualOpportunityCost > 0);
+  });
+
+  it('annualOpportunityCost is zero when driving is slower than transit', () => {
+    const result = calculateCommuteArbitrage({
+      originSuburbId: 'newmarket',
+      destinationSuburbId: 'cbd',
+      daysPerWeek: 5,
+      vehicleType: 'petrol91',
+      parkingDailyRate: 0,
+      parkingDaysPerWeek: 0,
+      concession: 'adult',
+      includeMaintenanceWear: false,
+      carpoolPassengers: 1,
+      hourlyTimeValue: 50,
+      transitTimeMins: 5,
+      drivingTimeMins: 20,
+    });
+    assert.ok(result.timeMetrics !== undefined);
+    assert.strictEqual(result.timeMetrics!.annualOpportunityCost, 0);
+  });
+});
