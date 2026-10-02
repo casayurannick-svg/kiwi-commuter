@@ -1,5 +1,10 @@
 import assert from 'node:assert';
 import { describe, it } from 'node:test';
+import React from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import CommuteForm from '../src/components/CommuteForm';
+import SummaryTab from '../src/components/SummaryTab';
+import { calculateCommuteArbitrage } from '../src/lib/calculator';
 import {
   checkEfficiencyPlausibility,
   resolveBenchmarkCategory,
@@ -111,12 +116,6 @@ describe('STORY-9: EECA / Rightcar Efficiency Validation & Plausibility', () => 
   });
 
   describe('UI Component Integration: Assumption Badges & Plausibility Hints', () => {
-    // Dynamic import to keep isolated if needed
-    const React = require('react');
-    const { renderToStaticMarkup } = require('react-dom/server');
-    const CommuteForm = require('../src/components/CommuteForm').default;
-    const SummaryTab = require('../src/components/SummaryTab').default;
-    const { calculateCommuteArbitrage } = require('../src/lib/calculator');
 
     const baseInput = {
       originSuburbId: 'albany',

@@ -38,6 +38,7 @@ export default function CostBarChart({
 
   return (
     <div
+      data-testid="cost-bar-chart"
       aria-label="Cost comparison bar chart"
       className={`rounded-2xl border border-slate-800 bg-slate-900/80 p-5 sm:p-7 backdrop-blur-md shadow-xl shadow-black/20 space-y-6 ${className}`}
     >
