@@ -62,11 +62,11 @@ export default function SetupModal({
       aria-modal="true"
       aria-labelledby="setup-modal-title"
       data-testid="setup-modal"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md transition-opacity animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md transition-opacity animate-in fade-in duration-200 overflow-y-auto"
     >
       <div
         ref={modalRef}
-        className="relative w-full max-w-lg bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-visible p-5 sm:p-7 text-slate-100"
+        className="relative w-full max-w-lg my-auto bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-visible p-5 sm:p-7 text-slate-100"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header Branding */}

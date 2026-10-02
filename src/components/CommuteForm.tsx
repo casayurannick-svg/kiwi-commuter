@@ -52,7 +52,7 @@ const POWERTRAIN_OPTIONS: {
   { id: 'petrol95', powertrain: 'PETROL_95', label: '95', fullLabel: 'Petrol 95', defaultConsumption: 8.8, unit: 'L/100km', baseline: '8.8 L', icon: Fuel },
   { id: 'diesel', powertrain: 'DIESEL', label: 'Diesel', fullLabel: 'Diesel', defaultConsumption: 8.4, unit: 'L/100km', baseline: '+RUC', icon: Fuel },
   { id: 'hev', powertrain: 'HEV', label: 'HEV', fullLabel: 'Hybrid (Non-Plug-in)', defaultConsumption: 4.5, unit: 'L/100km', baseline: '4.5 L', icon: Leaf, tooltip: 'Non-plug-in hybrid' },
-  { id: 'phev', powertrain: 'PHEV', label: 'PHEV', fullLabel: 'PHEV', defaultConsumption: 3.8, unit: 'L/100km', baseline: '3.8 L', icon: Plug },
+  { id: 'phev', powertrain: 'PHEV', label: 'PHEV', fullLabel: 'Plug-in Hybrid', defaultConsumption: 3.8, unit: 'L/100km', baseline: '3.8 L', icon: Plug, tooltip: 'Battery range, petrol engine & reduced RUC' },
   { id: 'bev', powertrain: 'BEV', label: 'EV', fullLabel: 'EV (BEV)', defaultConsumption: 16.5, unit: 'kWh/100km', baseline: '+RUC', icon: Zap },
 ];
 
@@ -911,11 +911,11 @@ export default function CommuteForm({
 
                   if (opt.tooltip) {
                     return (
-                      <div key={opt.id} className="relative group/hev w-full">
+                      <div key={opt.id} className="relative group group/hev w-full">
                         {buttonContent}
                         <div
                           role="tooltip"
-                          className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2.5 py-1 max-w-[90vw] bg-slate-900/95 border border-slate-700 rounded-lg text-[11px] text-slate-200 whitespace-nowrap shadow-xl backdrop-blur-md opacity-0 group-hover/hev:opacity-100 group-focus-within/hev:opacity-100 transition-opacity duration-150 z-50 pointer-events-none"
+                          className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2.5 py-1 max-w-[90vw] bg-slate-900/95 border border-slate-700 rounded-lg text-[11px] text-slate-200 whitespace-nowrap shadow-xl backdrop-blur-md opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 group-hover/hev:opacity-100 group-focus-within/hev:opacity-100 transition-opacity duration-150 z-50 pointer-events-none"
                         >
                           {opt.tooltip}
                         </div>
@@ -1134,9 +1134,14 @@ export default function CommuteForm({
                 )}
 
                 {input.vehicleType === 'phev' && (
-                  <p className="text-[10px] text-slate-400 italic mt-0.5">
-                    PHEV calculates first 35 km on electric ({input.consumptionOverride ?? 16.5} kWh/100km) and remainder on petrol backup ($2.72/L, 6.0 L/100km).
-                  </p>
+                  <div className="space-y-0.5 mt-1">
+                    <p className="text-xs text-slate-300 font-medium">
+                      Battery range, petrol engine & reduced RUC
+                    </p>
+                    <p className="text-[10px] text-slate-400 italic">
+                      PHEV calculates first 35 km on electric ({input.consumptionOverride ?? 16.5} kWh/100km) and remainder on petrol backup ($2.72/L, 6.0 L/100km).
+                    </p>
+                  </div>
                 )}
               </div>
             )}

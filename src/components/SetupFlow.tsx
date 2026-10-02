@@ -5,7 +5,7 @@ import { SUBURB_CENTROIDS } from '@/config/suburbs';
 import { ParkingTier, VehiclePowertrain, VehicleType } from '@/types';
 import { GeocodingResult } from '@/lib/mapbox';
 import AddressAutocomplete from '@/components/AddressAutocomplete';
-import { ArrowLeft, ArrowRight, Check, Zap, Fuel, Leaf, Footprints, MapPin } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Zap, Fuel, Leaf, Footprints, MapPin, Plug } from 'lucide-react';
 
 export interface SetupResult {
   originSuburbId: string;
@@ -30,7 +30,7 @@ export interface SetupFlowProps {
   initialStep?: number;
 }
 
-type DriveOption = 'petrol' | 'diesel' | 'hybrid' | 'electric' | 'none';
+type DriveOption = 'petrol' | 'diesel' | 'hybrid' | 'phev' | 'electric' | 'none';
 type ParkingOption = 'free' | 'pay' | 'not_sure';
 
 /**
@@ -177,6 +177,9 @@ export default function SetupFlow({
     } else if (drive === 'hybrid') {
       vehicleType = 'hev';
       powertrain = 'HEV';
+    } else if (drive === 'phev') {
+      vehicleType = 'phev';
+      powertrain = 'PHEV';
     } else if (drive === 'electric') {
       vehicleType = 'bev';
       powertrain = 'BEV';
@@ -225,6 +228,7 @@ export default function SetupFlow({
     { id: 'petrol', label: 'Petrol', desc: 'Standard unleaded 91 or 95', icon: Fuel },
     { id: 'diesel', label: 'Diesel', desc: 'Pump diesel plus RUC', icon: Fuel },
     { id: 'hybrid', label: 'Hybrid', desc: 'Standard non-plug-in petrol hybrid', icon: Leaf },
+    { id: 'phev', label: 'Plug-in Hybrid', desc: 'Battery range, petrol engine & reduced RUC', icon: Plug },
     { id: 'electric', label: 'Electric', desc: 'Battery EV with home power & EV RUC', icon: Zap },
     { id: 'none', label: 'No car', desc: 'Transit-only commute (bus, train, ferry)', icon: Footprints },
   ];
@@ -403,7 +407,7 @@ export default function SetupFlow({
                     setDrive(opt.id);
                     if (error) setError(null);
                   }}
-                  className={`w-full flex items-center justify-between p-3.5 sm:p-4 rounded-xl border text-left transition-all ${
+                  className={`w-full flex items-center justify-between p-2.5 sm:p-3.5 rounded-xl border text-left transition-all ${
                     isSelected
                       ? 'bg-emerald-500/15 border-emerald-500 text-white shadow-sm'
                       : 'bg-slate-950/70 border-slate-800/80 text-slate-200 hover:bg-slate-900 hover:border-slate-700'
