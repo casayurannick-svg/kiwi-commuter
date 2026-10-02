@@ -903,7 +903,7 @@ export default function CommuteForm({
                         <IconComponent className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-emerald-400' : 'text-slate-400'}`} />
                         <span className="text-xs font-semibold">{opt.label}</span>
                       </div>
-                      <span className="text-[10px] text-slate-500 font-mono">
+                      <span className="text-[10px] text-slate-400 font-mono">
                         {opt.baseline}
                       </span>
                     </button>
@@ -957,7 +957,7 @@ export default function CommuteForm({
                           </span>
                         )}
                       </div>
-                      <span className="text-[10px] text-slate-500 font-mono">
+                      <span className="text-[10px] text-slate-400 font-mono">
                         Default: {currentVehicle.defaultConsumption} L/100km
                       </span>
                     </div>
@@ -996,7 +996,7 @@ export default function CommuteForm({
               <div className="flex items-center justify-between">
                 <label className="text-xs font-semibold text-slate-300">Daily Parking</label>
                 <span className="text-xs font-bold text-sky-400 tabular-nums">
-                  ${input.parkingDailyRate.toFixed(0)}/day
+                  ${input.parkingDailyRate.toFixed(0)} a day
                 </span>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
@@ -1037,7 +1037,7 @@ export default function CommuteForm({
                     }}
                     className="w-24 min-h-[44px] bg-slate-900 border border-slate-700 rounded-xl px-3 py-1 text-sm text-slate-100"
                   />
-                  <span className="text-xs text-slate-400">$/day</span>
+                  <span className="text-xs text-slate-400">a day</span>
                 </div>
               )}
             </div>
@@ -1056,7 +1056,7 @@ export default function CommuteForm({
             <Settings2 className="w-3.5 h-3.5 text-teal-400" />
             Custom Rates {isCustomRatesOpen ? '▴' : '▾'}
           </span>
-          <span className="text-[11px] text-slate-500 font-mono">
+          <span className="text-[11px] text-slate-400 font-mono">
             {input.vehicleType === 'bev' || input.vehicleType === 'phev'
               ? 'Charging & Concession'
               : 'Fuel & Carpool'}
@@ -1101,7 +1101,7 @@ export default function CommuteForm({
                         }`}
                       >
                         <span className="text-xs truncate">{item.label}</span>
-                        <span className="text-[10px] text-slate-500 font-mono">{item.sub}</span>
+                        <span className="text-[10px] text-slate-400 font-mono">{item.sub}</span>
                       </button>
                     );
                   })}
@@ -1159,7 +1159,7 @@ export default function CommuteForm({
                         </span>
                       )}
                     </div>
-                    <span className="text-[10px] text-slate-500 font-mono">
+                    <span className="text-[10px] text-slate-400 font-mono">
                       Default: ${currentVehicle.defaultFuelPrice.toFixed(2)}/L
                     </span>
                   </div>
@@ -1191,7 +1191,7 @@ export default function CommuteForm({
                         </span>
                       )}
                     </div>
-                    <span className="text-[10px] text-slate-500 font-mono">
+                    <span className="text-[10px] text-slate-400 font-mono">
                       Default: $2.72/L
                     </span>
                   </div>
@@ -1231,7 +1231,7 @@ export default function CommuteForm({
                           </span>
                         )}
                       </div>
-                      <span className="text-[10px] text-slate-500 font-mono">
+                      <span className="text-[10px] text-slate-400 font-mono">
                         Default: 16.5 kWh/100km
                       </span>
                     </div>
@@ -1356,7 +1356,7 @@ export default function CommuteForm({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5">
                     <label htmlFor="distance-wear-input" className="text-[11px] text-slate-400 font-medium">
-                      Distance-Based Wear ($/week)
+                      Distance-Based Wear ($ a week)
                     </label>
                     {(input.distanceWearWeekly === undefined || input.distanceWearWeekly === 3.0) && (
                       <span
@@ -1367,8 +1367,8 @@ export default function CommuteForm({
                       </span>
                     )}
                   </div>
-                  <span className="text-[10px] text-slate-500 font-mono">
-                    Default: $3.00/wk
+                  <span className="text-[10px] text-slate-400 font-mono">
+                    Default: $3.00 a week
                   </span>
                 </div>
                 <input
@@ -1405,7 +1405,7 @@ export default function CommuteForm({
                     <button
                       type="button"
                       aria-label="Value of Your Time info"
-                      className="text-slate-400 hover:text-slate-200 transition-colors p-1 -m-1 focus:outline-none focus:text-slate-200"
+                      className="text-slate-400 hover:text-slate-200 transition-colors p-1 -m-1 focus:outline-none focus:text-slate-200 min-h-[24px] min-w-[24px] inline-flex items-center justify-center"
                     >
                       <Info className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-200 transition-colors" />
                     </button>
@@ -1492,7 +1492,7 @@ export default function CommuteForm({
                               ? input.customInsurance
                               : (input.defaultInsurance ?? 1311))
                           : 0)
-                      ).toLocaleString('en-NZ')}/yr
+                      ).toLocaleString('en-NZ')} a year
                     </span>
                   )}
                   {isIrdMode && (
@@ -1504,7 +1504,7 @@ export default function CommuteForm({
                       <button
                         type="button"
                         aria-label="Fixed Ownership Costs IRD info"
-                        className="text-slate-400 hover:text-slate-200 transition-colors p-1 -m-1 focus:outline-none focus:text-slate-200"
+                        className="text-slate-400 hover:text-slate-200 transition-colors p-1 -m-1 focus:outline-none focus:text-slate-200 min-h-[24px] min-w-[24px] inline-flex items-center justify-center"
                       >
                         <Info className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-200 transition-colors" />
                       </button>
@@ -1529,7 +1529,7 @@ export default function CommuteForm({
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <label className="text-[11px] text-slate-400">
-                        Annual WOF ($/yr)
+                        Annual WOF ($ a year)
                       </label>
                       <input
                         type="number"
@@ -1544,12 +1544,12 @@ export default function CommuteForm({
                         }}
                         className="w-full min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-sm text-slate-200 font-mono disabled:opacity-50"
                       />
-                      <span className="text-[10px] text-slate-500">VTNZ/AA annual inspection</span>
+                      <span className="text-[10px] text-slate-400">VTNZ/AA annual inspection</span>
                     </div>
 
                     <div className="space-y-1">
                       <label className="text-[11px] text-slate-400">
-                        Annual Rego / Licensing ($/yr)
+                        Annual Rego / Licensing ($ a year)
                       </label>
                       <input
                         type="number"
@@ -1564,7 +1564,7 @@ export default function CommuteForm({
                         }}
                         className="w-full min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-sm text-slate-200 font-mono disabled:opacity-50"
                       />
-                      <span className="text-[10px] text-slate-500">NZTA private light vehicle licence</span>
+                      <span className="text-[10px] text-slate-400">NZTA private light vehicle licence</span>
                     </div>
                   </div>
 
@@ -1586,15 +1586,15 @@ export default function CommuteForm({
                           : input.insuranceEnabled === false
                           ? 'Excluded ($0)'
                           : typeof input.customInsurance === 'number' && !isNaN(input.customInsurance)
-                          ? `Custom: $${input.customInsurance}/yr`
-                          : `Default: $${input.defaultInsurance ?? 1311}/yr`}
+                          ? `Custom: $${input.customInsurance} a year`
+                          : `Default: $${input.defaultInsurance ?? 1311} a year`}
                       </span>
                     </div>
 
                     {input.insuranceEnabled !== false && (
                       <div className="space-y-1.5">
                         <label className="text-[11px] text-slate-400">
-                          Custom Insurance Override ($/yr)
+                          Custom Insurance Override ($ a year)
                         </label>
                         <div className="flex items-center gap-2">
                           <input
@@ -1631,9 +1631,9 @@ export default function CommuteForm({
                             </button>
                           )}
                         </div>
-                        <p className="text-[10px] text-slate-500">
+                        <p className="text-[10px] text-slate-400">
                           {typeof input.customInsurance === 'number' && !isNaN(input.customInsurance)
-                            ? `Custom premium of $${input.customInsurance}/yr completely overrides the default $1,311 NZ benchmark.`
+                            ? `Custom premium of $${input.customInsurance} a year completely overrides the default $1,311 NZ benchmark.`
                             : 'Enter your vehicle policy premium (e.g. $1,850 for Isuzu MU-X or $950 for Honda Jazz) to override the $1,311 NZ benchmark.'}
                         </p>
                       </div>
@@ -1653,7 +1653,7 @@ export default function CommuteForm({
                                 : (input.defaultInsurance ?? 1311))
                             : 0)
                         ) * 0.70 / 12
-                      ).toFixed(0)}/mo`}
+                      ).toFixed(0)} a month`}
                     </span>
                   </div>
                 </div>

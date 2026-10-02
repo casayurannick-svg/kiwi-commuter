@@ -102,7 +102,7 @@ export default function SummaryTab({
             type="button"
             onClick={() => setIsEditingTrip((prev) => !prev)}
             aria-expanded={isEditingTrip}
-            className="text-xs sm:text-sm font-semibold text-emerald-400 hover:text-emerald-300 underline underline-offset-4 ml-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded px-1"
+            className="text-xs sm:text-sm font-semibold text-emerald-400 hover:text-emerald-300 underline underline-offset-4 ml-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded px-1 min-h-[24px] inline-flex items-center"
           >
             {isEditingTrip ? 'Done' : 'Change'}
           </button>
@@ -123,7 +123,7 @@ export default function SummaryTab({
             <button
               type="button"
               onClick={() => setIsEditingTrip(false)}
-              className="text-xs text-emerald-400 font-medium hover:underline"
+              className="text-xs text-emerald-400 font-medium hover:underline min-h-[24px] inline-flex items-center"
             >
               Close
             </button>
@@ -217,7 +217,7 @@ export default function SummaryTab({
           data-testid="parking-assumption-badge"
           className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300 font-medium"
         >
-          <span>Assumed $24.50/day parking at work (Auckland typical weekday cap).</span>
+          <span>Assumed $24.50 a day parking at work (Auckland typical weekday cap).</span>
         </div>
       )}
 
@@ -258,7 +258,7 @@ export default function SummaryTab({
           type="button"
           onClick={() => setIsEditingWear((prev) => !prev)}
           aria-expanded={isEditingWear}
-          className="font-semibold text-emerald-400 hover:text-emerald-300 underline underline-offset-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded"
+          className="font-semibold text-emerald-400 hover:text-emerald-300 underline underline-offset-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded min-h-[24px] inline-flex items-center"
         >
           {isEditingWear ? 'Done' : 'Change'}
         </button>
@@ -285,7 +285,7 @@ export default function SummaryTab({
             <button
               type="button"
               onClick={() => setIsEditingWear(false)}
-              className="text-xs text-emerald-400 font-medium hover:underline flex items-center gap-1"
+              className="text-xs text-emerald-400 font-medium hover:underline flex items-center gap-1 min-h-[24px]"
             >
               <Check className="w-3 h-3" /> Done
             </button>
@@ -308,11 +308,11 @@ export default function SummaryTab({
               className="flex-1 accent-emerald-500 cursor-pointer"
             />
             <div className="font-mono text-sm text-white font-bold min-w-[70px] text-right">
-              ${(commuteInput.distanceWearWeekly ?? 3.0).toFixed(2)}/wk
+              ${(commuteInput.distanceWearWeekly ?? 3.0).toFixed(2)} a week
             </div>
           </div>
           <p className="text-xs text-slate-300">
-            NZ AA recommends ~$3.00/week for variable wear on short commutes, with remaining scheduled service assigned to fixed ownership.
+            NZ AA recommends ~$3.00 a week for variable wear on short commutes, with remaining scheduled service assigned to fixed ownership.
           </p>
         </div>
       )}

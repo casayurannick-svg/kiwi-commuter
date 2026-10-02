@@ -154,7 +154,7 @@ export function EvRoiSandbox({ input, onChange }: EvRoiSandboxProps) {
             <DollarSign className="w-3.5 h-3.5 text-cyan-400" />
           </label>
           <div className="relative">
-            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-500">$</span>
+            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400">$</span>
             <input
               type="number"
               step="1000"
@@ -175,7 +175,7 @@ export function EvRoiSandbox({ input, onChange }: EvRoiSandboxProps) {
             <Fuel className="w-3.5 h-3.5 text-amber-400" />
           </label>
           <div className="relative">
-            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-500">$</span>
+            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400">$</span>
             <input
               type="number"
               step="1000"
@@ -222,31 +222,31 @@ export function EvRoiSandbox({ input, onChange }: EvRoiSandboxProps) {
           <div className="text-base font-bold text-white mt-0.5" data-testid="tco-capital-delta">
             {formatCurrency(initialCapitalDelta)}
           </div>
-          <div className="text-[10px] text-slate-500">Upfront Investment</div>
+          <div className="text-[10px] text-slate-400">Upfront Investment</div>
         </div>
 
         <div className="bg-slate-950/40 p-2.5 rounded-lg border border-slate-800/60">
           <div className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Annual ICE Ops</div>
           <div className="text-base font-bold text-amber-400 mt-0.5">
-            {formatCurrency(annualIceCost.total)}/yr
+            {formatCurrency(annualIceCost.total)} a year
           </div>
-          <div className="text-[10px] text-slate-500">Fuel + RUC + $800 Maint</div>
+          <div className="text-[10px] text-slate-400">Fuel + RUC + $800 Maint</div>
         </div>
 
         <div className="bg-slate-950/40 p-2.5 rounded-lg border border-slate-800/60">
           <div className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Annual EV Ops</div>
           <div className="text-base font-bold text-cyan-400 mt-0.5">
-            {formatCurrency(annualEvCost.total)}/yr
+            {formatCurrency(annualEvCost.total)} a year
           </div>
-          <div className="text-[10px] text-slate-500">Power + RUC + $400 Maint</div>
+          <div className="text-[10px] text-slate-400">Power + RUC + $400 Maint</div>
         </div>
 
         <div className="bg-slate-950/40 p-2.5 rounded-lg border border-slate-800/60">
           <div className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Net Annual Savings</div>
           <div className="text-base font-bold text-emerald-400 mt-0.5" data-testid="tco-annual-savings">
-            {annualSavings > 0 ? `+${formatCurrency(annualSavings)}` : formatCurrency(annualSavings)}/yr
+            {annualSavings > 0 ? `+${formatCurrency(annualSavings)}` : formatCurrency(annualSavings)} a year
           </div>
-          <div className="text-[10px] text-slate-500">Operational Delta</div>
+          <div className="text-[10px] text-slate-400">Operational Delta</div>
         </div>
       </div>
 

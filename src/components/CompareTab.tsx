@@ -47,7 +47,7 @@ export default function CompareTab({
     timeframe === 'weekly' ? 1 : timeframe === 'monthly' ? 52 / 12 : 52;
 
   const unitSuffix =
-    timeframe === 'weekly' ? '/wk' : timeframe === 'monthly' ? '/mo' : '/yr';
+    timeframe === 'weekly' ? ' a week' : timeframe === 'monthly' ? ' a month' : ' a year';
 
   const unitLabel =
     timeframe === 'weekly' ? 'a week' : timeframe === 'monthly' ? 'a month' : 'a year';
@@ -92,7 +92,7 @@ export default function CompareTab({
       icon: Bus,
       barColor: 'bg-emerald-500',
       textColor: 'text-emerald-400',
-      subtext: 'Auckland Transport standard fare or $50/week rolling cap',
+      subtext: 'Auckland Transport standard fare or $50 a week rolling cap',
     },
   ];
 
@@ -123,7 +123,7 @@ export default function CompareTab({
                 type="button"
                 aria-pressed={isActive}
                 onClick={() => setTimeframe(t)}
-                className={`px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold capitalize transition-all ${
+                className={`min-h-[32px] px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold capitalize transition-all ${
                   isActive
                     ? 'bg-emerald-500 text-white shadow-sm shadow-emerald-950'
                     : 'text-slate-300 hover:text-white hover:bg-slate-800/60'

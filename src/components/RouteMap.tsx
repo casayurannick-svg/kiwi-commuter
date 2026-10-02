@@ -252,10 +252,10 @@ export default function RouteMap({
 
           {/* Border grid context */}
           <div className="absolute inset-x-8 top-12 bottom-12 border border-slate-800/80 rounded-xl pointer-events-none opacity-40">
-            <span className="absolute top-2 right-3 text-[10px] uppercase font-mono tracking-widest text-slate-500">
+            <span className="absolute top-2 right-3 text-[10px] uppercase font-mono tracking-widest text-slate-400">
               Auckland Isthmus & Transit Corridors
             </span>
-            <span className="absolute bottom-2 left-3 text-[10px] font-mono text-slate-600">
+            <span className="absolute bottom-2 left-3 text-[10px] font-mono text-slate-400">
               174.76° E / 36.85° S (NZDT)
             </span>
           </div>
@@ -358,7 +358,7 @@ export default function RouteMap({
           )}
           <span className="text-slate-300 font-medium truncate block min-w-0">
             Transit: <strong className="text-emerald-400">{origin.primaryTransitMode}</strong>
-            <span className="text-slate-500 font-normal"> ({origin.transitRouteNotes})</span>
+            <span className="text-slate-400 font-normal"> ({origin.transitRouteNotes})</span>
           </span>
         </div>
 

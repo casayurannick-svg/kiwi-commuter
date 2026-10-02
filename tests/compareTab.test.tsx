@@ -231,7 +231,7 @@ describe('STORY-5: Compare Tab & Cost Base Toggle', () => {
       assert.ok(text.includes('$128.18'), 'Monthly car cost must be $128.18');
       assert.ok(text.includes('$96.98'), 'Monthly EV cost must be $96.98');
       assert.ok(text.includes('$127.40'), 'Monthly transit cost must be $127.40');
-      assert.ok(text.includes('/mo'), 'Must display /mo unit suffix');
+      assert.ok(text.includes('a month') || text.includes('/mo'), 'Must display a month unit suffix');
 
       // Click Yearly (52 multiplier)
       // Car stops: 29.58 * 52 = 1538.16
@@ -245,7 +245,7 @@ describe('STORY-5: Compare Tab & Cost Base Toggle', () => {
       assert.ok(text.includes('1,538.16'), 'Yearly car cost must be $1,538.16');
       assert.ok(text.includes('1,163.76'), 'Yearly EV cost must be $1,163.76');
       assert.ok(text.includes('1,528.80'), 'Yearly transit cost must be $1,528.80');
-      assert.ok(text.includes('/yr'), 'Must display /yr unit suffix');
+      assert.ok(text.includes('a year') || text.includes('/yr'), 'Must display a year unit suffix');
 
       flushSync(() => {
         root.unmount();

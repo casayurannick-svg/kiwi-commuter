@@ -455,7 +455,7 @@ export default function SetupFlow({
                     Daily rate:
                   </label>
                   <div className="relative w-36">
-                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-500">$</span>
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400">$</span>
                     <input
                       id="custom-parking-rate"
                       type="number"
@@ -467,7 +467,7 @@ export default function SetupFlow({
                       className="w-full bg-slate-900 border border-slate-700 rounded-lg py-1.5 pl-6 pr-2.5 text-xs text-white font-mono font-bold"
                     />
                   </div>
-                  <span className="text-xs text-slate-400">/day</span>
+                  <span className="text-xs text-slate-400">a day</span>
                 </div>
               )}
             </div>
@@ -490,7 +490,7 @@ export default function SetupFlow({
               <div>
                 <div className="font-semibold text-sm sm:text-base text-white">Not sure</div>
                 <div className="text-xs text-amber-300 mt-0.5">
-                  Defaults to $24.50/day (Auckland typical weekday cap) and flagged as assumption
+                  Defaults to $24.50 a day (Auckland typical weekday cap) and flagged as assumption.
                 </div>
               </div>
               <div

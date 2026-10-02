@@ -350,8 +350,8 @@ describe('STORY-7: Setup Flow Onboarding Modal', () => {
         'Summary tab must render parking-assumption-badge'
       );
       assert.ok(
-        html.includes('$24.50/day'),
-        'Summary tab must display the $24.50/day assumption'
+        html.includes('$24.50 a day') || html.includes('$24.50/day'),
+        'Summary tab must display the $24.50 a day assumption'
       );
     });
 

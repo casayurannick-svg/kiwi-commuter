@@ -130,7 +130,7 @@ export default function CarFreeCard({
                 }}
                 className="w-28 bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-sm font-mono text-white text-right focus:border-emerald-500 focus:outline-none"
               />
-              <span className="text-xs text-slate-300 font-mono">km/yr</span>
+              <span className="text-xs text-slate-300 font-mono">km a year</span>
             </div>
           </div>
 
