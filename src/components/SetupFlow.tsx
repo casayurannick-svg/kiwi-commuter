@@ -47,7 +47,7 @@ export default function SetupFlow({
   const [error, setError] = useState<string | null>(null);
 
   // STORY-23: API Error boundary state
-  const [apiError] = useState<boolean>(false);
+  const [apiError, setApiError] = useState<boolean>(false);
 
   // STORY-22: Manual Mode State
   const [isManualMode, setIsManualMode] = useState<boolean>(false);
