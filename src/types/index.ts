@@ -202,6 +202,8 @@ export interface TimeMetrics {
   monthlyTimeDeltaHours: number; // ((transit - drive) * 2 * daysPerWeek * 4.33) / 60
   monetizedMonthlyTimeCost: number; // monthlyTimeDeltaHours * (hourlyTimeValue ?? 0)
   generalizedMonthlySavings: number; // monthlySavings - monetizedMonthlyTimeCost
+  // STORY-13: Annual time opportunity cost over 47 active commute weeks
+  annualOpportunityCost: number; // (oneWayTransitMins - oneWayDriveMins) / 60 * 2 * daysPerWeek * 47 * hourlyTimeValue
 }
 
 export interface DrivingCostBreakdown {

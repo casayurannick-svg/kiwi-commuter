@@ -208,6 +208,34 @@ export default function CompareTab({
           </span>
         </div>
       )}
+
+      {/* STORY-13: Opportunity cost sub-metric (only shown when hourlyTimeValue > 0 and transit is slower) */}
+      {(commuteInput.hourlyTimeValue ?? 0) > 0 &&
+        arbitrage.timeMetrics &&
+        arbitrage.timeMetrics.annualOpportunityCost > 0 && (
+          <div className="p-4 sm:p-5 rounded-xl border border-amber-500/20 bg-amber-500/5 text-xs sm:text-sm text-slate-300 leading-relaxed">
+            <span className="font-semibold text-amber-400">Time opportunity cost: </span>
+            <span>
+              Transit costs you an extra{' '}
+              <span className="font-bold text-white">
+                ${arbitrage.timeMetrics.annualOpportunityCost.toLocaleString('en-NZ', {
+                  minimumFractionDigits: 0,
+                  maximumFractionDigits: 0,
+                })}
+              </span>{' '}
+              a year in time — based on{' '}
+              {Math.round(
+                ((arbitrage.timeMetrics.oneWayTransitMinutes -
+                  arbitrage.timeMetrics.oneWayDriveMinutes) *
+                  2) /
+                  60 *
+                  commuteInput.daysPerWeek *
+                  47
+              )}{' '}
+              extra hours at ${(commuteInput.hourlyTimeValue ?? 0).toFixed(2)}/hr over 47 commute weeks.
+            </span>
+          </div>
+        )}
     </div>
   );
 }

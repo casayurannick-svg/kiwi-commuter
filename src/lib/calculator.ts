@@ -45,6 +45,12 @@ import { haversineDistanceKm } from './routes';
 import { calculateVerdict } from './verdict';
 
 export const WEEKS_PER_MONTH = 52 / 12; // 4.33333333
+/**
+ * STORY-13: Annual active commute weeks (47) — accounts for 4 weeks annual leave + 1 week for ~11 public holidays.
+ * Variable costs (fuel, transit fares, daily parking, distance wear) are annualized over 47 weeks.
+ * Fixed ownership costs (insurance, WOF, rego) continue to use the full 52-week / 365-day calendar year.
+ */
+export const ANNUAL_COMMUTE_WEEKS = 47;
 export { IRD_MILEAGE_RATE_PER_KM, calculateVerdict };
 
 /**
@@ -394,7 +400,9 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
   const effectiveMonthlyTotalDriving = isIrdMode
     ? round2(monthlyIrdCost + monthlyParkingCost)
     : monthlyTotalDriving;
-  const effectiveAnnualTotalDriving = round2(effectiveMonthlyTotalDriving * 12);
+  // STORY-13: Annual driving total uses 47 active commute weeks (excludes ~5 weeks leave/holidays).
+  // Fixed ownership costs already apportioned from the full annual 52-week pool; only variable commute costs use 47.
+  const effectiveAnnualTotalDriving = round2(effectiveWeeklyTotalDriving * ANNUAL_COMMUTE_WEEKS);
 
   const drivingBreakdown: DrivingCostBreakdown = {
     distanceOneWayKm: round1(distanceOneWayKm),
@@ -839,7 +847,8 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
   weeklyTransitTotal = round2(weeklyTransitTotal + firstMileWeeklyCost);
   monthlyTransitTotal = round2(monthlyTransitTotal + firstMileMonthlyCost);
 
-  const annualTransitTotal = round2(monthlyTransitTotal * 12);
+  // STORY-13: Use 47 active commute weeks for annual transit total (matches driving annual basis)
+  const annualTransitTotal = round2(weeklyTransitTotal * ANNUAL_COMMUTE_WEEKS);
 
   // Monthly CO2 for transit (kg)
   const monthlyTransitPassengerKm = distanceRoundTripKm * input.daysPerWeek * WEEKS_PER_MONTH;
@@ -889,7 +898,8 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
   const dailySavings = round2(effectiveDailyTotalDriving - dailyTransitFare);
   const weeklySavings = round2(effectiveWeeklyTotalDriving - weeklyTransitTotal);
   const monthlySavings = round2(effectiveMonthlyTotalDriving - monthlyTransitTotal);
-  const annualSavings = round2(monthlySavings * 12);
+  // STORY-13: Annual savings computed over 47 active commute weeks
+  const annualSavings = round2(weeklySavings * ANNUAL_COMMUTE_WEEKS);
   const co2SavedMonthlyKg = Math.max(0, round1(monthlyCo2KgDriving - monthlyCo2KgTransit));
 
   // Break-even days per week calculation
@@ -1003,12 +1013,19 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
   const monetizedMonthlyTimeCost = round2(monthlyTimeDeltaHours * hourlyTimeValue);
   const generalizedMonthlySavings = round2(monthlySavings - monetizedMonthlyTimeCost);
 
+  // STORY-13: Annual time opportunity cost = daily time delta × hourlyWage × commute days × 47 weeks
+  const dailyTimeDeltaHours = ((oneWayTransitMinutes - oneWayDriveMinutes) * 2) / 60;
+  const annualOpportunityCost = round2(
+    Math.max(0, dailyTimeDeltaHours) * hourlyTimeValue * input.daysPerWeek * ANNUAL_COMMUTE_WEEKS
+  );
+
   const timeMetrics: TimeMetrics = {
     oneWayDriveMinutes,
     oneWayTransitMinutes,
     monthlyTimeDeltaHours,
     monetizedMonthlyTimeCost,
     generalizedMonthlySavings,
+    annualOpportunityCost,
   };
 
   // --- US-28: Segmented Journey Legs (First-Mile, Transit, Last-Mile) ---

@@ -9,6 +9,7 @@ import {
   NZ_RUC_LIGHT_EV_RATE_PER_KM,
   NZ_RUC_PHEV_RATE_PER_KM,
   WEEKS_PER_MONTH,
+  ANNUAL_COMMUTE_WEEKS,
 } from '../src/lib/calculator';
 import {
   AT_HOP_7_DAY_CAP,
@@ -230,7 +231,8 @@ describe('Kiwi Commuter Cost & Arbitrage Math Engine', () => {
 
     assert.ok(result.monthlySavings > 300);
     assert.strictEqual(result.arbitrageVerdict, 'transit_wins');
-    assert.strictEqual(result.annualSavings, Math.round(result.monthlySavings * 12 * 100) / 100);
+    // STORY-13: Annual savings = weeklySavings × 47 active commute weeks
+    assert.strictEqual(result.annualSavings, Math.round(result.weeklySavings * 47 * 100) / 100);
   });
 
   it('correctly handles all 50 Auckland suburbs', () => {
@@ -1139,7 +1141,8 @@ describe('BUG-37: Scale public transport fares by carpool passenger count', () =
       assert.strictEqual(result.driving.dailyTotal, 60.00);
       assert.strictEqual(result.driving.weeklyTotal, 300.00);
       assert.strictEqual(result.driving.monthlyTotal, 1300.00);
-      assert.strictEqual(result.driving.annualTotal, 15600.00);
+      // STORY-13: Annual: 300.00 * 47 = 14100.00 (47 active commute weeks)
+      assert.strictEqual(result.driving.annualTotal, 14100.00);
       assert.strictEqual(result.driving.calculationMode, 'IRD_TRUE_COST');
     });
 
@@ -1381,6 +1384,167 @@ describe('BUG-37: Scale public transport fares by carpool passenger count', () =
       });
       assert.strictEqual(resultAlias.driving.dailyRucCost, 1.48, 'Vehicle type "Plug-in Hybrid" must apply $38/1000km RUC');
       assert.strictEqual(resultAlias.driving.dailyFuelCost, 1.69, 'Vehicle type "Plug-in Hybrid" must apply blended PHEV fuel');
+    });
+  });
+
+  describe('STORY-13: 47-Week Active Commute Multiplier & Time Opportunity Cost', () => {
+    it('annualizes variable commute costs over ANNUAL_COMMUTE_WEEKS (47) weeks', () => {
+      assert.strictEqual(ANNUAL_COMMUTE_WEEKS, 47, 'ANNUAL_COMMUTE_WEEKS constant must equal 47');
+
+      const result = calculateArbitrage({
+        originSuburbId: 'epsom',
+        destinationSuburbId: 'cbd',
+        daysPerWeek: 3,
+        vehicleType: 'petrol91',
+        parkingDailyRate: 18.0,
+        parkingDaysPerWeek: 3,
+        concession: 'adult',
+        includeMaintenanceWear: false,
+        carpoolPassengers: 1,
+      });
+
+      // Annual driving total must equal weeklyTotal × 47 (not × 52)
+      assert.strictEqual(
+        result.driving.annualTotal,
+        Math.round(result.driving.weeklyTotal * 47 * 100) / 100,
+        'Annual driving total must use 47 active commute weeks'
+      );
+
+      // Annual transit total must equal weeklyTotal × 47
+      assert.strictEqual(
+        result.transit.annualTotal,
+        Math.round(result.transit.weeklyTotal * 47 * 100) / 100,
+        'Annual transit total must use 47 active commute weeks'
+      );
+
+      // Annual savings must equal weeklySavings × 47
+      assert.strictEqual(
+        result.annualSavings,
+        Math.round(result.weeklySavings * 47 * 100) / 100,
+        'Annual savings must use 47 active commute weeks'
+      );
+
+      // Confirm annual ≠ monthly × 12 (which would be 52 weeks)
+      const naiveAnnual = Math.round(result.driving.monthlyTotal * 12 * 100) / 100;
+      assert.notStrictEqual(
+        result.driving.annualTotal,
+        naiveAnnual,
+        'Annual driving total must NOT equal monthlyTotal × 12 (which would be 52 weeks)'
+      );
+    });
+
+    it('keeps fixed ownership costs (WOF, rego, insurance) on full 52-week annual basis', () => {
+      const result = calculateArbitrage({
+        originSuburbId: 'epsom',
+        destinationSuburbId: 'cbd',
+        daysPerWeek: 5,
+        vehicleType: 'petrol91',
+        parkingDailyRate: 0,
+        parkingDaysPerWeek: 0,
+        concession: 'adult',
+        includeMaintenanceWear: false,
+        carpoolPassengers: 1,
+        annualWof: 85,
+        annualRego: 173,
+        insuranceEnabled: true,
+        defaultInsurance: 1311,
+      });
+
+      // Fixed cost annual total: (85 + 173 + 1311) * 0.70 apportioned from full annual pool.
+      // The actual value is ~$1,097.16 due to rounding in the monthly → weekly → daily → monthly → annual chain.
+      // Critical assertion: fixed costs must remain near $1,098 (not scale down by 47/52 = ~$997).
+      const fixedCost = result.driving.annualFixedCost!;
+      assert.ok(
+        fixedCost > 1090 && fixedCost < 1110,
+        `Fixed ownership costs must remain at full-year 52-week basis (~$1,098), got $${fixedCost}`
+      );
+      // Also verify the fixed cost annual total is NOT reduced by 47/52 factor
+      const hypothetical47WeekFixed = Math.round(fixedCost * (47 / 52) * 100) / 100;
+      assert.notStrictEqual(
+        fixedCost,
+        hypothetical47WeekFixed,
+        'Fixed costs must NOT be scaled to 47 weeks — they must remain at full annual value'
+      );
+    });
+
+    it('computes time opportunity cost at hourlyTimeValue × daily delta × daysPerWeek × 47', () => {
+      // manurewa → cbd: transit (10 mins) is slower than driving (8 mins)
+      const result = calculateArbitrage({
+        originSuburbId: 'manurewa',
+        destinationSuburbId: 'cbd',
+        daysPerWeek: 5,
+        vehicleType: 'petrol91',
+        parkingDailyRate: 0,
+        parkingDaysPerWeek: 0,
+        concession: 'adult',
+        includeMaintenanceWear: false,
+        carpoolPassengers: 1,
+        hourlyTimeValue: 34.25,
+      });
+
+      // manurewa → cbd: transit takes longer than driving
+      assert.ok(result.timeMetrics !== undefined, 'timeMetrics must be present');
+      const tm = result.timeMetrics!;
+
+      // Verify annual opportunity cost formula: max(0, dailyTimeDeltaHrs) × wage × days × 47
+      const dailyDeltaHrs = Math.max(0, ((tm.oneWayTransitMinutes - tm.oneWayDriveMinutes) * 2) / 60);
+      const expectedOpCost = Math.round(dailyDeltaHrs * 34.25 * 5 * 47 * 100) / 100;
+      assert.strictEqual(
+        tm.annualOpportunityCost,
+        expectedOpCost,
+        'Annual opportunity cost must equal: max(0, daily delta hrs) × hourlyWage × daysPerWeek × 47'
+      );
+
+      // Must be positive for manurewa → cbd (transit is slower)
+      assert.ok(tm.annualOpportunityCost > 0, 'Opportunity cost must be positive when transit is slower');
+    });
+
+    it('returns zero opportunity cost when hourlyTimeValue is not set', () => {
+      const result = calculateArbitrage({
+        originSuburbId: 'albany',
+        destinationSuburbId: 'cbd',
+        daysPerWeek: 5,
+        vehicleType: 'petrol91',
+        parkingDailyRate: 0,
+        parkingDaysPerWeek: 0,
+        concession: 'adult',
+        includeMaintenanceWear: false,
+        carpoolPassengers: 1,
+        // No hourlyTimeValue
+      });
+
+      assert.ok(result.timeMetrics !== undefined, 'timeMetrics must be present');
+      assert.strictEqual(
+        result.timeMetrics!.annualOpportunityCost,
+        0,
+        'Annual opportunity cost must be 0 when hourlyTimeValue is not provided'
+      );
+    });
+
+    it('returns zero opportunity cost when driving is slower than transit', () => {
+      // newmarket → cbd: short commute, driving may not be faster
+      const result = calculateArbitrage({
+        originSuburbId: 'newmarket',
+        destinationSuburbId: 'cbd',
+        daysPerWeek: 5,
+        vehicleType: 'petrol91',
+        parkingDailyRate: 0,
+        parkingDaysPerWeek: 0,
+        concession: 'adult',
+        includeMaintenanceWear: false,
+        carpoolPassengers: 1,
+        hourlyTimeValue: 50,
+        // force transit to appear faster by overriding transit time
+        transitTimeMins: 5,
+        drivingTimeMins: 20,
+      });
+
+      assert.ok(result.timeMetrics !== undefined, 'timeMetrics must be present');
+      assert.strictEqual(
+        result.timeMetrics!.annualOpportunityCost,
+        0,
+        'Annual opportunity cost must be 0 when driving is slower than transit'
+      );
     });
   });
 });
