@@ -52,6 +52,7 @@ export default function DashboardClient({ initialFuelPrices }: DashboardClientPr
       power: result.powertrain,
       hasCar: result.hasCar,
       parkingDailyRate: result.parkingDailyRate,
+      parkingTier: result.parkingTier ?? (result.parkingDailyRate === 0 ? 'FREE' : 'CUSTOM'),
       isParkingAssumed: result.isParkingAssumed,
     }));
     setHasCompletedSetup(true);

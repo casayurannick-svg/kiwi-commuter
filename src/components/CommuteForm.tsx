@@ -249,8 +249,8 @@ export default function CommuteForm({
       const updated: CommuteInput = {
         ...input,
         parkingTier: 'CUSTOM',
-        parkingDailyRate: input.parkingDailyRate || defaultRate,
-        customParkingDaily: input.parkingDailyRate || defaultRate,
+        parkingDailyRate: input.parkingDailyRate ?? defaultRate,
+        customParkingDaily: input.parkingDailyRate ?? defaultRate,
       };
       notifyChange(updated);
     }
