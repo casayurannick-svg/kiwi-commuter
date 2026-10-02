@@ -3,11 +3,17 @@
 import React, { useState } from 'react';
 import { SUBURB_CENTROIDS } from '@/config/suburbs';
 import { VehiclePowertrain, VehicleType } from '@/types';
-import { ArrowLeft, ArrowRight, Check, Zap, Fuel, Leaf, Footprints } from 'lucide-react';
+import { GeocodingResult } from '@/lib/mapbox';
+import AddressAutocomplete from '@/components/AddressAutocomplete';
+import { ArrowLeft, ArrowRight, Check, Zap, Fuel, Leaf, Footprints, MapPin } from 'lucide-react';
 
 export interface SetupResult {
   originSuburbId: string;
   destinationSuburbId: string;
+  originAddress?: string;
+  destinationAddress?: string;
+  originCoordinates?: [number, number];
+  destinationCoordinates?: [number, number];
   daysPerWeek: number;
   vehicleType: VehicleType | string;
   powertrain: VehiclePowertrain;
@@ -26,9 +32,9 @@ type DriveOption = 'petrol' | 'diesel' | 'hybrid' | 'electric' | 'none';
 type ParkingOption = 'free' | 'pay' | 'not_sure';
 
 /**
- * SetupFlow (STORY-7)
+ * SetupFlow (STORY-7, BUG-12)
  * 4-step first-run onboarding wizard:
- * Step 1: "Where do you travel?"
+ * Step 1: "Where do you travel?" with live Mapbox/AT API geocoding autocomplete
  * Step 2: "How many days a week?"
  * Step 3: "What do you drive?"
  * Step 4: "What's parking like at work?"
@@ -44,10 +50,51 @@ export default function SetupFlow({
   // Form State
   const [from, setFrom] = useState<string>(initialFrom);
   const [to, setTo] = useState<string>(initialTo);
+  const [fromCoords, setFromCoords] = useState<[number, number] | undefined>();
+  const [toCoords, setToCoords] = useState<[number, number] | undefined>();
+  const [fromSuburbId, setFromSuburbId] = useState<string | undefined>();
+  const [toSuburbId, setToSuburbId] = useState<string | undefined>();
   const [days, setDays] = useState<number | null>(null);
   const [drive, setDrive] = useState<DriveOption | null>(null);
   const [parking, setParking] = useState<ParkingOption | null>(null);
   const [payRate, setPayRate] = useState<number>(20.0);
+
+  const findClosestSuburb = (item: GeocodingResult): string => {
+    let closestSuburbId = 'cbd';
+    let minDistance = Infinity;
+    for (const sub of SUBURB_CENTROIDS) {
+      const d = Math.hypot(
+        sub.coordinates[0] - item.coordinates[0],
+        sub.coordinates[1] - item.coordinates[1]
+      );
+      if (d < minDistance) {
+        minDistance = d;
+        closestSuburbId = sub.id;
+      }
+    }
+    return closestSuburbId;
+  };
+
+  const resolveSuburb = (
+    text: string,
+    existingCoords?: [number, number],
+    existingSuburbId?: string
+  ): { suburbId: string; coordinates?: [number, number] } => {
+    if (existingSuburbId && existingCoords) {
+      return { suburbId: existingSuburbId, coordinates: existingCoords };
+    }
+    const clean = text.trim().toLowerCase().replace(/[\s-]+/g, '');
+    const matched = SUBURB_CENTROIDS.find(
+      (s) =>
+        s.id.toLowerCase().replace(/[\s-]+/g, '') === clean ||
+        s.name.toLowerCase().replace(/[\s-]+/g, '') === clean
+    );
+    if (matched) {
+      return { suburbId: matched.id, coordinates: matched.coordinates };
+    }
+    const slug = text.trim().toLowerCase().replace(/\s+/g, '-');
+    return { suburbId: existingSuburbId || slug, coordinates: existingCoords };
+  };
 
   // Step 1 validation
   const validateStep1 = (): boolean => {
@@ -147,9 +194,16 @@ export default function SetupFlow({
       isParkingAssumed = false;
     }
 
+    const resolvedFrom = resolveSuburb(from, fromCoords, fromSuburbId);
+    const resolvedTo = resolveSuburb(to, toCoords, toSuburbId);
+
     onComplete({
-      originSuburbId: from.trim().toLowerCase().replace(/\s+/g, '-'),
-      destinationSuburbId: to.trim().toLowerCase().replace(/\s+/g, '-'),
+      originSuburbId: resolvedFrom.suburbId,
+      destinationSuburbId: resolvedTo.suburbId,
+      originAddress: from.trim() || undefined,
+      destinationAddress: to.trim() || undefined,
+      originCoordinates: resolvedFrom.coordinates,
+      destinationCoordinates: resolvedTo.coordinates,
       daysPerWeek: days || 5,
       vehicleType,
       powertrain,
@@ -208,53 +262,65 @@ export default function SetupFlow({
           </div>
 
           <div className="space-y-3.5">
-            <div>
-              <label htmlFor="setup-from-input" className="block text-xs font-semibold text-slate-300 mb-1.5">
-                From (Starting Suburb)
-              </label>
-              <div className="relative">
-                <input
-                  id="setup-from-input"
-                  data-testid="setup-from-input"
-                  list="auckland-suburbs-list"
-                  type="text"
-                  value={from}
-                  onChange={(e) => {
-                    setFrom(e.target.value);
-                    if (error) setError(null);
-                  }}
-                  placeholder="e.g. Mount Roskill, Albany, Takapuna"
-                  className="w-full bg-slate-950 border border-slate-700/80 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
-                />
-              </div>
+            <div className="relative z-20">
+              <AddressAutocomplete
+                id="setup-from-input"
+                testId="setup-from-input"
+                label="From (Starting Suburb)"
+                placeholder="e.g. Mount Roskill, Albany, Takapuna"
+                value={from}
+                icon={<MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />}
+                dropdownZIndex="z-50"
+                onChange={(val) => {
+                  setFrom(val);
+                  setFromCoords(undefined);
+                  setFromSuburbId(undefined);
+                  if (error) setError(null);
+                }}
+                onSelect={(item) => {
+                  setFrom(item.placeName);
+                  setFromCoords(item.coordinates);
+                  const subId = findClosestSuburb(item);
+                  setFromSuburbId(subId);
+                  if (error) setError(null);
+                }}
+                onClear={() => {
+                  setFrom('');
+                  setFromCoords(undefined);
+                  setFromSuburbId(undefined);
+                }}
+              />
             </div>
 
-            <div>
-              <label htmlFor="setup-to-input" className="block text-xs font-semibold text-slate-300 mb-1.5">
-                To (Destination Suburb)
-              </label>
-              <div className="relative">
-                <input
-                  id="setup-to-input"
-                  data-testid="setup-to-input"
-                  list="auckland-suburbs-list"
-                  type="text"
-                  value={to}
-                  onChange={(e) => {
-                    setTo(e.target.value);
-                    if (error) setError(null);
-                  }}
-                  placeholder="e.g. Auckland CBD, Parnell, Newmarket"
-                  className="w-full bg-slate-950 border border-slate-700/80 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
-                />
-              </div>
+            <div className="relative z-10">
+              <AddressAutocomplete
+                id="setup-to-input"
+                testId="setup-to-input"
+                label="To (Destination Suburb)"
+                placeholder="e.g. Auckland CBD, Parnell, Newmarket"
+                value={to}
+                icon={<MapPin className="w-3.5 h-3.5 text-sky-400 shrink-0" />}
+                dropdownZIndex="z-50"
+                onChange={(val) => {
+                  setTo(val);
+                  setToCoords(undefined);
+                  setToSuburbId(undefined);
+                  if (error) setError(null);
+                }}
+                onSelect={(item) => {
+                  setTo(item.placeName);
+                  setToCoords(item.coordinates);
+                  const subId = findClosestSuburb(item);
+                  setToSuburbId(subId);
+                  if (error) setError(null);
+                }}
+                onClear={() => {
+                  setTo('');
+                  setToCoords(undefined);
+                  setToSuburbId(undefined);
+                }}
+              />
             </div>
-
-            <datalist id="auckland-suburbs-list">
-              {SUBURB_CENTROIDS.map((suburb) => (
-                <option key={suburb.id} value={suburb.name} />
-              ))}
-            </datalist>
           </div>
         </div>
       )}

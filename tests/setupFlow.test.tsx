@@ -415,4 +415,192 @@ describe('STORY-7: Setup Flow Onboarding Modal', () => {
       assert.ok(html.includes('Where do you travel?'), 'Renders Step 1 by default');
     });
   });
+
+  describe('BUG-12: Setup Modal Autocomplete Integration', () => {
+    it('renders AddressAutocomplete combobox inputs in Step 1 with proper ARIA attributes', () => {
+      const dom = new JSDOM('<!DOCTYPE html><html><body><div id="root"></div></body></html>');
+      // @ts-ignore
+      global.window = dom.window;
+      // @ts-ignore
+      global.document = dom.window.document;
+
+      const container = dom.window.document.getElementById('root')!;
+      const root = createRoot(container);
+
+      flushSync(() => {
+        root.render(
+          React.createElement(SetupFlow, {
+            onComplete: () => {},
+          })
+        );
+      });
+
+      const fromInput = container.querySelector('[data-testid="setup-from-input"]') as HTMLInputElement;
+      const toInput = container.querySelector('[data-testid="setup-to-input"]') as HTMLInputElement;
+
+      assert.ok(fromInput, 'From autocomplete input must exist');
+      assert.ok(toInput, 'To autocomplete input must exist');
+      assert.strictEqual(fromInput.getAttribute('role'), 'combobox', 'Must have role=combobox');
+      assert.strictEqual(toInput.getAttribute('role'), 'combobox', 'Must have role=combobox');
+      assert.strictEqual(fromInput.getAttribute('aria-autocomplete'), 'list', 'Must have aria-autocomplete=list');
+
+      flushSync(() => {
+        root.unmount();
+      });
+    });
+
+    it('triggers geocoding search on input and allows suggestion selection', async () => {
+      const dom = new JSDOM('<!DOCTYPE html><html><body><div id="root"></div></body></html>');
+      // @ts-ignore
+      global.window = dom.window;
+      // @ts-ignore
+      global.document = dom.window.document;
+
+      const container = dom.window.document.getElementById('root')!;
+      const root = createRoot(container);
+
+      let finalResult: SetupResult | null = null;
+
+      flushSync(() => {
+        root.render(
+          React.createElement(SetupFlow, {
+            onComplete: (res) => {
+              finalResult = res;
+            },
+          })
+        );
+      });
+
+      const fromInput = container.querySelector('[data-testid="setup-from-input"]') as HTMLInputElement;
+      const toInput = container.querySelector('[data-testid="setup-to-input"]') as HTMLInputElement;
+
+      // Simulate typing "Takapuna" into from input
+      const nativeSetter = Object.getOwnPropertyDescriptor(
+        dom.window.HTMLInputElement.prototype,
+        'value'
+      )?.set;
+
+      flushSync(() => {
+        nativeSetter?.call(fromInput, 'Takapuna');
+        fromInput.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+      });
+
+      // Wait for geocoding search promise
+      await new Promise((r) => setTimeout(r, 60));
+      flushSync(() => {});
+
+      const dropdown = container.querySelector('[data-testid="setup-from-input-dropdown"]');
+      assert.ok(dropdown, 'Dropdown must render when search results exist');
+
+      const suggestion = container.querySelector('[data-testid="setup-from-input-suggestion-0"]') as HTMLButtonElement;
+      assert.ok(suggestion, 'At least one suggestion item must render');
+      assert.ok(suggestion.textContent?.includes('Takapuna'), 'Suggestion text should contain matched suburb');
+
+      // Click the suggestion
+      flushSync(() => {
+        suggestion.click();
+      });
+
+      // Dropdown should close, value should contain Takapuna
+      assert.strictEqual(container.querySelector('[data-testid="setup-from-input-dropdown"]'), null, 'Dropdown should close after selection');
+      assert.ok(fromInput.value.includes('Takapuna'), 'Input value must update to selected placeName');
+
+      // Also set destination
+      flushSync(() => {
+        nativeSetter?.call(toInput, 'Newmarket');
+        toInput.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+      });
+
+      await new Promise((r) => setTimeout(r, 60));
+      flushSync(() => {});
+
+      const toSuggestion = container.querySelector('[data-testid="setup-to-input-suggestion-0"]') as HTMLButtonElement;
+      assert.ok(toSuggestion, 'To suggestion item must render');
+      flushSync(() => {
+        toSuggestion.click();
+      });
+
+      // Advance through steps
+      const nextBtn = container.querySelector('[data-testid="setup-next-btn"]') as HTMLButtonElement;
+      flushSync(() => {
+        nextBtn.click();
+      });
+
+      // Step 2: 3 days
+      const dayBtn = container.querySelector('[data-testid="setup-days-3"]') as HTMLButtonElement;
+      flushSync(() => {
+        dayBtn.click();
+      });
+      flushSync(() => {
+        nextBtn.click();
+      });
+
+      // Step 3: hybrid
+      const hybridBtn = container.querySelector('[data-testid="setup-drive-hybrid"]') as HTMLButtonElement;
+      flushSync(() => {
+        hybridBtn.click();
+      });
+      flushSync(() => {
+        nextBtn.click();
+      });
+
+      // Step 4: free parking
+      const freeBtn = container.querySelector('[data-testid="setup-parking-free"]') as HTMLButtonElement;
+      flushSync(() => {
+        freeBtn.click();
+      });
+      flushSync(() => {
+        nextBtn.click();
+      });
+
+      // Check onComplete result
+      assert.ok(finalResult, 'onComplete must be called');
+      assert.ok(finalResult?.originAddress?.includes('Takapuna'), 'originAddress should include Takapuna');
+      assert.ok(finalResult?.destinationAddress?.includes('Newmarket'), 'destinationAddress should include Newmarket');
+      assert.ok(Array.isArray(finalResult?.originCoordinates), 'originCoordinates must be an array');
+      assert.ok(Array.isArray(finalResult?.destinationCoordinates), 'destinationCoordinates must be an array');
+      assert.strictEqual(finalResult?.originSuburbId, 'takapuna', 'originSuburbId resolved to takapuna');
+      assert.strictEqual(finalResult?.destinationSuburbId, 'newmarket', 'destinationSuburbId resolved to newmarket');
+
+      flushSync(() => {
+        root.unmount();
+      });
+    });
+
+    it('clear button resets input value and clears selection', () => {
+      const dom = new JSDOM('<!DOCTYPE html><html><body><div id="root"></div></body></html>');
+      // @ts-ignore
+      global.window = dom.window;
+      // @ts-ignore
+      global.document = dom.window.document;
+
+      const container = dom.window.document.getElementById('root')!;
+      const root = createRoot(container);
+
+      flushSync(() => {
+        root.render(
+          React.createElement(SetupFlow, {
+            initialFrom: 'Albany',
+            initialTo: 'CBD',
+            onComplete: () => {},
+          })
+        );
+      });
+
+      const clearBtn = container.querySelector('[data-testid="setup-from-input-clear-btn"]') as HTMLButtonElement;
+      assert.ok(clearBtn, 'Clear button must render when input has value');
+
+      flushSync(() => {
+        clearBtn.click();
+      });
+
+      const fromInput = container.querySelector('[data-testid="setup-from-input"]') as HTMLInputElement;
+      assert.strictEqual(fromInput.value, '', 'Input value must be cleared');
+
+      flushSync(() => {
+        root.unmount();
+      });
+    });
+  });
 });
+

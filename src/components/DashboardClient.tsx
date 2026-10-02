@@ -40,6 +40,10 @@ export default function DashboardClient({ initialFuelPrices }: DashboardClientPr
       ...prev,
       originSuburbId: result.originSuburbId,
       destinationSuburbId: result.destinationSuburbId,
+      originAddress: result.originAddress ?? prev.originAddress,
+      destinationAddress: result.destinationAddress ?? prev.destinationAddress,
+      originCoordinates: result.originCoordinates ?? prev.originCoordinates,
+      destinationCoordinates: result.destinationCoordinates ?? prev.destinationCoordinates,
       daysPerWeek: result.daysPerWeek,
       vehicleType: result.vehicleType,
       powertrain: result.powertrain,
@@ -297,8 +301,8 @@ export default function DashboardClient({ initialFuelPrices }: DashboardClientPr
         isOpen={isSetupOpen}
         onComplete={handleSetupComplete}
         onClose={() => setIsSetupOpen(false)}
-        initialFrom={commuteInput.originSuburbId}
-        initialTo={commuteInput.destinationSuburbId}
+        initialFrom={commuteInput.originAddress || commuteInput.originSuburbId}
+        initialTo={commuteInput.destinationAddress || commuteInput.destinationSuburbId}
       />
     </div>
   );

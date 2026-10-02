@@ -52,7 +52,7 @@ export default function SetupModal({
     >
       <div
         ref={modalRef}
-        className="relative w-full max-w-lg bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden p-5 sm:p-7 text-slate-100"
+        className="relative w-full max-w-lg bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-visible p-5 sm:p-7 text-slate-100"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header Branding */}
