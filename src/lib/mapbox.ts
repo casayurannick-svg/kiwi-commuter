@@ -40,9 +40,7 @@ export const HOBSONVILLE_TOWN_CENTRE: GeocodingResult = {
 
 /**
  * Searches Auckland addresses using Mapbox Geocoding API with Auckland bounding box
- * Falls back to SUBURB_CENTROIDS when offline or without token.
- * BUG-54: When transitMode=FERRY is active, prioritizes or explicitly snaps
- * "Hobsonville" to "Hobsonville Point Ferry Terminal" rather than inland "Hobsonville Town Centre".
+ * Throws on API rate-limits/errors so the UI soft-failure banner activates.
  */
 export async function searchAucklandAddresses(
   query: string,
@@ -75,56 +73,60 @@ export async function searchAucklandAddresses(
     try {
       const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(cleanQuery)}.json?country=nz&bbox=174.3,-37.4,175.3,-36.4&proximity=${proximity[0]},${proximity[1]}&types=address,poi,neighborhood,locality,place&limit=6&access_token=${MAPBOX_TOKEN}`;
       const res = await fetch(url);
-      if (res.ok) {
-        const data = await res.json();
-interface MapboxFeatureContext {
-  id: string;
-  text: string;
-}
+      
+      if (!res.ok) {
+        throw new Error(`Mapbox Geocoding API Error: HTTP ${res.status}`);
+      }
 
-interface MapboxFeatureItem {
-  id: string;
-  place_name: string;
-  text: string;
-  center: [number, number];
-  context?: MapboxFeatureContext[];
-}
+      const data = await res.json();
+      interface MapboxFeatureContext {
+        id: string;
+        text: string;
+      }
 
-        if (Array.isArray(data.features) && data.features.length > 0) {
-          const apiResults = (data.features as MapboxFeatureItem[]).map((f) => ({
-            id: f.id,
-            placeName: f.place_name,
-            text: f.text,
-            coordinates: f.center,
-            suburbName:
-              f.context?.find(
-                (c) => c.id.startsWith('locality') || c.id.startsWith('neighborhood')
-              )?.text || f.text,
-          }));
+      interface MapboxFeatureItem {
+        id: string;
+        place_name: string;
+        text: string;
+        center: [number, number];
+        context?: MapboxFeatureContext[];
+      }
 
-          if (isHobsonvilleQuery) {
-            if (isFerryMode) {
-              const withoutTerminal = apiResults.filter(
-                (r) => r.id !== HOBSONVILLE_FERRY_TERMINAL.id && !r.text.toLowerCase().includes('ferry')
-              );
-              return [HOBSONVILLE_FERRY_TERMINAL, ...withoutTerminal].slice(0, 6);
-            } else {
-              const withoutTerminal = apiResults.filter(
-                (r) => r.id !== HOBSONVILLE_FERRY_TERMINAL.id && !r.text.toLowerCase().includes('ferry')
-              );
-              return [HOBSONVILLE_TOWN_CENTRE, ...withoutTerminal].slice(0, 6);
-            }
+      if (Array.isArray(data.features) && data.features.length > 0) {
+        const apiResults = (data.features as MapboxFeatureItem[]).map((f) => ({
+          id: f.id,
+          placeName: f.place_name,
+          text: f.text,
+          coordinates: f.center,
+          suburbName:
+            f.context?.find(
+              (c) => c.id.startsWith('locality') || c.id.startsWith('neighborhood')
+            )?.text || f.text,
+        }));
+
+        if (isHobsonvilleQuery) {
+          if (isFerryMode) {
+            const withoutTerminal = apiResults.filter(
+              (r) => r.id !== HOBSONVILLE_FERRY_TERMINAL.id && !r.text.toLowerCase().includes('ferry')
+            );
+            return [HOBSONVILLE_FERRY_TERMINAL, ...withoutTerminal].slice(0, 6);
+          } else {
+            const withoutTerminal = apiResults.filter(
+              (r) => r.id !== HOBSONVILLE_FERRY_TERMINAL.id && !r.text.toLowerCase().includes('ferry')
+            );
+            return [HOBSONVILLE_TOWN_CENTRE, ...withoutTerminal].slice(0, 6);
           }
-
-          return apiResults;
         }
+
+        return apiResults;
       }
     } catch (e) {
-      console.warn('Mapbox Geocoding API failed, using fallback:', e);
+      console.error('Mapbox Geocoding API call failed:', e);
+      throw e; // Rethrow to notify frontend error boundary
     }
   }
 
-  // Fallback: match against Auckland suburb centroids & snap points
+  // Fallback: match against Auckland suburb centroids & snap points when no token configured
   if (isHobsonvilleQuery) {
     if (isFerryMode) {
       return [HOBSONVILLE_FERRY_TERMINAL, HOBSONVILLE_TOWN_CENTRE];
@@ -150,9 +152,6 @@ export interface RouteGeometryResponse {
   durationMinutes: number;
 }
 
-/**
- * Calculates straight line distance in km using Haversine formula
- */
 export function calculateHaversineDistanceKm(
   [lon1, lat1]: [number, number],
   [lon2, lat2]: [number, number]
@@ -170,9 +169,6 @@ export function calculateHaversineDistanceKm(
   return R * c;
 }
 
-/**
- * Generates synthetic road-deflected waypoints representing Auckland arterial and motorway corridors
- */
 function generateSyntheticAucklandRoute(
   [startLng, startLat]: [number, number],
   [endLng, endLat]: [number, number]
@@ -184,7 +180,6 @@ function generateSyntheticAucklandRoute(
 
   for (let i = 0; i <= steps; i++) {
     const t = i / steps;
-    // Add realistic road curve deflection (simulating Auckland motorway corridors)
     const curveDeflection = Math.sin(t * Math.PI) * 0.015;
     const lng = startLng + dx * t + curveDeflection * (dy > 0 ? 1 : -1);
     const lat = startLat + dy * t + curveDeflection * (dx > 0 ? -1 : 1);
@@ -195,7 +190,8 @@ function generateSyntheticAucklandRoute(
 }
 
 /**
- * Fetches route geometry and metrics from Mapbox Directions API for driving, walking, or cycling
+ * Fetches route geometry and metrics from Mapbox Directions API.
+ * Throws on rate limits/failures so the UI error boundary triggers properly.
  */
 export async function fetchDirectionsRoute(
   origin: [number, number],
@@ -218,41 +214,42 @@ export async function fetchDirectionsRoute(
     return null;
   }
 
-  // Attempt Mapbox Directions API if public token is configured
   if (MAPBOX_TOKEN && MAPBOX_TOKEN.startsWith('pk.')) {
     try {
       const url = `https://api.mapbox.com/directions/v5/mapbox/${profile}/${startLng},${startLat};${endLng},${endLat}?geometries=geojson&overview=full&access_token=${MAPBOX_TOKEN}`;
       const res = await fetch(url, { next: { revalidate: 3600 } });
-      if (res.ok) {
-        const data = await res.json();
-        const route = data.routes?.[0];
-        if (route && Array.isArray(route.geometry?.coordinates) && route.geometry.coordinates.length > 0) {
-          return {
-            coordinates: route.geometry.coordinates,
-            distanceKm: Math.round((route.distance / 1000) * 10) / 10,
-            durationMinutes: Math.round(route.duration / 60),
-          };
-        }
+      
+      if (!res.ok) {
+        throw new Error(`Mapbox Directions API Error: HTTP ${res.status}`);
       }
+
+      const data = await res.json();
+      const route = data.routes?.[0];
+      if (route && Array.isArray(route.geometry?.coordinates) && route.geometry.coordinates.length > 0) {
+        return {
+          coordinates: route.geometry.coordinates,
+          distanceKm: Math.round((route.distance / 1000) * 10) / 10,
+          durationMinutes: Math.round(route.duration / 60),
+        };
+      }
+      throw new Error('No valid routes returned from Mapbox Directions');
     } catch (e) {
-      console.warn(`Mapbox Directions API (${profile}) failed, using synthetic fallback:`, e);
+      console.error(`Mapbox Directions API (${profile}) failed:`, e);
+      throw e; // Rethrow so caller catches and triggers UI error boundary
     }
   }
 
-  // Realistic Auckland network fallback calculation
+  // Fallback only if no Mapbox token is configured
   const straightLine = calculateHaversineDistanceKm(origin, destination);
   const factor = profile === 'walking' ? 1.2 : 1.28;
   const distanceKm = Math.round(Math.max(0.1, straightLine * factor) * 10) / 10;
 
   let durationMinutes: number;
   if (profile === 'walking') {
-    // 5 km/h average walking speed (12 mins/km)
     durationMinutes = Math.max(1, Math.round((distanceKm / 5) * 60));
   } else if (profile === 'cycling') {
-    // 15 km/h scooter / bike speed (4 mins/km)
     durationMinutes = Math.max(1, Math.round((distanceKm / 15) * 60));
   } else {
-    // 35 km/h average peak urban driving
     durationMinutes = Math.max(3, Math.round((distanceKm / 35) * 60));
   }
 
@@ -265,9 +262,6 @@ export async function fetchDirectionsRoute(
   };
 }
 
-/**
- * Fetches driving route geometry from Mapbox Directions API, with seamless Auckland corridor synthetic fallback
- */
 export async function fetchDrivingRoute(
   origin: [number, number],
   destination: [number, number]
@@ -275,9 +269,6 @@ export async function fetchDrivingRoute(
   return fetchDirectionsRoute(origin, destination, 'driving');
 }
 
-/**
- * Backward compatibility wrapper returning GeoJSON Feature for suburbs
- */
 export async function getDirectionsRoute(
   origin: Suburb,
   destination: Suburb
