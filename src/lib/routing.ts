@@ -261,7 +261,7 @@ export function getPrimaryTransitModeLabel(mode: string): string {
   return toTitleCase(norm);
 }
 
-function toTitleCase(mode: PrimaryTransitMode): string {
+function toTitleCase(mode: string): string {
   switch (mode) {
     case 'train':
       return 'Train';
@@ -277,7 +277,9 @@ function toTitleCase(mode: PrimaryTransitMode): string {
       return 'Walk';
     case 'drive':
       return 'Drive';
-    default:
-      return mode.charAt(0).toUpperCase() + mode.slice(1);
+    default: {
+      const s = String(mode);
+      return s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
+    }
   }
 }
