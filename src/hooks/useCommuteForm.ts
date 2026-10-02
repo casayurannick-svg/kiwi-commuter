@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { CommuteInput, TabId } from '@/types';
 import { parseCommuteFromParams, serializeCommuteToParams } from '@/lib/urlParams';
-import { FuelBenchmarkDto } from '@/lib/supabase';
+import { FuelBenchmarkDto, getSavedTripFromSupabase } from '@/lib/supabase';
 
 export const DEFAULT_COMMUTE_INPUT: CommuteInput = {
   originSuburbId: 'epsom',
@@ -102,6 +102,30 @@ export function useCommuteForm(options: UseCommuteFormOptions = {}): UseCommuteF
     hasHydratedRef.current = true;
   }, []);
 
+  // 2.5 Fetch saved trip payload from Supabase if tripId parameter is present (STORY-10)
+  useEffect(() => {
+    const rawTripId =
+      searchParams?.get('tripId') ||
+      searchParams?.get('trip_id') ||
+      (typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('tripId') : null);
+
+    if (rawTripId) {
+      getSavedTripFromSupabase(rawTripId)
+        .then((savedPayload) => {
+          if (savedPayload) {
+            setCommuteInputRaw((prev) => ({
+              ...prev,
+              ...savedPayload,
+              tripId: rawTripId,
+            }));
+          }
+        })
+        .catch((err) => {
+          console.warn('Failed to load saved trip from Supabase:', err);
+        });
+    }
+  }, [searchParams]);
+
   // 3. Handle browser back/forward navigation (popstate) without feedback loop
   useEffect(() => {
     const handlePopState = () => {
@@ -134,7 +158,7 @@ export function useCommuteForm(options: UseCommuteFormOptions = {}): UseCommuteF
     debounceTimerRef.current = setTimeout(() => {
       if (typeof window === 'undefined') return;
 
-      const params = serializeCommuteToParams(commuteInput);
+      const params = serializeCommuteToParams(commuteInput, { privacyMode: true });
       const queryString = params.toString();
       const newSearch = queryString ? `?${queryString}` : '';
       const currentSearch = window.location.search;

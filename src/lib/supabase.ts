@@ -1,4 +1,4 @@
-import { FuelSnapshot, ParkingRateSchedule } from '@/types';
+import { CommuteInput, FuelSnapshot, ParkingRateSchedule } from '@/types';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
@@ -209,3 +209,58 @@ export async function getLatestBenchmarkSummary(): Promise<FuelBenchmarkDto> {
     source: 'fallback',
   };
 }
+
+/**
+ * Saves a commute configuration to Supabase saved_trips table (STORY-10).
+ * Returns the generated UUID or null if Supabase is unreachable/fails.
+ */
+export async function saveTripToSupabase(payload: Partial<CommuteInput>): Promise<string | null> {
+  if (supabase) {
+    try {
+      const { data, error } = await supabase
+        .from('saved_trips')
+        .insert({ payload })
+        .select('id')
+        .single();
+
+      if (!error && data && data.id) {
+        return data.id as string;
+      }
+      if (error) {
+        console.warn('Failed to save trip to Supabase:', error);
+      }
+    } catch (err) {
+      console.warn('Exception saving trip to Supabase:', err);
+    }
+  }
+  return null;
+}
+
+/**
+ * Retrieves a saved commute configuration from Supabase saved_trips table by UUID (STORY-10).
+ * Returns the payload or null if not found/error.
+ */
+export async function getSavedTripFromSupabase(tripId: string): Promise<Partial<CommuteInput> | null> {
+  if (!tripId || typeof tripId !== 'string') return null;
+
+  if (supabase) {
+    try {
+      const { data, error } = await supabase
+        .from('saved_trips')
+        .select('payload')
+        .eq('id', tripId)
+        .single();
+
+      if (!error && data && data.payload) {
+        return data.payload as Partial<CommuteInput>;
+      }
+      if (error) {
+        console.warn('Failed to fetch saved trip from Supabase:', error);
+      }
+    } catch (err) {
+      console.warn('Exception fetching saved trip from Supabase:', err);
+    }
+  }
+  return null;
+}
+

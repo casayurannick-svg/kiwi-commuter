@@ -137,6 +137,8 @@ export interface CommuteInput {
   // STORY-7: First-Run Setup Flow Parameters
   hasCar?: boolean; // False if commuter does not own/drive a car (transit-only mode)
   isParkingAssumed?: boolean; // True if parking defaulted to $24.50/day via "Not sure"
+  // STORY-10: Shareable Links & Privacy Parameters
+  tripId?: string; // Opaque UUID referencing saved_trips in Supabase
 }
 
 export type TabId = 'summary' | 'compare' | 'advanced';

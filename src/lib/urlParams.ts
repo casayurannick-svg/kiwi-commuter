@@ -39,9 +39,49 @@ export const PARKING_TIER_DEFAULT_RATES: Record<ParkingTier | 'CUSTOM', number> 
 };
 
 /**
+ * Strips street numbers, unit numbers, flat numbers, and building identifiers
+ * from an address string to prevent exposing private street-level residential numbers (STORY-10).
+ * e.g., "123 Dominion Road, Mt Eden" -> "Dominion Road, Mt Eden"
+ * e.g., "123A Dominion Road, Mt Eden" -> "Dominion Road, Mt Eden"
+ * e.g., "12/34 Queen Street, Auckland CBD" -> "Queen Street, Auckland CBD"
+ * e.g., "Unit 4, 15 Karangahape Road" -> "Karangahape Road"
+ * e.g., "Flat 2/100 Remuera Road" -> "Remuera Road"
+ */
+export function scrubStreetNumber(address?: string): string | undefined {
+  if (!address) return address;
+  const trimmed = address.trim();
+  if (!trimmed) return trimmed;
+
+  // 1. Remove prefixes like "Unit 4,", "Flat 2b,", "Apartment 12,", "Apt 3/", "Suite 100,"
+  let cleaned = trimmed.replace(
+    /^(?:unit|flat|apt|apartment|suite|lot)\s+[a-z0-9\/-]+[,\s]*/i,
+    ''
+  );
+
+  // 2. Remove street numbers like "123 ", "123A ", "12/34 ", "12-14 ", "100B/ "
+  cleaned = cleaned.replace(
+    /^[0-9]+[a-z]?(?:[\/-][0-9]+[a-z]?)?\s+/i,
+    ''
+  );
+
+  // Clean up any stray leading commas or whitespace
+  cleaned = cleaned.replace(/^,\s*/, '').trim();
+
+  // If cleaning somehow removed everything, fallback to original trimmed string
+  return cleaned || trimmed;
+}
+
+export interface SerializeCommuteOptions {
+  privacyMode?: boolean; // When true, strictly strips street numbers from addresses
+}
+
+/**
  * Serializes a CommuteInput object to URLSearchParams.
  */
-export function serializeCommuteToParams(input: CommuteInput): URLSearchParams {
+export function serializeCommuteToParams(
+  input: CommuteInput,
+  options: SerializeCommuteOptions = {}
+): URLSearchParams {
   const params = new URLSearchParams();
 
   if (input.originSuburbId) params.set('from', input.originSuburbId);
@@ -143,12 +183,20 @@ export function serializeCommuteToParams(input: CommuteInput): URLSearchParams {
     params.set('walkKm', input.walkDistanceKm.toString());
   }
 
-  // US-36: Exact Address & Geocoded Coordinates Serialization
+  // US-36 & STORY-10: Exact Address & Geocoded Coordinates Serialization (with privacy scrubbing in fallback)
   if (input.originAddress && input.originAddress.trim()) {
-    params.set('fromAddress', input.originAddress.trim());
+    const rawOrigin = input.originAddress.trim();
+    const fromAddr = options.privacyMode ? scrubStreetNumber(rawOrigin) : rawOrigin;
+    if (fromAddr) {
+      params.set('fromAddress', fromAddr);
+    }
   }
   if (input.destinationAddress && input.destinationAddress.trim()) {
-    params.set('toAddress', input.destinationAddress.trim());
+    const rawDest = input.destinationAddress.trim();
+    const toAddr = options.privacyMode ? scrubStreetNumber(rawDest) : rawDest;
+    if (toAddr) {
+      params.set('toAddress', toAddr);
+    }
   }
   if (input.originCoordinates && input.originCoordinates.length === 2) {
     const lng = Number(input.originCoordinates[0].toFixed(6));
@@ -241,7 +289,19 @@ export function serializeCommuteToParams(input: CommuteInput): URLSearchParams {
     params.set('parkingAssumed', '1');
   }
 
+  // STORY-10: Opaque Trip ID Serialization
+  if (input.tripId) {
+    params.set('tripId', input.tripId);
+  }
+
   return params;
+}
+
+/**
+ * Serializes CommuteInput to URLSearchParams enforcing privacy mode (street numbers stripped) (STORY-10).
+ */
+export function serializeCommuteToPrivacyParams(input: CommuteInput): URLSearchParams {
+  return serializeCommuteToParams(input, { privacyMode: true });
 }
 
 /**
@@ -787,14 +847,19 @@ export function parseCommuteFromParams(
       params.get('parkingAssumed') === '1' || params.get('parkingAssumed') === 'true'
         ? true
         : fallback.isParkingAssumed ?? false,
+    // STORY-10: Opaque Trip ID Parsing
+    tripId: params.get('tripId') || params.get('trip_id') || fallback.tripId,
   };
 }
 
 /**
  * Returns a full serialized query string (e.g. "?from=albany&to=cbd&days=5").
  */
-export function serializeCommuteToQueryString(input: CommuteInput): string {
-  const params = serializeCommuteToParams(input);
+export function serializeCommuteToQueryString(
+  input: CommuteInput,
+  options: SerializeCommuteOptions = {}
+): string {
+  const params = serializeCommuteToParams(input, options);
   const str = params.toString();
   return str ? `?${str}` : '';
 }

@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState, useRef } from 'react';
-import { Check, Share2 } from 'lucide-react';
+import { Check, Loader2, Share2 } from 'lucide-react';
 import { CommuteInput } from '@/types';
 import { serializeCommuteToParams } from '@/lib/urlParams';
+import { saveTripToSupabase } from '@/lib/supabase';
 
 export interface ShareButtonProps {
   commuteInput: CommuteInput;
@@ -13,9 +14,39 @@ export interface ShareButtonProps {
 }
 
 /**
- * US-36: Share Button CTA that captures and serializes all commute search parameters
- * (origin, destination, exact addresses, geocoded coordinates, vehicle powertrain,
- * fuel/charging rates, concessions, parking, carpooling, maintenance wear, and time valuation).
+ * Builds a shareable URL (STORY-10).
+ * 1. Writes current commute state to Supabase saved_trips and generates an opaque short URL using ?tripId=<UUID>.
+ * 2. If Supabase fails or is unreachable, uses the privacy fallback: URL serialized with street numbers strictly stripped.
+ */
+export async function buildShareUrl(
+  commuteInput: CommuteInput,
+  originUrl = typeof window !== 'undefined' && window.location.origin
+    ? window.location.origin
+    : 'https://kiwi-commuter.vercel.app',
+  currentPath = typeof window !== 'undefined' && window.location.pathname
+    ? window.location.pathname
+    : '/'
+): Promise<string> {
+  let tripId: string | null = null;
+  try {
+    tripId = await saveTripToSupabase(commuteInput);
+  } catch (err) {
+    console.warn('Failed to save trip to Supabase, falling back to privacy URL serialization:', err);
+  }
+
+  if (tripId) {
+    return `${originUrl}${currentPath}?tripId=${tripId}`;
+  }
+
+  // Privacy fallback: strictly strip street numbers from origin/destination
+  const params = serializeCommuteToParams(commuteInput, { privacyMode: true });
+  const queryString = params.toString();
+  return `${originUrl}${currentPath}${queryString ? `?${queryString}` : ''}`;
+}
+
+/**
+ * US-36 & STORY-10: Share Button CTA that captures and serializes commute parameters
+ * into an opaque UUID link via Supabase or a privacy-preserving suburb fallback.
  */
 export default function ShareButton({
   commuteInput,
@@ -24,25 +55,31 @@ export default function ShareButton({
   showToast = true,
 }: ShareButtonProps) {
   const [isCopied, setIsCopied] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const toastTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const constructShareUrl = (): string => {
-    const params = serializeCommuteToParams(commuteInput);
-    const queryString = params.toString();
-    const originUrl =
-      typeof window !== 'undefined' && window.location.origin
-        ? window.location.origin
-        : 'https://kiwi-commuter.vercel.app';
-    const currentPath =
-      typeof window !== 'undefined' && window.location.pathname
-        ? window.location.pathname
-        : '/';
-    return `${originUrl}${currentPath}${queryString ? `?${queryString}` : ''}`;
-  };
-
   const handleShareLink = async () => {
-    const fullShareUrl = constructShareUrl();
+    setIsGenerating(true);
+    let fullShareUrl = '';
+    try {
+      fullShareUrl = await buildShareUrl(commuteInput);
+    } catch {
+      // Direct synchronous fallback on unexpected failure
+      const params = serializeCommuteToParams(commuteInput, { privacyMode: true });
+      const queryString = params.toString();
+      const originUrl =
+        typeof window !== 'undefined' && window.location.origin
+          ? window.location.origin
+          : 'https://kiwi-commuter.vercel.app';
+      const currentPath =
+        typeof window !== 'undefined' && window.location.pathname
+          ? window.location.pathname
+          : '/';
+      fullShareUrl = `${originUrl}${currentPath}${queryString ? `?${queryString}` : ''}`;
+    } finally {
+      setIsGenerating(false);
+    }
 
     // Immediately synchronize the browser history bar as well
     if (typeof window !== 'undefined' && window.history?.replaceState) {
@@ -101,8 +138,14 @@ export default function ShareButton({
         }
         title="Copy shareable link with current commute parameters"
         aria-label="Share comparison link"
+        disabled={isGenerating}
       >
-        {isCopied ? (
+        {isGenerating ? (
+          <>
+            <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-400" />
+            <span className="hidden sm:inline">Saving...</span>
+          </>
+        ) : isCopied ? (
           <>
             <Check className="w-3.5 h-3.5 text-emerald-400" />
             <span className="hidden sm:inline">Copied!</span>
