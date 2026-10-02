@@ -9,6 +9,9 @@ test.describe('First-Run Setup Flow & Tab Shell Navigation (E2E-REGRESSION)', ()
     await expect(modal).toContainText('Welcome to Kiwi Commuter');
     await expect(modal).toContainText('Step 1 of 4');
 
+    // Verify close 'X' button is NOT present on first-run onboarding
+    await expect(modal.locator('[data-testid="setup-modal-close-btn"]')).toHaveCount(0);
+
     // Step 1: "Where do you travel?" with live Mapbox/AT autocomplete
     const fromInput = modal.locator('[data-testid="setup-from-input"]');
     await fromInput.click();
@@ -71,6 +74,22 @@ test.describe('First-Run Setup Flow & Tab Shell Navigation (E2E-REGRESSION)', ()
     await expect(summaryPanel).toBeVisible();
     await expect(summaryTabBtn).toHaveAttribute('aria-selected', 'true');
     await expect(summaryPanel).toContainText('Mount Roskill to Parnell');
+
+    // Verify clicking "Change" next to trip line reopens SetupModal with Step 1 and visible close 'X' button (FIX-CHANGE-ROUTE)
+    const changeBtn = summaryPanel.locator('[data-testid="summary-change-route-btn"]');
+    await expect(changeBtn).toBeVisible();
+    await changeBtn.click();
+
+    await expect(modal).toBeVisible();
+    await expect(modal).toContainText('Step 1 of 4');
+    await expect(modal.locator('[data-testid="setup-from-input"]')).toBeVisible();
+
+    // Verify close button is now visible and functional
+    const closeBtn = modal.locator('[data-testid="setup-modal-close-btn"]');
+    await expect(closeBtn).toBeVisible();
+    await closeBtn.click();
+    await expect(modal).toHaveCount(0);
+    await expect(summaryPanel).toBeVisible();
   });
 
   test('clicking Compare tab successfully reveals the CostBarChart (Task 3)', async ({ page }) => {

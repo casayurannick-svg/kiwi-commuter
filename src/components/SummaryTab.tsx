@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { CommuteInput, CommuteComparisonResult } from '@/types';
-import { getSuburbById, AUCKLAND_SUBURBS } from '@/config/suburbs';
+import { getSuburbById } from '@/config/suburbs';
 import VerdictCard from '@/components/VerdictCard';
 import ExpandableCostRow, { CostItem } from '@/components/ExpandableCostRow';
 import CarFreeCard from '@/components/CarFreeCard';
@@ -13,10 +13,11 @@ export interface SummaryTabProps {
   setCommuteInput: React.Dispatch<React.SetStateAction<CommuteInput>>;
   arbitrage: CommuteComparisonResult;
   onChangeTab?: (tab: 'compare' | 'advanced') => void;
+  onEditCommute?: (step?: number) => void;
 }
 
 /**
- * SummaryTab (STORY-4)
+ * SummaryTab (STORY-4, FIX-CHANGE-ROUTE)
  * Layered disclosure UI featuring trip line, plain-language verdict card,
  * expandable "What you'd stop paying" vs "What you'd still pay" cost rows,
  * assumption footnote, and daily travel time cards.
@@ -25,8 +26,8 @@ export default function SummaryTab({
   commuteInput,
   setCommuteInput,
   arbitrage,
+  onEditCommute,
 }: SummaryTabProps) {
-  const [isEditingTrip, setIsEditingTrip] = useState(false);
   const [isEditingWear, setIsEditingWear] = useState(false);
 
   const origin = getSuburbById(commuteInput.originSuburbId);
@@ -91,7 +92,7 @@ export default function SummaryTab({
 
   return (
     <div className="w-full space-y-6 max-w-4xl mx-auto py-2">
-      {/* 1. Trip Line with Edit Toggle */}
+      {/* 1. Trip Line with Edit Action */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-1 py-1">
         <div className="flex items-center gap-2 text-sm sm:text-base">
           <MapPin className="w-4 h-4 text-emerald-400 shrink-0" aria-hidden="true" />
@@ -100,11 +101,12 @@ export default function SummaryTab({
           </span>
           <button
             type="button"
-            onClick={() => setIsEditingTrip((prev) => !prev)}
-            aria-expanded={isEditingTrip}
+            onClick={() => onEditCommute?.(1)}
+            aria-label="Change commute route and frequency"
+            data-testid="summary-change-route-btn"
             className="text-xs sm:text-sm font-semibold text-emerald-400 hover:text-emerald-300 underline underline-offset-4 ml-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded px-1 min-h-[24px] inline-flex items-center"
           >
-            {isEditingTrip ? 'Done' : 'Change'}
+            Change
           </button>
         </div>
 
@@ -112,84 +114,6 @@ export default function SummaryTab({
           Single Cost Model · 2026 Auckland Fares
         </div>
       </div>
-
-      {/* Inline Trip Editor (conditionally shown when user clicks Change) */}
-      {isEditingTrip && (
-        <div className="p-4 sm:p-5 rounded-xl border border-slate-800 bg-slate-900/90 backdrop-blur-md space-y-4 animate-fadeIn">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
-              Edit Commute Route &amp; Frequency
-            </span>
-            <button
-              type="button"
-              onClick={() => setIsEditingTrip(false)}
-              className="text-xs text-emerald-400 font-medium hover:underline min-h-[24px] inline-flex items-center"
-            >
-              Close
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div>
-              <label htmlFor="origin-select" className="block text-xs font-medium text-slate-300 mb-1">
-                Origin Suburb
-              </label>
-              <select
-                id="origin-select"
-                value={commuteInput.originSuburbId}
-                onChange={(e) => setCommuteInput((prev) => ({ ...prev, originSuburbId: e.target.value }))}
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:border-emerald-500 focus:outline-none"
-              >
-                {AUCKLAND_SUBURBS.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name} ({s.region})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label htmlFor="dest-select" className="block text-xs font-medium text-slate-300 mb-1">
-                Destination Suburb
-              </label>
-              <select
-                id="dest-select"
-                value={commuteInput.destinationSuburbId}
-                onChange={(e) => setCommuteInput((prev) => ({ ...prev, destinationSuburbId: e.target.value }))}
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:border-emerald-500 focus:outline-none"
-              >
-                {AUCKLAND_SUBURBS.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name} ({s.region})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">
-                Days Commuting / Week
-              </label>
-              <div className="flex items-center gap-1">
-                {[1, 2, 3, 4, 5].map((d) => (
-                  <button
-                    key={d}
-                    type="button"
-                    onClick={() => setCommuteInput((prev) => ({ ...prev, daysPerWeek: d, parkingDaysPerWeek: d }))}
-                    className={`flex-1 py-1.5 text-xs font-bold rounded-lg border transition-colors ${
-                      commuteInput.daysPerWeek === d
-                        ? 'bg-emerald-500 text-white border-emerald-400'
-                        : 'bg-slate-950 text-slate-300 border-slate-800 hover:bg-slate-800'
-                    }`}
-                  >
-                    {d}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* 1.5 Transit-Only Commute Banner (STORY-7) */}
       {commuteInput.hasCar === false && (

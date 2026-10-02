@@ -198,6 +198,49 @@ describe('STORY-4: Summary Tab & Layered Disclosure UI', () => {
       assert.ok(html.includes('Change'), 'Trip line must contain Change button');
     });
 
+    it('clicking Change next to trip line triggers onEditCommute callback and eliminates legacy inline drawer', () => {
+      const dom = new JSDOM('<!DOCTYPE html><html><body><div id="root"></div></body></html>');
+      // @ts-ignore
+      global.window = dom.window;
+      // @ts-ignore
+      global.document = dom.window.document;
+
+      const container = dom.window.document.getElementById('root')!;
+      const root = createRoot(container);
+
+      let editStep: number | undefined;
+      flushSync(() => {
+        root.render(
+          React.createElement(SummaryTab, {
+            commuteInput: fixtureInput,
+            setCommuteInput: () => {},
+            arbitrage,
+            onEditCommute: (step) => {
+              editStep = step;
+            },
+          })
+        );
+      });
+
+      const changeBtn = container.querySelector('[data-testid="summary-change-route-btn"]') as HTMLButtonElement;
+      assert.ok(changeBtn, 'Change route button must exist');
+
+      flushSync(() => {
+        changeBtn.click();
+      });
+
+      assert.strictEqual(editStep, 1, 'Clicking Change button must invoke onEditCommute with step 1');
+
+      // Verify legacy inline drawer elements do NOT exist in the DOM
+      assert.strictEqual(container.querySelector('#origin-select'), null, 'Legacy origin-select dropdown must be eliminated');
+      assert.strictEqual(container.querySelector('#dest-select'), null, 'Legacy dest-select dropdown must be eliminated');
+      assert.strictEqual(container.textContent?.includes('EDIT COMMUTE ROUTE & FREQUENCY'), false, 'Legacy drawer header must be eliminated');
+
+      flushSync(() => {
+        root.unmount();
+      });
+    });
+
     it('renders both expandable cost rows with exact Story 1 model totals (Task 3)', () => {
       const html = renderToStaticMarkup(
         React.createElement(SummaryTab, {
