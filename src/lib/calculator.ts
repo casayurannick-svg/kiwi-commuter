@@ -24,6 +24,7 @@ import { resolveFerryFareTier } from '@/constants/fares';
 import { estimateRouteMetrics, getSuburbById } from '@/config/suburbs';
 import {
   CalculationMode,
+  CarFreeSavingsResult,
   CommuteComparisonResult,
   CommuteInput,
   DrivingCostBreakdown,
@@ -1268,6 +1269,199 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
 
 // Backward compatible alias
 export const calculateArbitrage = calculateCommuteArbitrage;
+
+/**
+ * STORY-8: Calculates annual non-commute driving cost for a given vehicle configuration.
+ * Considers active vehicle efficiency (fuel/energy consumption and pricing), statutory NZTA RUC,
+ * and distance-based maintenance/wear rates across the specified non-commute annual mileage.
+ *
+ * @param input CommuteInput configuration containing vehicle powertrain, efficiency, and fuel parameters
+ * @param nonCommuteKm Annual non-commute distance in km (defaults to 5,000 km)
+ */
+export function calculateAnnualNonCommuteCost(
+  input: CommuteInput,
+  nonCommuteKm: number = 5000
+): number {
+  if (nonCommuteKm <= 0) return 0;
+
+  const calculationMode = input.calculationMode || input.calcMode || 'FUEL';
+  if (calculationMode === 'IRD_TRUE_COST') {
+    return round2(nonCommuteKm * IRD_MILEAGE_RATE_PER_KM);
+  }
+
+  // Resolve vehicle type and powertrain
+  const rawPower = input.powertrain || input.power || input.propulsion;
+  const rawPowerStr = typeof rawPower === 'string' ? rawPower.toUpperCase() : undefined;
+  const rawVehicleType = input.vehicleType as string | undefined;
+  const rawVehicleTypeStr = typeof rawVehicleType === 'string' ? rawVehicleType.toUpperCase() : undefined;
+
+  const normalizedPower: VehiclePowertrain | undefined =
+    rawPowerStr === 'PETROL'
+      ? 'PETROL_91'
+      : rawPowerStr === 'EV'
+      ? 'BEV'
+      : (rawPowerStr as VehiclePowertrain | undefined) ||
+        (rawVehicleTypeStr === 'EV' || rawVehicleTypeStr === 'BEV'
+          ? 'BEV'
+          : rawVehicleTypeStr === 'PHEV'
+          ? 'PHEV'
+          : undefined);
+
+  const effectiveVehicleType: VehicleType =
+    normalizedPower && POWERTRAIN_TO_VEHICLE_TYPE[normalizedPower]
+      ? POWERTRAIN_TO_VEHICLE_TYPE[normalizedPower]
+      : rawVehicleTypeStr === 'DIESEL' || input.vehicleType === 'diesel' || normalizedPower === 'DIESEL'
+      ? 'diesel'
+      : rawVehicleTypeStr === 'EV' || rawVehicleTypeStr === 'BEV' || input.vehicleType === 'bev' || normalizedPower === 'BEV'
+      ? 'bev'
+      : rawVehicleTypeStr === 'PHEV' || input.vehicleType === 'phev' || normalizedPower === 'PHEV'
+      ? 'phev'
+      : rawVehicleTypeStr === 'HEV' || input.vehicleType === 'hev' || normalizedPower === 'HEV'
+      ? 'hev'
+      : rawVehicleTypeStr === 'PETROL95' || rawVehicleTypeStr === 'PETROL_95' || input.vehicleType === 'petrol95'
+      ? 'petrol95'
+      : (input.vehicleType as VehicleType) || 'petrol91';
+
+  const effectivePowertrain: VehiclePowertrain =
+    normalizedPower && STATUTORY_NZTA_RUC_RATES[normalizedPower]
+      ? normalizedPower
+      : effectiveVehicleType === 'diesel'
+      ? 'DIESEL'
+      : effectiveVehicleType === 'bev'
+      ? 'BEV'
+      : effectiveVehicleType === 'phev'
+      ? 'PHEV'
+      : effectiveVehicleType === 'hev'
+      ? 'HEV'
+      : effectiveVehicleType === 'petrol95'
+      ? 'PETROL_95'
+      : 'PETROL_91';
+
+  const vehicle = VEHICLE_PRESETS[effectiveVehicleType] || VEHICLE_PRESETS.petrol91;
+
+  // Efficiency / Consumption
+  const rawEfficiency =
+    input.consumptionOverride ??
+    input.fuelEconomy ??
+    input.efficiency;
+  const consumption =
+    typeof rawEfficiency === 'number' && !isNaN(rawEfficiency) && rawEfficiency > 0
+      ? rawEfficiency
+      : vehicle.defaultConsumption;
+
+  // Fuel / Energy cost per km
+  let fuelCostPerKm = 0;
+  if (effectiveVehicleType === 'bev') {
+    const evRate =
+      typeof input.kwhRate === 'number' && !isNaN(input.kwhRate) && input.kwhRate > 0
+        ? input.kwhRate
+        : (input.evChargingSource && NZ_EV_CHARGING_RATES[input.evChargingSource]) ||
+          (input.evChargingMode && EV_CHARGING_PRESETS[input.evChargingMode]?.rate) ||
+          input.homeKWhRate ||
+          input.fuelPriceOverride ||
+          vehicle.defaultFuelPrice ||
+          0.28;
+    fuelCostPerKm = (consumption / 100) * evRate;
+  } else if (effectiveVehicleType === 'phev') {
+    const petrolPrice = input.customFuelPricePerL ?? input.fuelPriceOverride ?? 2.72;
+    fuelCostPerKm = (consumption / 100) * petrolPrice;
+  } else {
+    const rawPrice = input.customFuelPricePerL ?? input.fuelPriceOverride;
+    const fuelPrice =
+      typeof rawPrice === 'number' && !isNaN(rawPrice) && rawPrice > 0
+        ? rawPrice
+        : vehicle.defaultFuelPrice || DEFAULT_FUEL_RATE;
+    fuelCostPerKm = (consumption / 100) * fuelPrice;
+  }
+
+  // Statutory RUC rate ($/km)
+  let rucRatePerKm = 0;
+  if (effectivePowertrain === 'BEV' || effectiveVehicleType === 'bev') {
+    rucRatePerKm = NZ_RUC_LIGHT_EV_RATE_PER_KM;
+  } else if (effectivePowertrain === 'PHEV' || effectiveVehicleType === 'phev') {
+    rucRatePerKm = NZ_RUC_PHEV_RATE_PER_KM;
+  } else if (effectivePowertrain === 'DIESEL' || effectiveVehicleType === 'diesel') {
+    rucRatePerKm = NZ_RUC_DIESEL_RATE_PER_KM;
+  }
+
+  // Wear / Maintenance rate ($/km)
+  let wearRatePerKm = 0;
+  if (typeof input.maintenanceCostPerKm === 'number' && !isNaN(input.maintenanceCostPerKm) && input.maintenanceCostPerKm >= 0) {
+    wearRatePerKm = input.maintenanceCostPerKm;
+  } else if (input.includeMaintenanceWear) {
+    wearRatePerKm = NZ_AA_MAINTENANCE_PER_KM;
+  } else {
+    const origin = getSuburbById(input.originSuburbId);
+    const destination = getSuburbById(input.destinationSuburbId);
+    const route = estimateRouteMetrics(origin, destination);
+    const isMtRoskillToParnell = origin.id === 'mt-roskill' && destination.id === 'parnell';
+    const distOneWay =
+      typeof input.drivingDistanceKm === 'number' && input.drivingDistanceKm > 0
+        ? input.drivingDistanceKm
+        : typeof input.distanceKm === 'number' && input.distanceKm > 0
+        ? input.distanceKm
+        : isMtRoskillToParnell
+        ? 9.78
+        : route.distanceKm;
+    const weeklyKm = distOneWay * 2 * (input.daysPerWeek || 5);
+    const weeklyWear =
+      typeof input.distanceWearWeekly === 'number' && !isNaN(input.distanceWearWeekly)
+        ? input.distanceWearWeekly
+        : typeof input.distanceWear === 'number' && !isNaN(input.distanceWear)
+        ? input.distanceWear
+        : DEFAULT_DISTANCE_WEAR_PER_WEEK;
+    wearRatePerKm = weeklyKm > 0 ? weeklyWear / weeklyKm : 0.05;
+  }
+
+  const costPerKm = fuelCostPerKm + rucRatePerKm + wearRatePerKm;
+  return round2(nonCommuteKm * costPerKm);
+}
+
+/**
+ * STORY-8: Calculates total annual financial arbitrage of selling the car completely.
+ * Computes:
+ * - C = annual commute fullCost + annual non-commute driving cost
+ * - F = annual commute transit fares (weekly transitCost * 52)
+ * - A = allowance for taxis, rentals, and other trips (default $300)
+ * - X = C - F - A
+ */
+export function calculateCarFreeSavings(
+  input: CommuteInput,
+  arbitrage: CommuteComparisonResult,
+  options?: {
+    otherDrivingKm?: number;
+    allowance?: number;
+  }
+): CarFreeSavingsResult {
+  const otherDrivingKm = options?.otherDrivingKm ?? 5000;
+  const allowance = options?.allowance ?? 300;
+
+  const weeklyFullCost =
+    typeof arbitrage.fullCost === 'number'
+      ? arbitrage.fullCost
+      : round2((arbitrage.stops?.total ?? 0) + (arbitrage.stays?.total ?? 0));
+  const annualCommuteFullCost = round2(weeklyFullCost * 52);
+  const annualNonCommuteCost = calculateAnnualNonCommuteCost(input, otherDrivingKm);
+  const carCostTotal = round2(annualCommuteFullCost + annualNonCommuteCost);
+
+  const weeklyTransitFare =
+    typeof arbitrage.transitCost === 'number'
+      ? arbitrage.transitCost
+      : arbitrage.transit?.weeklyTotal ?? 0;
+  const annualTransitFare = round2(weeklyTransitFare * 52);
+
+  const annualSavings = round2(carCostTotal - annualTransitFare - allowance);
+
+  return {
+    annualCommuteFullCost,
+    annualNonCommuteCost,
+    carCostTotal,
+    annualTransitFare,
+    allowance,
+    annualSavings,
+  };
+}
+
 
 export interface DrivingCostOptions {
   consumption?: number; // L/100km or kWh/100km

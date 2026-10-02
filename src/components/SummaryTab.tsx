@@ -5,6 +5,7 @@ import { CommuteInput, CommuteComparisonResult } from '@/types';
 import { getSuburbById, AUCKLAND_SUBURBS } from '@/config/suburbs';
 import VerdictCard from '@/components/VerdictCard';
 import ExpandableCostRow, { CostItem } from '@/components/ExpandableCostRow';
+import CarFreeCard from '@/components/CarFreeCard';
 import { MapPin, Car, Bus, Clock, Sliders, Check } from 'lucide-react';
 
 export interface SummaryTabProps {
@@ -344,6 +345,12 @@ export default function SummaryTab({
           </div>
         </div>
       </div>
+
+      {/* 6. Car-Free Savings Card (STORY-8) */}
+      <CarFreeCard
+        commuteInput={commuteInput}
+        arbitrage={arbitrage}
+      />
     </div>
   );
 }

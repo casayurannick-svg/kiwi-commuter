@@ -399,3 +399,13 @@ export interface TcoArbitrageResult {
   isBreakEvenAchieved: boolean;
   cumulativeCosts: TcoYearCost[];
 }
+
+export interface CarFreeSavingsResult {
+  annualCommuteFullCost: number;
+  annualNonCommuteCost: number;
+  carCostTotal: number; // C = annualCommuteFullCost + annualNonCommuteCost
+  annualTransitFare: number; // F = weekly transitCost * 52
+  allowance: number; // A = taxis, rentals and other trips
+  annualSavings: number; // X = C - F - A
+}
+
