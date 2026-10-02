@@ -114,10 +114,12 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
       ? 'PETROL_91'
       : rawPowerStr === 'EV'
       ? 'BEV'
+      : rawPowerStr === 'PHEV' || rawPowerStr?.includes('PHEV') || rawPowerStr?.includes('PLUG-IN')
+      ? 'PHEV'
       : (rawPowerStr as VehiclePowertrain | undefined) ||
         (rawVehicleTypeStr === 'EV' || rawVehicleTypeStr === 'BEV'
           ? 'BEV'
-          : rawVehicleTypeStr === 'PHEV'
+          : rawVehicleTypeStr === 'PHEV' || rawVehicleTypeStr?.includes('PHEV') || rawVehicleTypeStr?.includes('PLUG-IN')
           ? 'PHEV'
           : undefined);
 
@@ -128,7 +130,7 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
       ? 'diesel'
       : rawVehicleTypeStr === 'EV' || rawVehicleTypeStr === 'BEV' || input.vehicleType === 'bev' || normalizedPower === 'BEV'
       ? 'bev'
-      : rawVehicleTypeStr === 'PHEV' || input.vehicleType === 'phev' || normalizedPower === 'PHEV'
+      : rawVehicleTypeStr === 'PHEV' || input.vehicleType === 'phev' || normalizedPower === 'PHEV' || rawVehicleTypeStr?.includes('PHEV') || rawVehicleTypeStr?.includes('PLUG-IN')
       ? 'phev'
       : rawVehicleTypeStr === 'HEV' || input.vehicleType === 'hev' || normalizedPower === 'HEV'
       ? 'hev'
@@ -1298,10 +1300,12 @@ export function calculateAnnualNonCommuteCost(
       ? 'PETROL_91'
       : rawPowerStr === 'EV'
       ? 'BEV'
+      : rawPowerStr === 'PHEV' || rawPowerStr?.includes('PHEV') || rawPowerStr?.includes('PLUG-IN')
+      ? 'PHEV'
       : (rawPowerStr as VehiclePowertrain | undefined) ||
         (rawVehicleTypeStr === 'EV' || rawVehicleTypeStr === 'BEV'
           ? 'BEV'
-          : rawVehicleTypeStr === 'PHEV'
+          : rawVehicleTypeStr === 'PHEV' || rawVehicleTypeStr?.includes('PHEV') || rawVehicleTypeStr?.includes('PLUG-IN')
           ? 'PHEV'
           : undefined);
 
@@ -1312,7 +1316,7 @@ export function calculateAnnualNonCommuteCost(
       ? 'diesel'
       : rawVehicleTypeStr === 'EV' || rawVehicleTypeStr === 'BEV' || input.vehicleType === 'bev' || normalizedPower === 'BEV'
       ? 'bev'
-      : rawVehicleTypeStr === 'PHEV' || input.vehicleType === 'phev' || normalizedPower === 'PHEV'
+      : rawVehicleTypeStr === 'PHEV' || input.vehicleType === 'phev' || normalizedPower === 'PHEV' || rawVehicleTypeStr?.includes('PHEV') || rawVehicleTypeStr?.includes('PLUG-IN')
       ? 'phev'
       : rawVehicleTypeStr === 'HEV' || input.vehicleType === 'hev' || normalizedPower === 'HEV'
       ? 'hev'

@@ -1323,5 +1323,65 @@ describe('BUG-37: Scale public transport fares by carpool passenger count', () =
       assert.strictEqual(result.fullCost, 47.70);
     });
   });
+
+  describe('STORY-12: PHEV Powertrain Support & NZTA $38/1,000km RUC Rate', () => {
+    it('applies statutory $38/1,000km RUC rate alongside blended fuel calculation for PHEV vehicle type', () => {
+      // 1. Within battery range (18.2 km roundtrip, Takapuna to CBD)
+      const resultShort = calculateArbitrage({
+        originSuburbId: 'takapuna',
+        destinationSuburbId: 'cbd',
+        daysPerWeek: 5,
+        vehicleType: 'phev',
+        powertrain: 'PHEV',
+        parkingDailyRate: 0,
+        parkingDaysPerWeek: 0,
+        concession: 'adult',
+        carpoolPassengers: 1,
+      });
+
+      // 18.2 km * $0.038/km = $0.6916 -> round2 = $0.69
+      assert.strictEqual(resultShort.driving.dailyRucCost, 0.69, 'Daily RUC must strictly be $0.69 for 18.2km at $38/1000km');
+      assert.strictEqual(resultShort.driving.weeklyRucCost, 3.45, 'Weekly RUC must strictly be $3.45 for 5 days');
+      assert.strictEqual(resultShort.driving.dailyFuelCost, 0.54, 'Daily electric fuel must be $0.54 for 18.2km');
+
+      // 2. Beyond battery range with custom blended efficiency (e.g. 2.5 L/100km petrol, 10 kWh/100km electric)
+      const resultBlended = calculateArbitrage({
+        originSuburbId: 'albany',
+        destinationSuburbId: 'cbd',
+        daysPerWeek: 5,
+        vehicleType: 'phev',
+        powertrain: 'PHEV',
+        efficiency: 10, // 10 kWh/100km
+        consumptionOverride: 2.5, // 2.5 L/100km
+        parkingDailyRate: 0,
+        parkingDaysPerWeek: 0,
+        concession: 'adult',
+        carpoolPassengers: 1,
+      });
+
+      // 39.0 km * $0.038/km = $1.482 -> $1.48 daily RUC
+      assert.strictEqual(resultBlended.driving.dailyRucCost, 1.48, 'Daily RUC must strictly be $1.48 for 39.0km at $38/1000km');
+      assert.strictEqual(resultBlended.driving.weeklyRucCost, 7.40, 'Weekly RUC must strictly be $7.40 for 5 days');
+      // Blended fuel:
+      // Electric (first 35 km): 35 * 10/100 * 0.18 = 0.63
+      // Petrol (remaining 4 km): 4 * 2.5/100 * 2.72 = 0.272
+      // Daily fuel total: round2(0.63 + 0.272) = 0.90
+      assert.strictEqual(resultBlended.driving.dailyFuelCost, 0.90, 'Daily blended fuel cost must be $0.90');
+
+      // 3. String alias 'Plug-in Hybrid' maps cleanly to PHEV
+      const resultAlias = calculateArbitrage({
+        originSuburbId: 'albany',
+        destinationSuburbId: 'cbd',
+        daysPerWeek: 5,
+        vehicleType: 'Plug-in Hybrid',
+        parkingDailyRate: 0,
+        parkingDaysPerWeek: 0,
+        concession: 'adult',
+        carpoolPassengers: 1,
+      });
+      assert.strictEqual(resultAlias.driving.dailyRucCost, 1.48, 'Vehicle type "Plug-in Hybrid" must apply $38/1000km RUC');
+      assert.strictEqual(resultAlias.driving.dailyFuelCost, 1.69, 'Vehicle type "Plug-in Hybrid" must apply blended PHEV fuel');
+    });
+  });
 });
 

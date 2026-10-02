@@ -864,6 +864,68 @@ describe('STORY-7: Setup Flow Onboarding Modal', () => {
         root.unmount();
       });
     });
+
+    it('STORY-12: renders Plug-in Hybrid option with correct sub-label and emits phev vehicleType', () => {
+      const dom = new JSDOM('<!DOCTYPE html><html><body><div id="root"></div></body></html>');
+      // @ts-ignore
+      global.window = dom.window;
+      // @ts-ignore
+      global.document = dom.window.document;
+
+      const container = dom.window.document.getElementById('root')!;
+      const root = createRoot(container);
+
+      let finalResult: SetupResult | null = null;
+
+      flushSync(() => {
+        root.render(
+          React.createElement(SetupFlow, {
+            initialFrom: 'Ponsonby',
+            initialTo: 'CBD',
+            initialStep: 3,
+            onComplete: (res) => {
+              finalResult = res;
+            },
+          })
+        );
+      });
+
+      // Verify Plug-in Hybrid option is present with sub-label
+      const phevBtn = container.querySelector('[data-testid="setup-drive-phev"]') as HTMLButtonElement;
+      assert.ok(phevBtn, 'Plug-in Hybrid button must be present in Step 3');
+      assert.ok(phevBtn.textContent?.includes('Plug-in Hybrid'), 'Must display "Plug-in Hybrid"');
+      assert.ok(
+        phevBtn.textContent?.includes('Battery range, petrol engine & reduced RUC'),
+        'Must display "Battery range, petrol engine & reduced RUC" sub-label'
+      );
+
+      // Click Plug-in Hybrid
+      flushSync(() => {
+        phevBtn.click();
+      });
+
+      const nextBtn = container.querySelector('[data-testid="setup-next-btn"]') as HTMLButtonElement;
+      flushSync(() => {
+        nextBtn.click();
+      });
+
+      // Step 4: free parking
+      const freeBtn = container.querySelector('[data-testid="setup-parking-free"]') as HTMLButtonElement;
+      flushSync(() => {
+        freeBtn.click();
+      });
+      flushSync(() => {
+        nextBtn.click();
+      });
+
+      assert.ok(finalResult, 'onComplete must be called');
+      assert.strictEqual(finalResult?.vehicleType, 'phev', 'vehicleType must be phev');
+      assert.strictEqual(finalResult?.powertrain, 'PHEV', 'powertrain must be PHEV');
+
+      flushSync(() => {
+        root.unmount();
+      });
+    });
   });
 });
 
