@@ -1888,6 +1888,76 @@ describe('src/lib/calculator.ts - calculateCommuteArbitrage', () => {
       assert.strictEqual(result.annualIceCost.total, 4250.00);
     });
   });
+
+  describe('STORY-1: Single Cost Model & Stops/Stays Split', () => {
+    it('Sec. 5 fixture test: Mt Roskill to Parnell, diesel, 3 days/wk matches exact stops, stays, full, transit, and times', () => {
+      const result = calculateCommuteArbitrage({
+        originSuburbId: 'mt-roskill',
+        destinationSuburbId: 'parnell',
+        daysPerWeek: 3,
+        vehicleType: 'diesel',
+        parkingDailyRate: 4.00,
+        parkingDaysPerWeek: 3,
+        concession: 'adult',
+        carpoolPassengers: 1,
+      });
+
+      assert.strictEqual(result.stops.total, 29.58);
+      assert.strictEqual(result.stays.total, 18.12);
+      assert.strictEqual(result.fullCost, 47.70);
+      assert.strictEqual(result.transitCost, 29.40);
+      assert.strictEqual(result.carTime, '36m');
+      assert.strictEqual(result.transitTime, '92m');
+
+      // Line item verifications
+      assert.strictEqual(result.stops.fuel, 10.11);
+      assert.strictEqual(result.stops.ruc, 4.47);
+      assert.strictEqual(result.stops.parking, 12.00);
+      assert.strictEqual(result.stops.distanceWear, 3.00);
+    });
+
+    it('zero-parking test case: decreases stops and fullCost by parking amount while stays remain unchanged', () => {
+      const result = calculateCommuteArbitrage({
+        originSuburbId: 'mt-roskill',
+        destinationSuburbId: 'parnell',
+        daysPerWeek: 3,
+        vehicleType: 'diesel',
+        parkingDailyRate: 0,
+        parkingDaysPerWeek: 0,
+        concession: 'adult',
+        carpoolPassengers: 1,
+      });
+
+      assert.strictEqual(result.stops.total, 17.58);
+      assert.strictEqual(result.stays.total, 18.12);
+      assert.strictEqual(result.fullCost, 35.70);
+      assert.strictEqual(result.transitCost, 29.40);
+      assert.strictEqual(result.stops.parking, 0.00);
+      assert.strictEqual(result.stops.distanceWear, 3.00);
+      assert.strictEqual(result.carTime, '36m');
+      assert.strictEqual(result.transitTime, '92m');
+    });
+
+    it('verifies editable distance-wear assumption correctly recalculates stops and stays', () => {
+      const result = calculateCommuteArbitrage({
+        originSuburbId: 'mt-roskill',
+        destinationSuburbId: 'parnell',
+        daysPerWeek: 3,
+        vehicleType: 'diesel',
+        parkingDailyRate: 4.00,
+        parkingDaysPerWeek: 3,
+        concession: 'adult',
+        carpoolPassengers: 1,
+        distanceWearWeekly: 5.00,
+      });
+
+      assert.strictEqual(result.stops.distanceWear, 5.00);
+      assert.strictEqual(result.stops.total, 31.58);
+      assert.strictEqual(result.stays.total, 16.12);
+      assert.strictEqual(result.fullCost, 47.70);
+    });
+  });
 });
+
 
 

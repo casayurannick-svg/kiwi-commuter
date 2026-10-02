@@ -1,14 +1,10 @@
 'use client';
 
-import CommuteForm from '@/components/CommuteForm';
-import CommuteMatrix from '@/components/CommuteMatrix';
-import EvRoiSandbox from '@/components/EvRoiSandbox';
-import ComparisonCard from '@/components/ComparisonCard';
 import DonationButton from '@/components/DonationButton';
-import FuelRadarWidget from '@/components/FuelRadarWidget';
-import JourneyTimeline from '@/components/JourneyTimeline';
-import MonthlySavingsChart from '@/components/MonthlySavingsChart';
-import RouteMap from '@/components/RouteMap';
+import Tabs from '@/components/Tabs';
+import SummaryTab from '@/components/SummaryTab';
+import CompareTab from '@/components/CompareTab';
+import AdvancedTab from '@/components/AdvancedTab';
 import { getSuburbById } from '@/config/suburbs';
 import { calculateCommuteArbitrage } from '@/lib/calculator';
 import { FuelBenchmarkDto } from '@/lib/supabase';
@@ -16,7 +12,10 @@ import ShareButton from '@/components/ShareButton';
 import FeedbackButton from '@/components/FeedbackButton';
 import FeedbackModal from '@/components/FeedbackModal';
 import KiwiPathwayIcon from '@/components/icons/KiwiPathwayIcon';
+import SetupModal from '@/components/SetupModal';
+import { SetupResult } from '@/components/SetupFlow';
 import { useCommuteForm } from '@/hooks/useCommuteForm';
+import { useSearchParams } from 'next/navigation';
 import React, { useEffect, useMemo, useState } from 'react';
 
 interface DashboardClientProps {
@@ -24,8 +23,37 @@ interface DashboardClientProps {
 }
 
 export default function DashboardClient({ initialFuelPrices }: DashboardClientProps) {
+  const searchParams = useSearchParams();
   const { commuteInput, setCommuteInput } = useCommuteForm({ initialFuelPrices });
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
+
+  // STORY-7: Returning users bypass the setup modal
+  const isReturningUser = useMemo(() => {
+    if (!searchParams) return false;
+    return searchParams.toString().length > 0;
+  }, [searchParams]);
+
+  const [isSetupOpen, setIsSetupOpen] = useState<boolean>(() => !isReturningUser);
+
+  const handleSetupComplete = (result: SetupResult) => {
+    setCommuteInput((prev) => ({
+      ...prev,
+      originSuburbId: result.originSuburbId,
+      destinationSuburbId: result.destinationSuburbId,
+      originAddress: result.originAddress ?? prev.originAddress,
+      destinationAddress: result.destinationAddress ?? prev.destinationAddress,
+      originCoordinates: result.originCoordinates ?? prev.originCoordinates,
+      destinationCoordinates: result.destinationCoordinates ?? prev.destinationCoordinates,
+      daysPerWeek: result.daysPerWeek,
+      vehicleType: result.vehicleType,
+      powertrain: result.powertrain,
+      power: result.powertrain,
+      hasCar: result.hasCar,
+      parkingDailyRate: result.parkingDailyRate,
+      isParkingAssumed: result.isParkingAssumed,
+    }));
+    setIsSetupOpen(false);
+  };
 
   const origin = useMemo(() => getSuburbById(commuteInput.originSuburbId), [commuteInput.originSuburbId]);
   const destination = useMemo(
@@ -170,63 +198,58 @@ export default function DashboardClient({ initialFuelPrices }: DashboardClientPr
         </div>
       </header>
 
+      {/* Sticky Tab Navigation Shell (STORY-3) */}
+      <Tabs
+        activeTab={commuteInput.activeTab || 'summary'}
+        onTabChange={(tab) => setCommuteInput((prev) => ({ ...prev, activeTab: tab, tab }))}
+      />
+
       {/* Main Workspace Body (Mobile First Responsive Stack & Desktop 2-Column Grid) */}
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 py-4 sm:py-6">
-        <div className="flex flex-col gap-4 lg:grid lg:grid-cols-12 lg:gap-5 items-start">
-          {/* Left Column (Desktop cols 1..5: CommuteForm + FuelRadarWidget + MonthlySavingsChart + RouteMap) */}
-          <div className="contents lg:flex lg:flex-col lg:col-span-5 lg:gap-4 w-full">
-            <div className="order-1 w-full">
-              <CommuteForm
-                input={commuteInput}
-                calculationMode={commuteInput.calculationMode}
-                onChange={setCommuteInput}
-                onInputChange={setCommuteInput}
-              />
-            </div>
-            <div className="order-6 w-full">
-              <FuelRadarWidget initialFuelData={initialFuelPrices} />
-            </div>
-            <div className="order-7 w-full">
-              <MonthlySavingsChart arbitrage={arbitrage} />
-            </div>
-            <div className="order-8 w-full">
-              <RouteMap
-                origin={origin}
-                destination={destination}
-                distanceKm={arbitrage.distanceKm}
-                drivingTimeMins={arbitrage.drivingTimeMins}
-                transitTimeMins={arbitrage.transitTimeMins}
-              />
-            </div>
-          </div>
+        {/* Tab Panel: Summary (STORY-4 Layered Disclosure UI) */}
+        <div
+          role="tabpanel"
+          id="panel-summary"
+          aria-labelledby="tab-summary"
+          className={commuteInput.activeTab === 'summary' || !commuteInput.activeTab ? 'block' : 'hidden'}
+        >
+          <SummaryTab
+            commuteInput={commuteInput}
+            setCommuteInput={setCommuteInput}
+            arbitrage={arbitrage}
+            onChangeTab={(tab) => setCommuteInput((prev) => ({ ...prev, activeTab: tab, tab }))}
+          />
+        </div>
 
-          {/* Right Column (Desktop cols 6..12: ComparisonCard + CommuteMatrix + EvRoiSandbox + JourneyTimeline) */}
-          <div className="contents lg:flex lg:flex-col lg:col-span-7 lg:gap-4 w-full">
-            <div className="order-2 w-full">
-              <ComparisonCard
-                arbitrage={arbitrage}
-                input={commuteInput}
-                onCalculationModeChange={(mode) =>
-                  setCommuteInput((prev) => ({ ...prev, calculationMode: mode }))
-                }
-              />
-            </div>
-            <div className="order-3 w-full">
-              <CommuteMatrix input={commuteInput} arbitrage={arbitrage} />
-            </div>
-            <div className="order-3 w-full">
-              <EvRoiSandbox input={commuteInput} onChange={setCommuteInput} />
-            </div>
-            <div className="order-4 w-full">
-              <JourneyTimeline
-                arbitrage={arbitrage}
-                input={commuteInput}
-                onFirstMileModeChange={(mode) =>
-                  setCommuteInput((prev) => ({ ...prev, firstMileMode: mode }))
-                }
-              />
-            </div>
-          </div>
+        {/* Tab Panel: Compare (STORY-5 Side-by-Side Cost Base Analysis) */}
+        <div
+          role="tabpanel"
+          id="panel-compare"
+          aria-labelledby="tab-compare"
+          className={commuteInput.activeTab === 'compare' ? 'block' : 'hidden'}
+        >
+          <CompareTab
+            commuteInput={commuteInput}
+            setCommuteInput={setCommuteInput}
+            arbitrage={arbitrage}
+          />
+        </div>
+
+        {/* Tab Panel: Advanced (STORY-6 Collapsible Disclosure Rows) */}
+        <div
+          role="tabpanel"
+          id="panel-advanced"
+          aria-labelledby="tab-advanced"
+          className={commuteInput.activeTab === 'advanced' ? 'block' : 'hidden'}
+        >
+          <AdvancedTab
+            commuteInput={commuteInput}
+            setCommuteInput={setCommuteInput}
+            arbitrage={arbitrage}
+            initialFuelPrices={initialFuelPrices}
+            origin={origin}
+            destination={destination}
+          />
         </div>
       </main>
 
@@ -272,6 +295,15 @@ export default function DashboardClient({ initialFuelPrices }: DashboardClientPr
 
       {/* In-App Feedback Reporter Modal */}
       <FeedbackModal isOpen={isFeedbackOpen} onClose={() => setIsFeedbackOpen(false)} />
+
+      {/* First-Run Onboarding Setup Modal (STORY-7) */}
+      <SetupModal
+        isOpen={isSetupOpen}
+        onComplete={handleSetupComplete}
+        onClose={() => setIsSetupOpen(false)}
+        initialFrom={commuteInput.originAddress}
+        initialTo={commuteInput.destinationAddress}
+      />
     </div>
   );
 }

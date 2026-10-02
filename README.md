@@ -58,6 +58,31 @@ This repository strictly enforces a **Docs-as-Code** standard. All functional sp
    - Interactive toggle switch between standard **Fuel & Variable** mode and the comprehensive **IRD Tier 1 True Cost** benchmark (`$1.20/km`).
    - Formula: `distance_in_km * IRD_MILEAGE_RATE_PER_KM` (`1.20`), encompassing depreciation, WOF, Rego, routine servicing/maintenance, and insurance for complete total-cost-of-ownership comparisons.
 
+8. **EECA / Rightcar Real-World Efficiency Benchmarks & Plausibility Hints (STORY-9)**
+   - Visual **"Default"** and **"Assumption"** badges highlight un-customized baseline parameters (e.g., $3.00/wk distance wear, default L/100km, default fuel prices) until explicitly modified.
+   - Non-blocking, conversational UI hints guide users if entered fuel or energy efficiencies deviate from New Zealand EECA / Rightcar real-world operational distributions:
+     - **Petrol**: 5.0 – 11.0 L/100km (*"Petrol cars usually use 5-11 L/100km. Are you sure?"*)
+     - **Diesel**: 6.0 – 11.0 L/100km (*"Diesel vehicles usually use 6-11 L/100km. Are you sure?"*)
+     - **Hybrid (HEV / PHEV)**: 3.0 – 6.0 L/100km (*"Hybrids usually use 3-6 L/100km. Are you sure?"*)
+     - **Electric (BEV)**: 12.0 – 22.0 kWh/100km (*"Electric cars usually use 12-22 kWh/100km. Are you sure?"*)
+   - Advisory notices are non-blocking (`role="status"`) and preserve full user freedom for hypermilers, heavily loaded utes, or extreme custom vehicles.
+
+9. **Shareable Links & Privacy Architecture (STORY-10)**
+   - **Opaque UUID Trip Links (`saved_trips`)**: Share links generate clean, opaque URLs (`?tripId=<UUID>`) stored in Supabase. Commute states are persisted without exposing residential street addresses in the URL.
+   - **Street Number Scrubbing Fallback**: If Supabase is unreachable or unconfigured, the generator gracefully degrades to direct URL parameter serialization with strict street-number scrubbing (e.g., `"123 Dominion Road, Mt Eden"` becomes `"Dominion Road, Mt Eden"` or `"Mt Eden"`).
+   - **Full Backward Compatibility**: Legacy URLs containing full street numbers continue to resolve and load accurately.
+   - **`saved_trips` Supabase Schema**:
+     ```sql
+     CREATE TABLE saved_trips (
+       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+       payload JSONB NOT NULL,
+       created_at TIMESTAMPTZ DEFAULT now()
+     );
+     CREATE INDEX idx_saved_trips_created_at ON saved_trips (created_at DESC);
+     ALTER TABLE saved_trips ENABLE ROW LEVEL SECURITY;
+     -- Public read and anonymous insert policies enabled
+     ```
+
 ---
 
 ## 🏗️ Architecture & Directory Layout
@@ -102,11 +127,14 @@ kiwi-commuter/
 │       └── index.ts                    # Vehicle, trip, calculation, and API types
 ├── supabase/
 │   └── migrations/
-│       └── 20260925_init_schema.sql    # PostgreSQL schema with RLS policies
+│       ├── 20260925_init_schema.sql    # PostgreSQL schema with RLS policies
+│       └── 20261002_saved_trips.sql    # Saved trips table for opaque shareable URLs (STORY-10)
 ├── scripts/
 │   └── fetch-mbie-fuel.ts              # Script to parse MBIE CSV and push to Supabase
-├── tests/
-│   └── calculator.test.ts              # Automated test suite (32 tests across 11 suites)
+├── tests/                              # Node test runner suite (362 tests across 109 suites)
+│   ├── calculator.test.ts
+│   ├── share.test.ts                   # Privacy fallback & opaque share URL tests
+│   └── validation.test.ts
 ├── .env.example
 ├── package.json
 ├── tailwind.config.ts

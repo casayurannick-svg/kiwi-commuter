@@ -73,7 +73,7 @@ export async function POST(request: Request) {
       const errText = await githubResponse.text();
       console.error(`[Feedback API] GitHub API responded with status ${githubResponse.status}:`, errText);
       return NextResponse.json(
-        { error: 'Failed to create GitHub issue. Please try again later.' },
+        { error: 'Failed to create GitHub issue. Try again later.' },
         { status: githubResponse.status }
       );
     }
