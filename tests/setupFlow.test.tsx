@@ -485,11 +485,15 @@ describe('STORY-7: Setup Flow Onboarding Modal', () => {
         fromInput.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
       });
 
-      // Wait for geocoding search promise
-      await new Promise((r) => setTimeout(r, 60));
-      flushSync(() => {});
+      // Wait for geocoding search promise and dropdown render
+      let dropdown: Element | null = null;
+      for (let i = 0; i < 20; i++) {
+        await new Promise((r) => setTimeout(r, 25));
+        flushSync(() => {});
+        dropdown = container.querySelector('[data-testid="setup-from-input-dropdown"]');
+        if (dropdown) break;
+      }
 
-      const dropdown = container.querySelector('[data-testid="setup-from-input-dropdown"]');
       assert.ok(dropdown, 'Dropdown must render when search results exist');
 
       const suggestion = container.querySelector('[data-testid="setup-from-input-suggestion-0"]') as HTMLButtonElement;
@@ -511,8 +515,13 @@ describe('STORY-7: Setup Flow Onboarding Modal', () => {
         toInput.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
       });
 
-      await new Promise((r) => setTimeout(r, 60));
-      flushSync(() => {});
+      let toDropdown: Element | null = null;
+      for (let i = 0; i < 20; i++) {
+        await new Promise((r) => setTimeout(r, 25));
+        flushSync(() => {});
+        toDropdown = container.querySelector('[data-testid="setup-to-input-dropdown"]');
+        if (toDropdown) break;
+      }
 
       const toSuggestion = container.querySelector('[data-testid="setup-to-input-suggestion-0"]') as HTMLButtonElement;
       assert.ok(toSuggestion, 'To suggestion item must render');

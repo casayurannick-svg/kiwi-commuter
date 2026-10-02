@@ -83,10 +83,14 @@ describe('AddressAutocomplete Component', () => {
       input.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
     });
 
-    await new Promise((r) => setTimeout(r, 60));
-    flushSync(() => {});
+    let dropdown: Element | null = null;
+    for (let i = 0; i < 20; i++) {
+      await new Promise((r) => setTimeout(r, 25));
+      flushSync(() => {});
+      dropdown = container.querySelector('[data-testid="test-auto-dropdown"]');
+      if (dropdown) break;
+    }
 
-    const dropdown = container.querySelector('[data-testid="test-auto-dropdown"]');
     assert.ok(dropdown, 'Dropdown must render with suggestions');
 
     const item0 = container.querySelector('[data-testid="test-auto-suggestion-0"]') as HTMLButtonElement;
@@ -154,10 +158,15 @@ describe('AddressAutocomplete Component', () => {
       input.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
     });
 
-    await new Promise((r) => setTimeout(r, 60));
-    flushSync(() => {});
+    let outsideDropdown: Element | null = null;
+    for (let i = 0; i < 20; i++) {
+      await new Promise((r) => setTimeout(r, 25));
+      flushSync(() => {});
+      outsideDropdown = container.querySelector('[data-testid="test-outside-dropdown"]');
+      if (outsideDropdown) break;
+    }
 
-    assert.ok(container.querySelector('[data-testid="test-outside-dropdown"]'), 'Dropdown is open');
+    assert.ok(outsideDropdown, 'Dropdown is open');
 
     // Click outside
     flushSync(() => {
