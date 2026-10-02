@@ -338,4 +338,88 @@ describe('STORY-4: Summary Tab & Layered Disclosure UI', () => {
       assert.ok(ratio >= 4.5, `emerald-400 contrast (${ratio.toFixed(2)}) must exceed 4.5:1`);
     });
   });
+
+  describe('BUG-15: Multimodal Primary Mode Hierarchy in Savings Banner', () => {
+    it('displays "The train would save you..." in the savings banner for a multimodal journey with dominant train leg', () => {
+      const multimodalArbitrage = {
+        ...arbitrage,
+        verdict: {
+          state: 'transit_cheaper' as const,
+          headline: 'The bus would save you about $25 a week', // Legacy default headline
+          support: "That's roughly $1,175 a year, and the bus takes 15 minutes longer each day.",
+          band: 5,
+          differenceWeekly: 25.0,
+          savingsWeekly: 25.0,
+          savingsAnnual: 1175,
+          isWash: false,
+          isTransitCheaper: true,
+          isDrivingCheaper: false,
+          timeDeltaMinutesDaily: 15,
+        },
+        journeyLegs: [
+          {
+            id: 'first-mile',
+            title: 'Walk to Station',
+            type: 'FIRST_MILE' as const,
+            mode: 'WALK' as const,
+            originName: 'Home',
+            destinationName: 'Henderson',
+            distanceKm: 0.5,
+            durationMins: 5,
+            cost: 0,
+            costFormatted: 'Free',
+            iconName: 'Footprints',
+          },
+          {
+            id: 'transit',
+            title: 'Transit Journey',
+            type: 'TRANSIT' as const,
+            mode: 'BUS' as const,
+            originName: 'Henderson',
+            destinationName: 'Britomart',
+            distanceKm: 20,
+            durationMins: 76,
+            cost: 4.80,
+            costFormatted: '$4.80',
+            iconName: 'Bus',
+            transitSteps: [
+              {
+                line: 'Feeder Bus',
+                vehicleType: 'BUS',
+                durationMins: 3,
+              },
+              {
+                line: 'Western Line',
+                vehicleType: 'TRAIN',
+                durationMins: 73,
+              },
+            ],
+          },
+        ],
+      };
+
+      const html = renderToStaticMarkup(
+        React.createElement(SummaryTab, {
+          commuteInput: {
+            ...fixtureInput,
+            transitSteps: [
+              { line: 'Feeder Bus', vehicleType: 'BUS', durationMins: 3 },
+              { line: 'Western Line', vehicleType: 'TRAIN', durationMins: 73 },
+            ],
+          },
+          setCommuteInput: () => {},
+          arbitrage: multimodalArbitrage as any,
+        })
+      );
+
+      assert.ok(
+        html.includes('The train would save you about $25 a week'),
+        `Summary banner must display "The train would save you...", got: ${html}`
+      );
+      assert.ok(
+        html.includes('By train,'),
+        `Public transit time card must display "By train,", got: ${html}`
+      );
+    });
+  });
 });

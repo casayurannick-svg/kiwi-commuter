@@ -6,7 +6,8 @@ import { getSuburbById } from '@/config/suburbs';
 import VerdictCard from '@/components/VerdictCard';
 import ExpandableCostRow, { CostItem } from '@/components/ExpandableCostRow';
 import CarFreeCard from '@/components/CarFreeCard';
-import { MapPin, Car, Bus, Clock, Sliders, Check } from 'lucide-react';
+import { MapPin, Car, Bus, Train, Ship, Bike, Clock, Sliders, Check } from 'lucide-react';
+import { getPrimaryTransitMode } from '@/lib/routing';
 
 export interface SummaryTabProps {
   commuteInput: CommuteInput;
@@ -82,13 +83,41 @@ export default function SummaryTab({
   // Daily commute times
   const carDailyMins = (arbitrage.drivingTimeMins || 18) * 2;
   const transitDailyMins = (arbitrage.transitTimeMins || 46) * 2;
-  const rawMode = commuteInput.transitMode || origin?.primaryTransitMode || 'Bus';
-  const transitModeName =
-    rawMode === 'FERRY' || rawMode.toLowerCase() === 'ferry'
-      ? 'ferry'
-      : rawMode === 'TRAIN' || rawMode.toLowerCase() === 'train'
-      ? 'train'
-      : 'bus';
+
+  // BUG-15: Multimodal primary mode detection for dynamic copy & icons
+  const primaryModeNoun = getPrimaryTransitMode(
+    arbitrage.journeyLegs && arbitrage.journeyLegs.length > 0
+      ? arbitrage.journeyLegs
+      : commuteInput.transitSteps && commuteInput.transitSteps.length > 0
+      ? commuteInput.transitSteps
+      : [{ mode: commuteInput.transitMode || arbitrage.transit?.primaryMode || origin?.primaryTransitMode || 'Bus' }]
+  );
+  const transitModeName = primaryModeNoun;
+
+  // BUG-15: Ensure savings banner headline and supporting copy use the primary mode's noun (e.g., "The train would save you...")
+  const effectiveVerdict = React.useMemo(() => {
+    if (!arbitrage.verdict) return undefined;
+    let headline = arbitrage.verdict.headline;
+    let support = arbitrage.verdict.support;
+
+    // Update headline: e.g. "The bus would save you..." -> "The train would save you..."
+    if (headline && headline.includes('would save you')) {
+      headline = headline.replace(/^The \w+ would save you/i, `The ${primaryModeNoun} would save you`);
+    }
+
+    // Update support: e.g. "...and the bus takes..." -> "...and the train takes..."
+    if (support) {
+      support = support
+        .replace(/and the \w+ takes/gi, `and the ${primaryModeNoun} takes`)
+        .replace(/The \w+ takes/gi, `The ${primaryModeNoun} takes`);
+    }
+
+    return {
+      ...arbitrage.verdict,
+      headline,
+      support,
+    };
+  }, [arbitrage.verdict, primaryModeNoun]);
 
   return (
     <div className="w-full space-y-6 max-w-4xl mx-auto py-2">
@@ -146,7 +175,7 @@ export default function SummaryTab({
       )}
 
       {/* 2. Verdict Card (Headline + Natural Language Support Copy) */}
-      <VerdictCard verdict={arbitrage.verdict} />
+      <VerdictCard verdict={effectiveVerdict} />
 
       {/* 3. Expandable Cost Rows (What you'd stop paying vs What you'd still pay) */}
       <div className="space-y-3 pt-1">
@@ -269,7 +298,15 @@ export default function SummaryTab({
         <div className="rounded-xl border border-slate-800/80 bg-slate-900/70 p-5 backdrop-blur-sm shadow-md flex items-center justify-between">
           <div className="flex items-center gap-3.5">
             <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
-              <Bus className="w-5 h-5" aria-hidden="true" />
+              {transitModeName === 'train' ? (
+                <Train className="w-5 h-5" aria-hidden="true" />
+              ) : transitModeName === 'ferry' ? (
+                <Ship className="w-5 h-5" aria-hidden="true" />
+              ) : transitModeName === 'ebike' ? (
+                <Bike className="w-5 h-5" aria-hidden="true" />
+              ) : (
+                <Bus className="w-5 h-5" aria-hidden="true" />
+              )}
             </div>
             <div>
               <div className="text-xs text-slate-300 uppercase tracking-wider font-semibold">

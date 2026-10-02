@@ -43,6 +43,7 @@ import {
 import { findNearestTransitStation } from './stations';
 import { haversineDistanceKm } from './routes';
 import { calculateVerdict } from './verdict';
+import { getPrimaryTransitMode } from './routing';
 
 export const WEEKS_PER_MONTH = 52 / 12; // 4.33333333
 /**
@@ -870,6 +871,8 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
       ? 'E-Bike'
       : isMicromobility
       ? 'Scooter & Ride'
+      : (hasReturnedSteps && input.transitSteps && input.transitSteps.length > 0)
+      ? (getPrimaryTransitMode(input.transitSteps, { format: 'titlecase' }) as 'Train' | 'Ferry' | 'Bus')
       : isFerry
       ? 'Ferry'
       : (hasReturnedSteps && hasTrainStep) || (!hasReturnedSteps && origin.primaryTransitMode === 'Train')
@@ -1101,8 +1104,19 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
       });
     }
 
+    const stepsPrimary =
+      hasReturnedSteps && input.transitSteps && input.transitSteps.length > 0
+        ? getPrimaryTransitMode(input.transitSteps, { format: 'lowercase' })
+        : null;
+
     const transitRideMode: 'TRAIN' | 'FERRY' | 'BUS' =
-      isFerry || isFerryWaypointInjection
+      stepsPrimary === 'train'
+        ? 'TRAIN'
+        : stepsPrimary === 'ferry'
+        ? 'FERRY'
+        : stepsPrimary === 'bus'
+        ? 'BUS'
+        : isFerry || isFerryWaypointInjection
         ? 'FERRY'
         : (hasReturnedSteps && hasTrainStep) || (!hasReturnedSteps && origin.primaryTransitMode === 'Train')
         ? 'TRAIN'
