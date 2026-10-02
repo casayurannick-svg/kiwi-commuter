@@ -11,11 +11,14 @@ export interface SetupModalProps {
   onClose?: () => void;
   initialFrom?: string;
   initialTo?: string;
+  initialStep?: number;
+  isFirstRun?: boolean;
 }
 
 /**
- * SetupModal (STORY-7)
- * First-run modal wrapper for new users. Skipped when URL parameters exist.
+ * SetupModal (STORY-7, FIX-CHANGE-ROUTE)
+ * First-run modal wrapper for new users and modal route editor for returning users.
+ * Close 'X' button is hidden on initial onboarding and visible when reopened from Dashboard.
  */
 export default function SetupModal({
   isOpen,
@@ -23,12 +26,23 @@ export default function SetupModal({
   onClose,
   initialFrom,
   initialTo,
+  initialStep = 1,
+  isFirstRun,
 }: SetupModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
 
+  // If isFirstRun is explicitly passed, respect it; otherwise check if URL query params are empty
+  const isUrlEmpty =
+    typeof window !== 'undefined'
+      ? !window.location.search || window.location.search === ''
+      : true;
+  const effectiveIsFirstRun = isFirstRun !== undefined ? isFirstRun : isUrlEmpty;
+
+  const canClose = Boolean(onClose && !effectiveIsFirstRun);
+
   // Close on Escape key press if dismissible
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || !canClose) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && onClose) {
@@ -38,7 +52,7 @@ export default function SetupModal({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
+  }, [isOpen, canClose, onClose]);
 
   if (!isOpen) return null;
 
@@ -71,12 +85,13 @@ export default function SetupModal({
             </div>
           </div>
 
-          {onClose && (
+          {canClose && (
             <button
               type="button"
               onClick={onClose}
               aria-label="Close setup modal"
-              className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800/80 transition"
+              data-testid="setup-modal-close-btn"
+              className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800/80 transition min-h-[24px] min-w-[24px] flex items-center justify-center"
             >
               <X className="w-4 h-4" />
             </button>
@@ -88,6 +103,7 @@ export default function SetupModal({
           onComplete={onComplete}
           initialFrom={initialFrom}
           initialTo={initialTo}
+          initialStep={initialStep}
         />
       </div>
     </div>

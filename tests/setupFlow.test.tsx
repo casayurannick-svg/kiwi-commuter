@@ -416,6 +416,123 @@ describe('STORY-7: Setup Flow Onboarding Modal', () => {
     });
   });
 
+  describe('FIX-CHANGE-ROUTE: Close "X" Button Visibility & Modal Route Editing', () => {
+    it('hides the "X" close button and prevents Escape dismissal on initial onboarding (isFirstRun = true)', () => {
+      const dom = new JSDOM('<!DOCTYPE html><html><body><div id="root"></div></body></html>');
+      // @ts-ignore
+      global.window = dom.window;
+      // @ts-ignore
+      global.document = dom.window.document;
+
+      const container = dom.window.document.getElementById('root')!;
+      const root = createRoot(container);
+      let closed = false;
+
+      flushSync(() => {
+        root.render(
+          React.createElement(SetupModal, {
+            isOpen: true,
+            isFirstRun: true,
+            onComplete: () => {},
+            onClose: () => {
+              closed = true;
+            },
+          })
+        );
+      });
+
+      const closeBtn = container.querySelector('[data-testid="setup-modal-close-btn"]');
+      assert.strictEqual(closeBtn, null, '"X" close button must be hidden on first-run onboarding');
+
+      // Simulate Escape key
+      const escEvent = new dom.window.KeyboardEvent('keydown', { key: 'Escape' });
+      dom.window.dispatchEvent(escEvent);
+
+      assert.strictEqual(closed, false, 'Escape key must not dismiss modal during first-run onboarding');
+
+      flushSync(() => {
+        root.unmount();
+      });
+    });
+
+    it('renders the "X" close button and allows cancellation when reopened from dashboard (isFirstRun = false)', () => {
+      const dom = new JSDOM('<!DOCTYPE html><html><body><div id="root"></div></body></html>');
+      // @ts-ignore
+      global.window = dom.window;
+      // @ts-ignore
+      global.document = dom.window.document;
+
+      const container = dom.window.document.getElementById('root')!;
+      const root = createRoot(container);
+      let closeCount = 0;
+
+      flushSync(() => {
+        root.render(
+          React.createElement(SetupModal, {
+            isOpen: true,
+            isFirstRun: false,
+            onComplete: () => {},
+            onClose: () => {
+              closeCount++;
+            },
+          })
+        );
+      });
+
+      const closeBtn = container.querySelector('[data-testid="setup-modal-close-btn"]') as HTMLButtonElement;
+      assert.ok(closeBtn, '"X" close button must be rendered when reopened from dashboard');
+
+      flushSync(() => {
+        closeBtn.click();
+      });
+
+      assert.strictEqual(closeCount, 1, 'Clicking "X" button must call onClose');
+
+      // Test Escape key
+      const escEvent = new dom.window.KeyboardEvent('keydown', { key: 'Escape' });
+      dom.window.dispatchEvent(escEvent);
+      assert.strictEqual(closeCount, 2, 'Pressing Escape key must call onClose');
+
+      flushSync(() => {
+        root.unmount();
+      });
+    });
+
+    it('opens directly at initialStep (e.g., Step 1 for address autocomplete)', () => {
+      const dom = new JSDOM('<!DOCTYPE html><html><body><div id="root"></div></body></html>');
+      // @ts-ignore
+      global.window = dom.window;
+      // @ts-ignore
+      global.document = dom.window.document;
+
+      const container = dom.window.document.getElementById('root')!;
+      const root = createRoot(container);
+
+      flushSync(() => {
+        root.render(
+          React.createElement(SetupModal, {
+            isOpen: true,
+            isFirstRun: false,
+            initialStep: 1,
+            initialFrom: 'Takapuna',
+            initialTo: 'Auckland CBD',
+            onComplete: () => {},
+            onClose: () => {},
+          })
+        );
+      });
+
+      assert.ok(container.textContent?.includes('Step 1 of 4'), 'Must render Step 1 of 4');
+      assert.ok(container.textContent?.includes('Where do you travel?'), 'Must render Step 1 title');
+      const fromInput = container.querySelector('[data-testid="setup-from-input"]') as HTMLInputElement;
+      assert.ok(fromInput, 'Address autocomplete input must be rendered');
+
+      flushSync(() => {
+        root.unmount();
+      });
+    });
+  });
+
   describe('BUG-12: Setup Modal Autocomplete Integration', () => {
     it('renders AddressAutocomplete combobox inputs in Step 1 with proper ARIA attributes', () => {
       const dom = new JSDOM('<!DOCTYPE html><html><body><div id="root"></div></body></html>');

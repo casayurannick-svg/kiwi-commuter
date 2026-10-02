@@ -26,6 +26,7 @@ export interface SetupFlowProps {
   onComplete: (result: SetupResult) => void;
   initialFrom?: string;
   initialTo?: string;
+  initialStep?: number;
 }
 
 type DriveOption = 'petrol' | 'diesel' | 'hybrid' | 'electric' | 'none';
@@ -43,8 +44,9 @@ export default function SetupFlow({
   onComplete,
   initialFrom = '',
   initialTo = '',
+  initialStep = 1,
 }: SetupFlowProps) {
-  const [step, setStep] = useState<number>(1);
+  const [step, setStep] = useState<number>(initialStep);
   const [error, setError] = useState<string | null>(null);
 
   // Form State

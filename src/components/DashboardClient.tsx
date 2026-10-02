@@ -33,7 +33,9 @@ export default function DashboardClient({ initialFuelPrices }: DashboardClientPr
     return searchParams.toString().length > 0;
   }, [searchParams]);
 
+  const [hasCompletedSetup, setHasCompletedSetup] = useState<boolean>(() => isReturningUser);
   const [isSetupOpen, setIsSetupOpen] = useState<boolean>(() => !isReturningUser);
+  const [setupInitialStep, setSetupInitialStep] = useState<number>(1);
 
   const handleSetupComplete = (result: SetupResult) => {
     setCommuteInput((prev) => ({
@@ -52,7 +54,13 @@ export default function DashboardClient({ initialFuelPrices }: DashboardClientPr
       parkingDailyRate: result.parkingDailyRate,
       isParkingAssumed: result.isParkingAssumed,
     }));
+    setHasCompletedSetup(true);
     setIsSetupOpen(false);
+  };
+
+  const handleEditCommute = (step: number = 1) => {
+    setSetupInitialStep(step);
+    setIsSetupOpen(true);
   };
 
   const origin = useMemo(() => getSuburbById(commuteInput.originSuburbId), [commuteInput.originSuburbId]);
@@ -218,6 +226,7 @@ export default function DashboardClient({ initialFuelPrices }: DashboardClientPr
             setCommuteInput={setCommuteInput}
             arbitrage={arbitrage}
             onChangeTab={(tab) => setCommuteInput((prev) => ({ ...prev, activeTab: tab, tab }))}
+            onEditCommute={handleEditCommute}
           />
         </div>
 
@@ -296,13 +305,15 @@ export default function DashboardClient({ initialFuelPrices }: DashboardClientPr
       {/* In-App Feedback Reporter Modal */}
       <FeedbackModal isOpen={isFeedbackOpen} onClose={() => setIsFeedbackOpen(false)} />
 
-      {/* First-Run Onboarding Setup Modal (STORY-7) */}
+      {/* First-Run Onboarding & Route Editor Setup Modal (STORY-7, FIX-CHANGE-ROUTE) */}
       <SetupModal
         isOpen={isSetupOpen}
         onComplete={handleSetupComplete}
         onClose={() => setIsSetupOpen(false)}
-        initialFrom={commuteInput.originAddress}
-        initialTo={commuteInput.destinationAddress}
+        initialFrom={commuteInput.originAddress || origin?.name}
+        initialTo={commuteInput.destinationAddress || destination?.name}
+        initialStep={setupInitialStep}
+        isFirstRun={!hasCompletedSetup}
       />
     </div>
   );
