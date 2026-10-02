@@ -13,6 +13,8 @@ export interface AddressAutocompleteProps {
   onChange: (value: string) => void;
   onSelect: (result: GeocodingResult) => void;
   onClear?: () => void;
+  onFocus?: (e: React.FocusEvent<HTMLInputElement>) => void;
+  autoClearOnFocus?: boolean;
   icon?: React.ReactNode;
   dropdownZIndex?: string;
   className?: string;
@@ -30,11 +32,13 @@ export default function AddressAutocomplete({
   id,
   label,
   testId = id,
-  placeholder = 'Search street or suburb...',
+  placeholder = 'e.g., 1 Queen Street, Auckland 1010',
   value,
   onChange,
   onSelect,
   onClear,
+  onFocus,
+  autoClearOnFocus = false,
   icon,
   dropdownZIndex = 'z-50',
   className = '',
@@ -175,8 +179,22 @@ export default function AddressAutocomplete({
             placeholder={placeholder}
             onChange={(e) => handleSearch(e.target.value)}
             onInput={(e) => handleSearch((e.target as HTMLInputElement).value)}
-            onFocus={() => {
-              if (suggestions.length > 0) setShowDropdown(true);
+            onFocus={(e) => {
+              if (autoClearOnFocus && query) {
+                setQuery('');
+                setShowDropdown(false);
+                setSuggestions([]);
+                onChange('');
+                if (onClear) {
+                  onClear();
+                }
+              }
+              if (onFocus) {
+                onFocus(e);
+              }
+              if (!autoClearOnFocus && suggestions.length > 0) {
+                setShowDropdown(true);
+              }
             }}
             onKeyDown={handleKeyDown}
             className="w-full bg-slate-950 border border-slate-700/80 rounded-xl pl-9 pr-9 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed transition"

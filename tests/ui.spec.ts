@@ -11,16 +11,18 @@ test.describe('First-Run Setup Flow & Tab Shell Navigation (E2E-REGRESSION)', ()
 
     // Step 1: "Where do you travel?" with live Mapbox/AT autocomplete
     const fromInput = modal.locator('[data-testid="setup-from-input"]');
-    await fromInput.fill('Mount Roskill');
+    await fromInput.click();
+    await fromInput.pressSequentially('Mount Roskill', { delay: 30 });
     const fromDropdown = modal.locator('[data-testid="setup-from-input-dropdown"]');
-    await expect(fromDropdown).toBeVisible();
+    await expect(fromDropdown).toBeVisible({ timeout: 15000 });
     await modal.locator('[data-testid="setup-from-input-suggestion-0"]').click();
     await expect(fromDropdown).toHaveCount(0);
 
     const toInput = modal.locator('[data-testid="setup-to-input"]');
-    await toInput.fill('Parnell');
+    await toInput.click();
+    await toInput.pressSequentially('Parnell', { delay: 30 });
     const toDropdown = modal.locator('[data-testid="setup-to-input-dropdown"]');
-    await expect(toDropdown).toBeVisible();
+    await expect(toDropdown).toBeVisible({ timeout: 15000 });
     await modal.locator('[data-testid="setup-to-input-suggestion-0"]').click();
     await expect(toDropdown).toHaveCount(0);
 

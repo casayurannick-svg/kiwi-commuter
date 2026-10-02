@@ -185,4 +185,60 @@ describe('AddressAutocomplete Component', () => {
       root.unmount();
     });
   });
+
+  it('clears query and invokes onClear and onFocus when autoClearOnFocus is enabled', () => {
+    const dom = new JSDOM('<!DOCTYPE html><html><body><div id="root"></div></body></html>');
+    // @ts-ignore
+    global.window = dom.window;
+    // @ts-ignore
+    global.document = dom.window.document;
+
+    (dom.window.HTMLInputElement.prototype as any).attachEvent = () => {};
+    (dom.window.HTMLInputElement.prototype as any).detachEvent = () => {};
+
+    const container = dom.window.document.getElementById('root')!;
+    const root = createRoot(container);
+
+    let changedValue = '1 Queen Street';
+    let clearedCalled = false;
+    let focusCalled = false;
+
+    flushSync(() => {
+      root.render(
+        React.createElement(AddressAutocomplete, {
+          id: 'test-autoclear',
+          testId: 'test-autoclear',
+          value: changedValue,
+          autoClearOnFocus: true,
+          onChange: (val) => {
+            changedValue = val;
+          },
+          onClear: () => {
+            clearedCalled = true;
+          },
+          onFocus: () => {
+            focusCalled = true;
+          },
+          onSelect: () => {},
+        })
+      );
+    });
+
+    const input = container.querySelector('#test-autoclear') as HTMLInputElement;
+    assert.strictEqual(input.value, '1 Queen Street');
+
+    // Simulate focus
+    flushSync(() => {
+      input.focus();
+    });
+
+    assert.strictEqual(input.value, '', 'Input query must be cleared on focus');
+    assert.strictEqual(changedValue, '', 'onChange must be called with empty string');
+    assert.strictEqual(clearedCalled, true, 'onClear must be called');
+    assert.strictEqual(focusCalled, true, 'onFocus must be called');
+
+    flushSync(() => {
+      root.unmount();
+    });
+  });
 });

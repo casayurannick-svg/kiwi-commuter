@@ -301,8 +301,8 @@ export default function DashboardClient({ initialFuelPrices }: DashboardClientPr
         isOpen={isSetupOpen}
         onComplete={handleSetupComplete}
         onClose={() => setIsSetupOpen(false)}
-        initialFrom={commuteInput.originAddress || commuteInput.originSuburbId}
-        initialTo={commuteInput.destinationAddress || commuteInput.destinationSuburbId}
+        initialFrom={commuteInput.originAddress}
+        initialTo={commuteInput.destinationAddress}
       />
     </div>
   );

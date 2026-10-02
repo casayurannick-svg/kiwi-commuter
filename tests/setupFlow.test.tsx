@@ -611,5 +611,143 @@ describe('STORY-7: Setup Flow Onboarding Modal', () => {
       });
     });
   });
+
+  describe('UX-12: Address Input Simplification & Auto-Clear', () => {
+    it('renders Step 1 with simplified labels "From" and "To", empty initial values, and realistic Auckland placeholders', () => {
+      const dom = new JSDOM('<!DOCTYPE html><html><body><div id="root"></div></body></html>');
+      // @ts-ignore
+      global.window = dom.window;
+      // @ts-ignore
+      global.document = dom.window.document;
+
+      const container = dom.window.document.getElementById('root')!;
+      const root = createRoot(container);
+
+      flushSync(() => {
+        root.render(
+          React.createElement(SetupFlow, {
+            onComplete: () => {},
+          })
+        );
+      });
+
+      const fromInput = container.querySelector('[data-testid="setup-from-input"]') as HTMLInputElement;
+      const toInput = container.querySelector('[data-testid="setup-to-input"]') as HTMLInputElement;
+
+      assert.ok(fromInput, 'From input must exist');
+      assert.ok(toInput, 'To input must exist');
+
+      // Acceptance: Labels are exactly "From" and "To"
+      const fromLabel = container.querySelector('label[for="setup-from-input"]');
+      const toLabel = container.querySelector('label[for="setup-to-input"]');
+      assert.strictEqual(fromLabel?.textContent?.trim(), 'From', 'From label must be exactly "From"');
+      assert.strictEqual(toLabel?.textContent?.trim(), 'To', 'To label must be exactly "To"');
+
+      // Acceptance: No default values populate (inputs start empty on load)
+      assert.strictEqual(fromInput.value, '', 'From input must start empty on load with no default suburb');
+      assert.strictEqual(toInput.value, '', 'To input must start empty on load with no default suburb');
+
+      // Acceptance: Placeholder text is set to realistic Auckland format
+      assert.strictEqual(
+        fromInput.getAttribute('placeholder'),
+        'e.g., 1 Queen Street, Auckland 1010',
+        'From placeholder must match realistic Auckland format'
+      );
+      assert.strictEqual(
+        toInput.getAttribute('placeholder'),
+        'e.g., 1 Queen Street, Auckland 1010',
+        'To placeholder must match realistic Auckland format'
+      );
+
+      flushSync(() => {
+        root.unmount();
+      });
+    });
+
+    it('clears the input value when simulating a focus event', () => {
+      const dom = new JSDOM('<!DOCTYPE html><html><body><div id="root"></div></body></html>');
+      // @ts-ignore
+      global.window = dom.window;
+      // @ts-ignore
+      global.document = dom.window.document;
+      (dom.window.HTMLInputElement.prototype as any).attachEvent = () => {};
+      (dom.window.HTMLInputElement.prototype as any).detachEvent = () => {};
+
+      const container = dom.window.document.getElementById('root')!;
+      const root = createRoot(container);
+
+      flushSync(() => {
+        root.render(
+          React.createElement(SetupFlow, {
+            initialFrom: '123 Dominion Road, Mount Eden',
+            initialTo: '88 Quay Street, Auckland CBD',
+            onComplete: () => {},
+          })
+        );
+      });
+
+      const fromInput = container.querySelector('[data-testid="setup-from-input"]') as HTMLInputElement;
+      const toInput = container.querySelector('[data-testid="setup-to-input"]') as HTMLInputElement;
+
+      // Verify initial non-empty values
+      assert.strictEqual(fromInput.value, '123 Dominion Road, Mount Eden');
+      assert.strictEqual(toInput.value, '88 Quay Street, Auckland CBD');
+
+      // Simulate focus event on From input
+      flushSync(() => {
+        fromInput.focus();
+        fromInput.dispatchEvent(new dom.window.FocusEvent('focusin', { bubbles: true }));
+      });
+
+      // Acceptance: Clicking/focusing the input instantly clears the field
+      assert.strictEqual(fromInput.value, '', 'From input value must be cleared on focus');
+
+      // Simulate focus event on To input
+      flushSync(() => {
+        toInput.focus();
+        toInput.dispatchEvent(new dom.window.FocusEvent('focusin', { bubbles: true }));
+      });
+
+      // Acceptance: Clicking/focusing the input instantly clears the field
+      assert.strictEqual(toInput.value, '', 'To input value must be cleared on focus');
+
+      flushSync(() => {
+        root.unmount();
+      });
+    });
+
+    it('verifies SetupModal renders with empty inputs when initialFrom and initialTo are undefined', () => {
+      const dom = new JSDOM('<!DOCTYPE html><html><body><div id="root"></div></body></html>');
+      // @ts-ignore
+      global.window = dom.window;
+      // @ts-ignore
+      global.document = dom.window.document;
+
+      const container = dom.window.document.getElementById('root')!;
+      const root = createRoot(container);
+
+      flushSync(() => {
+        root.render(
+          React.createElement(SetupModal, {
+            isOpen: true,
+            onComplete: () => {},
+            initialFrom: undefined,
+            initialTo: undefined,
+          })
+        );
+      });
+
+      const fromInput = container.querySelector('[data-testid="setup-from-input"]') as HTMLInputElement;
+      const toInput = container.querySelector('[data-testid="setup-to-input"]') as HTMLInputElement;
+
+      assert.strictEqual(fromInput.value, '', 'SetupModal from input must be empty by default');
+      assert.strictEqual(toInput.value, '', 'SetupModal to input must be empty by default');
+
+      flushSync(() => {
+        root.unmount();
+      });
+    });
+  });
 });
+
 

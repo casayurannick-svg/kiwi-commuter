@@ -266,9 +266,10 @@ export default function SetupFlow({
               <AddressAutocomplete
                 id="setup-from-input"
                 testId="setup-from-input"
-                label="From (Starting Suburb)"
-                placeholder="e.g. Mount Roskill, Albany, Takapuna"
+                label="From"
+                placeholder="e.g., 1 Queen Street, Auckland 1010"
                 value={from}
+                autoClearOnFocus
                 icon={<MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />}
                 dropdownZIndex="z-50"
                 onChange={(val) => {
@@ -296,9 +297,10 @@ export default function SetupFlow({
               <AddressAutocomplete
                 id="setup-to-input"
                 testId="setup-to-input"
-                label="To (Destination Suburb)"
-                placeholder="e.g. Auckland CBD, Parnell, Newmarket"
+                label="To"
+                placeholder="e.g., 1 Queen Street, Auckland 1010"
                 value={to}
+                autoClearOnFocus
                 icon={<MapPin className="w-3.5 h-3.5 text-sky-400 shrink-0" />}
                 dropdownZIndex="z-50"
                 onChange={(val) => {
