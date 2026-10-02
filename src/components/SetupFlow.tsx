@@ -49,6 +49,7 @@ export default function SetupFlow({
 }: SetupFlowProps) {
   const [step, setStep] = useState<number>(initialStep);
   const [error, setError] = useState<string | null>(null);
+  const [apiError, setApiError] = useState<boolean>(false);
 
   // Form State
   const [from, setFrom] = useState<string>(initialFrom);
@@ -272,6 +273,15 @@ export default function SetupFlow({
               Enter where you travel from and to.
             </p>
           </div>
+{apiError && (
+  <div
+    role="alert"
+    data-testid="setup-api-error"
+    className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs sm:text-sm text-amber-400 font-medium"
+  >
+    {apiError}
+  </div>
+)}
 
           <div className="space-y-3.5">
             <div className="relative z-20">
@@ -284,11 +294,13 @@ export default function SetupFlow({
                 autoClearOnFocus
                 icon={<MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />}
                 dropdownZIndex="z-50"
+                onError={() => setApiError(true)}
                 onChange={(val) => {
                   setFrom(val);
                   setFromCoords(undefined);
                   setFromSuburbId(undefined);
                   if (error) setError(null);
+                  if (apiError) setApiError(false);
                 }}
                 onSelect={(item) => {
                   setFrom(item.placeName);
@@ -296,6 +308,7 @@ export default function SetupFlow({
                   const subId = findClosestSuburb(item);
                   setFromSuburbId(subId);
                   if (error) setError(null);
+                  if (apiError) setApiError(false);
                 }}
                 onClear={() => {
                   setFrom('');
@@ -315,11 +328,13 @@ export default function SetupFlow({
                 autoClearOnFocus
                 icon={<MapPin className="w-3.5 h-3.5 text-sky-400 shrink-0" />}
                 dropdownZIndex="z-50"
+                onError={() => setApiError(true)}
                 onChange={(val) => {
                   setTo(val);
                   setToCoords(undefined);
                   setToSuburbId(undefined);
                   if (error) setError(null);
+                  if (apiError) setApiError(false);
                 }}
                 onSelect={(item) => {
                   setTo(item.placeName);
@@ -327,6 +342,7 @@ export default function SetupFlow({
                   const subId = findClosestSuburb(item);
                   setToSuburbId(subId);
                   if (error) setError(null);
+                  if (apiError) setApiError(false);
                 }}
                 onClear={() => {
                   setTo('');
@@ -545,7 +561,9 @@ export default function SetupFlow({
                       value={payRate}
                       onChange={(e) => setPayRate(parseFloat(e.target.value) || 0)}
                       className="w-full bg-slate-900 border border-slate-700 rounded-lg py-1.5 pl-6 pr-2.5 text-xs text-white font-mono font-bold"
-                    />
+  
+                 onError={(msg) => setApiError(msg)}
+                />
                   </div>
                   <span className="text-xs text-slate-400">a day</span>
                 </div>
@@ -619,7 +637,8 @@ export default function SetupFlow({
           data-testid="setup-next-btn"
           aria-label={step === 4 ? 'See my commute' : 'Next'}
           onClick={handleNext}
-          className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-slate-950 bg-emerald-400 hover:bg-emerald-300 shadow-md shadow-emerald-950 transition"
+          disabled={!!apiError}
+          className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-slate-950 bg-emerald-400 hover:bg-emerald-300 shadow-md shadow-emerald-950 transition disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <span>{step === 4 ? 'See my commute' : 'Next'}</span>
           <ArrowRight className="w-4 h-4" />

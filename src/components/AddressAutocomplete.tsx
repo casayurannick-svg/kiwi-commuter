@@ -20,6 +20,7 @@ export interface AddressAutocompleteProps {
   className?: string;
   disabled?: boolean;
   transitMode?: string;
+  onError?: () => void;
   headerRight?: React.ReactNode;
 }
 
@@ -44,6 +45,7 @@ export default function AddressAutocomplete({
   className = '',
   disabled = false,
   transitMode,
+  onError,
   headerRight,
 }: AddressAutocompleteProps) {
   const [query, setQuery] = useState(value);
@@ -96,6 +98,9 @@ export default function AddressAutocomplete({
         }
       } catch (err) {
         console.error('Geocoding autocomplete search error:', err);
+        if (onError) {
+          onError();
+        }
       } finally {
         if (activeSearchRef.current === searchId) {
           setIsLoading(false);
