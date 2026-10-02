@@ -5,7 +5,7 @@ import { SUBURB_CENTROIDS } from '@/config/suburbs';
 import { ParkingTier, VehiclePowertrain, VehicleType } from '@/types';
 import { GeocodingResult } from '@/lib/mapbox';
 import AddressAutocomplete from '@/components/AddressAutocomplete';
-import { ArrowLeft, ArrowRight, Check, Zap, Fuel, Leaf, Footprints, MapPin, Plug } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Zap, Fuel, Leaf, Footprints, MapPin, Plug, AlertTriangle } from 'lucide-react';
 
 export interface SetupResult {
   originSuburbId: string;
@@ -21,6 +21,10 @@ export interface SetupResult {
   parkingDailyRate: number;
   parkingTier?: ParkingTier | 'CUSTOM';
   isParkingAssumed: boolean;
+  // Manual override metrics (STORY-22)
+  manualDistanceKm?: number;
+  manualDriveTimeMins?: number;
+  manualTransitTimeMins?: number;
 }
 
 export interface SetupFlowProps {
@@ -33,14 +37,6 @@ export interface SetupFlowProps {
 type DriveOption = 'petrol' | 'diesel' | 'hybrid' | 'phev' | 'electric' | 'none';
 type ParkingOption = 'free' | 'pay' | 'not_sure';
 
-/**
- * SetupFlow (STORY-7, BUG-12)
- * 4-step first-run onboarding wizard:
- * Step 1: "Where do you travel?" with live Mapbox/AT API geocoding autocomplete
- * Step 2: "How many days a week?"
- * Step 3: "What do you drive?"
- * Step 4: "What's parking like at work?"
- */
 export default function SetupFlow({
   onComplete,
   initialFrom = '',
@@ -49,6 +45,15 @@ export default function SetupFlow({
 }: SetupFlowProps) {
   const [step, setStep] = useState<number>(initialStep);
   const [error, setError] = useState<string | null>(null);
+
+  // STORY-23: API Error boundary state
+  const [apiError, setApiError] = useState<boolean>(false);
+
+  // STORY-22: Manual Mode State
+  const [isManualMode, setIsManualMode] = useState<boolean>(false);
+  const [manualDistance, setManualDistance] = useState<string>('');
+  const [manualDriveTime, setManualDriveTime] = useState<string>('');
+  const [manualTransitTime, setManualTransitTime] = useState<string>('');
 
   // Form State
   const [from, setFrom] = useState<string>(initialFrom);
@@ -101,15 +106,31 @@ export default function SetupFlow({
 
   // Step 1 validation
   const validateStep1 = (): boolean => {
+    if (isManualMode) {
+      if (!from.trim() || !to.trim()) {
+        setError('Enter your start and destination names.');
+        return false;
+      }
+      if (!manualDistance || Number(manualDistance) <= 0) {
+        setError('Enter a valid one-way distance in km.');
+        return false;
+      }
+      setError(null);
+      return true;
+    }
+
     if (!from.trim() || !to.trim()) {
       setError('Enter where you travel from and to.');
+      return false;
+    }
+    if (!fromCoords || !toCoords) {
+      setError('Please select valid locations from the suggestions, or use manual entry.');
       return false;
     }
     setError(null);
     return true;
   };
 
-  // Step 2 validation
   const validateStep2 = (): boolean => {
     if (!days || days < 1 || days > 5) {
       setError('Pick one to continue.');
@@ -119,7 +140,6 @@ export default function SetupFlow({
     return true;
   };
 
-  // Step 3 validation
   const validateStep3 = (): boolean => {
     if (!drive) {
       setError('Pick one to continue.');
@@ -129,7 +149,6 @@ export default function SetupFlow({
     return true;
   };
 
-  // Step 4 validation
   const validateStep4 = (): boolean => {
     if (!parking) {
       setError('Pick one to continue.');
@@ -149,7 +168,6 @@ export default function SetupFlow({
     } else if (step === 3) {
       if (!validateStep3()) return;
       if (drive === 'none') {
-        // "No car" path: pre-select free parking
         setParking('free');
       }
       setStep(4);
@@ -194,7 +212,6 @@ export default function SetupFlow({
       isParkingAssumed = false;
       parkingTier = 'FREE';
     } else if (parking === 'not_sure') {
-      // "Not sure" defaults to $24.50/day (Auckland typical weekday cap) and flags it as an assumption
       parkingDailyRate = 24.50;
       isParkingAssumed = true;
       parkingTier = 'CUSTOM';
@@ -221,6 +238,9 @@ export default function SetupFlow({
       parkingDailyRate,
       parkingTier,
       isParkingAssumed,
+      manualDistanceKm: isManualMode && manualDistance ? parseFloat(manualDistance) : undefined,
+      manualDriveTimeMins: isManualMode && manualDriveTime ? parseFloat(manualDriveTime) : undefined,
+      manualTransitTimeMins: isManualMode && manualTransitTime ? parseFloat(manualTransitTime) : undefined,
     });
   };
 
@@ -235,7 +255,7 @@ export default function SetupFlow({
 
   return (
     <div data-testid="setup-flow" className="space-y-6">
-      {/* Progress Bar & Step Counter */}
+      {/* Progress Bar */}
       <div className="space-y-2">
         <div className="flex items-center justify-between text-xs">
           <span className="font-semibold text-emerald-400 uppercase tracking-wider">
@@ -264,82 +284,171 @@ export default function SetupFlow({
       {/* Step 1: Where do you travel? */}
       {step === 1 && (
         <div className="space-y-5 animate-fadeIn" data-testid="setup-step-1">
-          <div>
-            <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
-              Where do you travel?
-            </h2>
-            <p className="text-xs sm:text-sm text-slate-300 mt-1">
-              Enter where you travel from and to.
-            </p>
-          </div>
-
-          <div className="space-y-3.5">
-            <div className="relative z-20">
-              <AddressAutocomplete
-                id="setup-from-input"
-                testId="setup-from-input"
-                label="From"
-                placeholder="e.g., 1 Queen Street, Auckland 1010"
-                value={from}
-                autoClearOnFocus
-                icon={<MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />}
-                dropdownZIndex="z-50"
-                onChange={(val) => {
-                  setFrom(val);
-                  setFromCoords(undefined);
-                  setFromSuburbId(undefined);
-                  if (error) setError(null);
-                }}
-                onSelect={(item) => {
-                  setFrom(item.placeName);
-                  setFromCoords(item.coordinates);
-                  const subId = findClosestSuburb(item);
-                  setFromSuburbId(subId);
-                  if (error) setError(null);
-                }}
-                onClear={() => {
-                  setFrom('');
-                  setFromCoords(undefined);
-                  setFromSuburbId(undefined);
-                }}
-              />
+          <div className="flex items-start justify-between">
+            <div>
+              <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+                Where do you travel?
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-300 mt-1">
+                Enter where you travel from and to.
+              </p>
             </div>
 
-            <div className="relative z-10">
-              <AddressAutocomplete
-                id="setup-to-input"
-                testId="setup-to-input"
-                label="To"
-                placeholder="e.g., 1 Queen Street, Auckland 1010"
-                value={to}
-                autoClearOnFocus
-                icon={<MapPin className="w-3.5 h-3.5 text-sky-400 shrink-0" />}
-                dropdownZIndex="z-50"
-                onChange={(val) => {
-                  setTo(val);
-                  setToCoords(undefined);
-                  setToSuburbId(undefined);
-                  if (error) setError(null);
-                }}
-                onSelect={(item) => {
-                  setTo(item.placeName);
-                  setToCoords(item.coordinates);
-                  const subId = findClosestSuburb(item);
-                  setToSuburbId(subId);
-                  if (error) setError(null);
-                }}
-                onClear={() => {
-                  setTo('');
-                  setToCoords(undefined);
-                  setToSuburbId(undefined);
-                }}
-              />
-            </div>
+            {/* STORY-22 Manual Override Toggle */}
+            <button
+              type="button"
+              onClick={() => {
+                setIsManualMode(!isManualMode);
+                setError(null);
+              }}
+              className="text-xs px-2.5 py-1 rounded border border-slate-700 bg-slate-800/80 text-slate-300 hover:text-white hover:border-slate-600 transition"
+            >
+              {isManualMode ? 'Use Map Autofill' : 'Enter Manually'}
+            </button>
           </div>
+
+          {/* STORY-23 Error Banner */}
+          {apiError && !isManualMode && (
+            <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs sm:text-sm text-amber-300 flex items-start gap-2.5">
+              <AlertTriangle className="w-4 h-4 shrink-0 text-amber-400 mt-0.5" />
+              <div>
+                <span>Live address search is currently down for maintenance. Please check back shortly, or click <strong>Enter Manually</strong> above.</span>
+              </div>
+            </div>
+          )}
+
+          {!isManualMode ? (
+            <div className="space-y-3.5">
+              <div className="relative z-20">
+                <AddressAutocomplete
+                  id="setup-from-input"
+                  testId="setup-from-input"
+                  label="From"
+                  placeholder="e.g., 1 Queen Street, Auckland 1010"
+                  value={from}
+                  autoClearOnFocus
+                  icon={<MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />}
+                  dropdownZIndex="z-50"
+                  onChange={(val) => {
+                    setFrom(val);
+                    setFromCoords(undefined);
+                    setFromSuburbId(undefined);
+                    if (error) setError(null);
+                  }}
+                  onSelect={(item) => {
+                    setFrom(item.placeName);
+                    setFromCoords(item.coordinates);
+                    const subId = findClosestSuburb(item);
+                    setFromSuburbId(subId);
+                    if (error) setError(null);
+                  }}
+                  onClear={() => {
+                    setFrom('');
+                    setFromCoords(undefined);
+                    setFromSuburbId(undefined);
+                  }}
+                />
+              </div>
+
+              <div className="relative z-10">
+                <AddressAutocomplete
+                  id="setup-to-input"
+                  testId="setup-to-input"
+                  label="To"
+                  placeholder="e.g., 1 Queen Street, Auckland 1010"
+                  value={to}
+                  autoClearOnFocus
+                  icon={<MapPin className="w-3.5 h-3.5 text-sky-400 shrink-0" />}
+                  dropdownZIndex="z-50"
+                  onChange={(val) => {
+                    setTo(val);
+                    setToCoords(undefined);
+                    setToSuburbId(undefined);
+                    if (error) setError(null);
+                  }}
+                  onSelect={(item) => {
+                    setTo(item.placeName);
+                    setToCoords(item.coordinates);
+                    const subId = findClosestSuburb(item);
+                    setToSuburbId(subId);
+                    if (error) setError(null);
+                  }}
+                  onClear={() => {
+                    setTo('');
+                    setToCoords(undefined);
+                    setToSuburbId(undefined);
+                  }}
+                />
+              </div>
+            </div>
+          ) : (
+            /* STORY-22: Manual Mode Form Inputs */
+            <div className="space-y-4 rounded-xl border border-slate-800 bg-slate-900/50 p-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-300 mb-1">From (Suburb/Origin)</label>
+                  <input
+                    type="text"
+                    value={from}
+                    onChange={(e) => setFrom(e.target.value)}
+                    placeholder="e.g. Te Atatū Peninsula"
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-300 mb-1">To (Suburb/Destination)</label>
+                  <input
+                    type="text"
+                    value={to}
+                    onChange={(e) => setTo(e.target.value)}
+                    placeholder="e.g. Auckland CBD"
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-300 mb-1">Distance (km)</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0.1"
+                    value={manualDistance}
+                    onChange={(e) => setManualDistance(e.target.value)}
+                    placeholder="e.g. 14.5"
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-300 mb-1">Drive Time (mins)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={manualDriveTime}
+                    onChange={(e) => setManualDriveTime(e.target.value)}
+                    placeholder="e.g. 25"
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-300 mb-1">Transit Time (mins)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={manualTransitTime}
+                    onChange={(e) => setManualTransitTime(e.target.value)}
+                    placeholder="e.g. 40"
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Step 2: How many days a week? */}
+      {/* Step 2 */}
       {step === 2 && (
         <div className="space-y-5 animate-fadeIn" data-testid="setup-step-2">
           <div>
@@ -381,7 +490,7 @@ export default function SetupFlow({
         </div>
       )}
 
-      {/* Step 3: What do you drive? */}
+      {/* Step 3 */}
       {step === 3 && (
         <div className="space-y-5 animate-fadeIn" data-testid="setup-step-3">
           <div>
@@ -449,7 +558,7 @@ export default function SetupFlow({
         </div>
       )}
 
-      {/* Step 4: What's parking like at work? */}
+      {/* Step 4 */}
       {step === 4 && (
         <div className="space-y-5 animate-fadeIn" data-testid="setup-step-4">
           <div>
@@ -462,7 +571,6 @@ export default function SetupFlow({
           </div>
 
           <div className="space-y-2.5">
-            {/* Free */}
             <button
               type="button"
               aria-pressed={parking === 'free'}
@@ -494,7 +602,6 @@ export default function SetupFlow({
               </div>
             </button>
 
-            {/* I pay for it */}
             <div
               className={`rounded-xl border transition-all overflow-hidden ${
                 parking === 'pay'
@@ -552,7 +659,6 @@ export default function SetupFlow({
               )}
             </div>
 
-            {/* Not sure */}
             <button
               type="button"
               aria-pressed={parking === 'not_sure'}
@@ -619,7 +725,8 @@ export default function SetupFlow({
           data-testid="setup-next-btn"
           aria-label={step === 4 ? 'See my commute' : 'Next'}
           onClick={handleNext}
-          className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-slate-950 bg-emerald-400 hover:bg-emerald-300 shadow-md shadow-emerald-950 transition"
+          disabled={step === 1 && !isManualMode && (!from.trim() || !to.trim() || !fromCoords || !toCoords)}
+          className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-slate-950 bg-emerald-400 hover:bg-emerald-300 shadow-md shadow-emerald-950 transition disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <span>{step === 4 ? 'See my commute' : 'Next'}</span>
           <ArrowRight className="w-4 h-4" />
