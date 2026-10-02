@@ -58,6 +58,15 @@ This repository strictly enforces a **Docs-as-Code** standard. All functional sp
    - Interactive toggle switch between standard **Fuel & Variable** mode and the comprehensive **IRD Tier 1 True Cost** benchmark (`$1.20/km`).
    - Formula: `distance_in_km * IRD_MILEAGE_RATE_PER_KM` (`1.20`), encompassing depreciation, WOF, Rego, routine servicing/maintenance, and insurance for complete total-cost-of-ownership comparisons.
 
+8. **EECA / Rightcar Real-World Efficiency Benchmarks & Plausibility Hints (STORY-9)**
+   - Visual **"Default"** and **"Assumption"** badges highlight un-customized baseline parameters (e.g., $3.00/wk distance wear, default L/100km, default fuel prices) until explicitly modified.
+   - Non-blocking, conversational UI hints guide users if entered fuel or energy efficiencies deviate from New Zealand EECA / Rightcar real-world operational distributions:
+     - **Petrol**: 5.0 – 11.0 L/100km (*"Petrol cars usually use 5-11 L/100km. Are you sure?"*)
+     - **Diesel**: 6.0 – 11.0 L/100km (*"Diesel vehicles usually use 6-11 L/100km. Are you sure?"*)
+     - **Hybrid (HEV / PHEV)**: 3.0 – 6.0 L/100km (*"Hybrids usually use 3-6 L/100km. Are you sure?"*)
+     - **Electric (BEV)**: 12.0 – 22.0 kWh/100km (*"Electric cars usually use 12-22 kWh/100km. Are you sure?"*)
+   - Advisory notices are non-blocking (`role="status"`) and preserve full user freedom for hypermilers, heavily loaded utes, or extreme custom vehicles.
+
 ---
 
 ## 🏗️ Architecture & Directory Layout

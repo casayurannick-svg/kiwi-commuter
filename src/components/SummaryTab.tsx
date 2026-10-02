@@ -244,13 +244,21 @@ export default function SummaryTab({
       </div>
 
       {/* 4. Explicit Footnote with Wear Assumption & Change Link */}
-      <div className="px-2 text-xs sm:text-sm text-slate-300 leading-relaxed">
-        <span>Per week. Total cost of the car for this commute: ${fullCost.toFixed(2)}. We assumed ${wearAssumption.toFixed(2)} of servicing and wear depends on how much you drive. </span>
+      <div className="px-2 text-xs sm:text-sm text-slate-300 leading-relaxed flex flex-wrap items-center gap-x-1.5 gap-y-1">
+        <span>Per week. Total cost of the car for this commute: ${fullCost.toFixed(2)}. We assumed ${wearAssumption.toFixed(2)} of servicing and wear depends on how much you drive.</span>
+        {(commuteInput.distanceWearWeekly === undefined || commuteInput.distanceWearWeekly === 3.0) && (
+          <span
+            data-testid="summary-wear-assumption-badge"
+            className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700/60 text-slate-300 inline-block"
+          >
+            Assumption
+          </span>
+        )}
         <button
           type="button"
           onClick={() => setIsEditingWear((prev) => !prev)}
           aria-expanded={isEditingWear}
-          className="font-semibold text-emerald-400 hover:text-emerald-300 underline underline-offset-2 ml-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded"
+          className="font-semibold text-emerald-400 hover:text-emerald-300 underline underline-offset-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded"
         >
           {isEditingWear ? 'Done' : 'Change'}
         </button>
@@ -260,10 +268,20 @@ export default function SummaryTab({
       {isEditingWear && (
         <div className="p-4 rounded-xl border border-slate-800 bg-slate-900/90 backdrop-blur-md space-y-3 animate-fadeIn">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-              <Sliders className="w-3.5 h-3.5 text-emerald-400" />
-              Adjust Distance-Based Servicing &amp; Wear Assumption
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                <Sliders className="w-3.5 h-3.5 text-emerald-400" />
+                Adjust Distance-Based Servicing &amp; Wear Assumption
+              </span>
+              {(commuteInput.distanceWearWeekly === undefined || commuteInput.distanceWearWeekly === 3.0) && (
+                <span
+                  data-testid="summary-wear-editor-badge"
+                  className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700/60 text-slate-300"
+                >
+                  Assumption
+                </span>
+              )}
+            </div>
             <button
               type="button"
               onClick={() => setIsEditingWear(false)}
