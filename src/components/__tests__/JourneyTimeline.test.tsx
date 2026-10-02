@@ -3,6 +3,7 @@ import { describe, it } from 'node:test';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import JourneyTimeline from '../JourneyTimeline';
+import SegmentedTimeline from '../SegmentedTimeline';
 import { calculateCommuteArbitrage } from '@/lib/calculator';
 import { CommuteInput } from '@/types';
 
@@ -116,5 +117,42 @@ describe('src/components/JourneyTimeline.tsx - US-28 Segmented Timeline UI', () 
     // Displays walk mode selection and nodes
     assert.ok(walkHtml.includes('Walk to Station') || walkHtml.includes('Walk to Stop'));
     assert.ok(walkHtml.includes('First-Mile Mode to Station:'));
+  });
+
+  describe('BUG-15: Multimodal Primary Mode Detection in Segmented Timeline', () => {
+    it('uses Train icon and label for parent transit container when 73m train ride dominates 3m bus connection', () => {
+      const multimodalInput: CommuteInput = {
+        originSuburbId: 'henderson',
+        destinationSuburbId: 'cbd',
+        daysPerWeek: 5,
+        vehicleType: 'petrol91',
+        transitSteps: [
+          { line: 'Feeder Bus', vehicleType: 'BUS', durationMins: 3 },
+          { line: 'Western Line', vehicleType: 'TRAIN', durationMins: 73 },
+        ],
+        concession: 'adult',
+        carpoolPassengers: 1,
+      };
+
+      const arbitrage = calculateCommuteArbitrage(multimodalInput);
+
+      // Render with SegmentedTimeline export
+      const html = renderToStaticMarkup(
+        React.createElement(SegmentedTimeline, {
+          arbitrage,
+          input: multimodalInput,
+        })
+      );
+
+      // Parent transit container should render Train title instead of Bus title
+      assert.ok(
+        html.includes('Train') && html.includes('Ride'),
+        `Timeline parent transit node must use Train Ride label, got: ${html}`
+      );
+
+      // Should render the sub-step pills for both Feeder Bus and Western Line
+      assert.ok(html.includes('Feeder Bus'), 'Must include Feeder Bus transit leg pill');
+      assert.ok(html.includes('Western Line'), 'Must include Western Line train leg pill');
+    });
   });
 });

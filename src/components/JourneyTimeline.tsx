@@ -19,8 +19,9 @@ import {
 } from 'lucide-react';
 import { CommuteComparisonResult, CommuteInput, JourneyLeg, LocalTransitStop } from '@/types';
 import { fetchDirectionsRoute } from '@/lib/mapbox';
+import { getPrimaryTransitMode } from '@/lib/routing';
 
-interface JourneyTimelineProps {
+export interface JourneyTimelineProps {
   arbitrage: CommuteComparisonResult;
   input: CommuteInput;
   onFirstMileModeChange?: (mode: 'DRIVE' | 'CYCLE' | 'WALK' | 'SCOOTER') => void;
@@ -145,7 +146,15 @@ export default function JourneyTimeline({
   const totalOneWayCost = displayedLegs.reduce((acc, leg) => acc + leg.cost, 0);
 
   const getLegIcon = (leg: JourneyLeg) => {
-    switch (leg.mode) {
+    // BUG-15: If this is a transit leg, evaluate the primary transit mode from its steps
+    const effectiveMode =
+      leg.type === 'TRANSIT'
+        ? (getPrimaryTransitMode(
+            leg.transitSteps && leg.transitSteps.length > 0 ? leg.transitSteps : [leg]
+          ).toUpperCase() as JourneyLeg['mode'])
+        : leg.mode;
+
+    switch (effectiveMode) {
       case 'DRIVE':
         return <Car className="w-4 h-4 text-amber-400" />;
       case 'TRAIN':
@@ -167,6 +176,19 @@ export default function JourneyTimeline({
           <Footprints className="w-4 h-4 text-purple-400" />
         );
     }
+  };
+
+  const getLegTitle = (leg: JourneyLeg) => {
+    if (leg.type !== 'TRANSIT') return leg.title;
+    const primaryMode = getPrimaryTransitMode(
+      leg.transitSteps && leg.transitSteps.length > 0 ? leg.transitSteps : [leg],
+      { format: 'titlecase' }
+    );
+    // Replace leading mode in title (e.g. "Bus 25B + Western Line Ride" -> "Train 25B + Western Line Ride" or "Bus Ride" -> "Train Ride")
+    if (/^(Bus|Ferry|Train|Transit)\b/i.test(leg.title)) {
+      return leg.title.replace(/^(Bus|Ferry|Train|Transit)\b/i, primaryMode);
+    }
+    return leg.title || `${primaryMode} Ride`;
   };
 
   const getLegBadgeColor = (type: JourneyLeg['type']) => {
@@ -290,7 +312,7 @@ export default function JourneyTimeline({
                         leg.type
                       )}`}
                     >
-                      {leg.title}
+                      {getLegTitle(leg)}
                     </span>
                     {leg.notes && (
                       <span className="text-[11px] text-slate-400 flex items-center gap-1">
@@ -389,3 +411,5 @@ export default function JourneyTimeline({
     </div>
   );
 }
+
+export const SegmentedTimeline = JourneyTimeline;
