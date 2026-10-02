@@ -318,11 +318,11 @@ export default function JourneyTimeline({
                   <span className="truncate max-w-[140px] sm:max-w-[200px]">
                     {leg.originName}
                   </span>
-                  <ArrowRight className="w-3 h-3 text-slate-500 shrink-0" />
+                  <ArrowRight className="w-3 h-3 text-slate-400 shrink-0" />
                   <span className="truncate max-w-[140px] sm:max-w-[200px]">
                     {leg.destinationName}
                   </span>
-                  <span className="text-slate-500 ml-auto shrink-0 text-[11px]">
+                  <span className="text-slate-400 ml-auto shrink-0 text-[11px]">
                     {leg.distanceKm} km
                   </span>
                 </div>
@@ -336,7 +336,7 @@ export default function JourneyTimeline({
                       const isStepTrain = step.travelMode === 'TRAIN' || step.vehicleType === 'TRAIN' || step.line?.toLowerCase().includes('train');
                       return (
                         <React.Fragment key={sIdx}>
-                          {sIdx > 0 && <span className="text-slate-600 font-bold">→</span>}
+                          {sIdx > 0 && <span className="text-slate-400 font-bold">→</span>}
                           <span className="px-2 py-0.5 rounded-md bg-slate-800 text-slate-200 border border-slate-700/60 font-semibold flex items-center gap-1">
                             {isStepFerry ? (
                               <Ship className="w-3 h-3 text-cyan-400" />

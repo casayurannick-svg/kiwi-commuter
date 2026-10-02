@@ -5,6 +5,7 @@ import { AUCKLAND_SUBURBS, SUBURB_CENTROIDS } from '@/config/suburbs';
 import { searchAucklandAddresses, GeocodingResult } from '@/lib/mapbox';
 import { CalculationMode, CommuteInput, ConcessionType, EVChargingSource, EvChargingMode, ParkingTier, TransitMode, VehiclePowertrain, VehicleType } from '@/types';
 import {
+  AlertCircle,
   Bus,
   Car,
   Clock,
@@ -27,6 +28,7 @@ import {
 import React, { useEffect, useState } from 'react';
 import Tooltip from './Tooltip';
 import ZoneBadge from './ZoneBadge';
+import { checkEfficiencyPlausibility } from '@/lib/validation';
 
 interface CommuteFormProps {
   input: CommuteInput;
@@ -109,14 +111,19 @@ export default function CommuteForm({
     return input.consumptionOverride !== undefined ? input.consumptionOverride.toString() : '';
   });
 
-  // US-26: Explicitly clear custom L/100km React state if a pure EV is selected to prevent stale data[cite: 5]
+  // US-26: Explicitly clear custom L/100km React state if a pure EV is selected to prevent stale data
   useEffect(() => {
     if (input.vehicleType === 'bev' || input.powertrain === 'BEV') {
       if (customConsumption !== '') {
         setCustomConsumption('');
       }
+    } else if (input.consumptionOverride !== undefined) {
+      const parsed = parseFloat(customConsumption);
+      if (isNaN(parsed) || parsed !== input.consumptionOverride) {
+        setCustomConsumption(input.consumptionOverride.toString());
+      }
     }
-  }, [input.vehicleType, input.powertrain, customConsumption]);
+  }, [input.vehicleType, input.powertrain, input.consumptionOverride, customConsumption]);
 
   // US-38: Fixed Vehicle Ownership Costs State[cite: 5]
   const [isFixedCostsOpen, setIsFixedCostsOpen] = useState(false);
@@ -896,7 +903,7 @@ export default function CommuteForm({
                         <IconComponent className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-emerald-400' : 'text-slate-400'}`} />
                         <span className="text-xs font-semibold">{opt.label}</span>
                       </div>
-                      <span className="text-[10px] text-slate-500 font-mono">
+                      <span className="text-[10px] text-slate-400 font-mono">
                         {opt.baseline}
                       </span>
                     </button>
@@ -920,33 +927,68 @@ export default function CommuteForm({
                 })}
               </div>
 
-              {isFuelConsuming && (
-                <div className="pt-1.5 space-y-1">
-                  <div className="flex items-center justify-between">
-                    <label htmlFor="custom-l100km-input" className="text-xs text-slate-300 font-medium">
-                      Custom L/100km
-                    </label>
-                    <span className="text-[10px] text-slate-500 font-mono">
-                      Default: {currentVehicle.defaultConsumption} L/100km
-                    </span>
+              {isFuelConsuming && (() => {
+                const isConsumptionDefault =
+                  input.consumptionOverride === undefined &&
+                  (customConsumption === '' || customConsumption === currentVehicle.defaultConsumption.toString());
+                const parsedCustomConsumption = parseFloat(customConsumption);
+                const evalConsumption =
+                  !isNaN(parsedCustomConsumption) && parsedCustomConsumption > 0
+                    ? parsedCustomConsumption
+                    : input.consumptionOverride;
+                const consumptionWarning =
+                  evalConsumption !== undefined
+                    ? checkEfficiencyPlausibility(input.vehicleType, evalConsumption)
+                    : null;
+
+                return (
+                  <div className="pt-1.5 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <label htmlFor="custom-l100km-input" className="text-xs text-slate-300 font-medium">
+                          Custom L/100km
+                        </label>
+                        {isConsumptionDefault && (
+                          <span
+                            data-testid="consumption-default-badge"
+                            className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700/60 text-slate-300"
+                          >
+                            Default
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[10px] text-slate-400 font-mono">
+                        Default: {currentVehicle.defaultConsumption} L/100km
+                      </span>
+                    </div>
+                    <div className="relative">
+                      <input
+                        id="custom-l100km-input"
+                        data-testid="custom-l100km-input"
+                        type="number"
+                        step="0.1"
+                        min="1"
+                        max="40"
+                        placeholder={`e.g. ${currentVehicle.defaultConsumption}`}
+                        aria-label="Custom L/100km"
+                        value={customConsumption}
+                        onChange={(e) => handleCustomConsumptionChange(e.target.value)}
+                        className="w-full min-h-[44px] bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-sm text-slate-200 placeholder-slate-500 focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono"
+                      />
+                    </div>
+                    {consumptionWarning && (
+                      <div
+                        data-testid="efficiency-warning"
+                        className="flex items-center gap-1.5 text-xs text-amber-400 mt-1 font-sans"
+                        role="status"
+                      >
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0 text-amber-400" aria-hidden="true" />
+                        <span>{consumptionWarning}</span>
+                      </div>
+                    )}
                   </div>
-                  <div className="relative">
-                    <input
-                      id="custom-l100km-input"
-                      data-testid="custom-l100km-input"
-                      type="number"
-                      step="0.1"
-                      min="1"
-                      max="40"
-                      placeholder={`e.g. ${currentVehicle.defaultConsumption}`}
-                      aria-label="Custom L/100km"
-                      value={customConsumption}
-                      onChange={(e) => handleCustomConsumptionChange(e.target.value)}
-                      className="w-full min-h-[44px] bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-sm text-slate-200 placeholder-slate-500 focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono"
-                    />
-                  </div>
-                </div>
-              )}
+                );
+              })()}
             </div>
 
             {/* Daily Parking */}
@@ -954,7 +996,7 @@ export default function CommuteForm({
               <div className="flex items-center justify-between">
                 <label className="text-xs font-semibold text-slate-300">Daily Parking</label>
                 <span className="text-xs font-bold text-sky-400 tabular-nums">
-                  ${input.parkingDailyRate.toFixed(0)}/day
+                  ${input.parkingDailyRate.toFixed(0)} a day
                 </span>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
@@ -995,7 +1037,7 @@ export default function CommuteForm({
                     }}
                     className="w-24 min-h-[44px] bg-slate-900 border border-slate-700 rounded-xl px-3 py-1 text-sm text-slate-100"
                   />
-                  <span className="text-xs text-slate-400">$/day</span>
+                  <span className="text-xs text-slate-400">a day</span>
                 </div>
               )}
             </div>
@@ -1014,7 +1056,7 @@ export default function CommuteForm({
             <Settings2 className="w-3.5 h-3.5 text-teal-400" />
             Custom Rates {isCustomRatesOpen ? '▴' : '▾'}
           </span>
-          <span className="text-[11px] text-slate-500 font-mono">
+          <span className="text-[11px] text-slate-400 font-mono">
             {input.vehicleType === 'bev' || input.vehicleType === 'phev'
               ? 'Charging & Concession'
               : 'Fuel & Carpool'}
@@ -1059,7 +1101,7 @@ export default function CommuteForm({
                         }`}
                       >
                         <span className="text-xs truncate">{item.label}</span>
-                        <span className="text-[10px] text-slate-500 font-mono">{item.sub}</span>
+                        <span className="text-[10px] text-slate-400 font-mono">{item.sub}</span>
                       </button>
                     );
                   })}
@@ -1103,26 +1145,59 @@ export default function CommuteForm({
               {/* Power / Fuel / Consumption Override */}
               {input.vehicleType !== 'bev' && input.vehicleType !== 'phev' ? (
                 <div className="space-y-1">
-                  <label className="text-[11px] text-slate-400">
-                    Fuel Price ($/L)
-                  </label>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <label htmlFor="fuelPriceInput" className="text-[11px] text-slate-400">
+                        Fuel Price ($/L)
+                      </label>
+                      {input.fuelPriceOverride === undefined && (
+                        <span
+                          data-testid="fuel-price-default-badge"
+                          className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700/60 text-slate-300"
+                        >
+                          Default
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-[10px] text-slate-400 font-mono">
+                      Default: ${currentVehicle.defaultFuelPrice.toFixed(2)}/L
+                    </span>
+                  </div>
                   <input
                     type="number"
                     step="0.01"
                     aria-label="Fuel Price ($/L)"
                     id="fuelPriceInput"
+                    data-testid="fuel-price-input"
                     value={fuelCost ?? ''}
                     onChange={(e) => handleFuelPriceChange(e.target.value)}
                     placeholder={currentVehicle.defaultFuelPrice.toFixed(2)}
-                    className="w-full min-h-[44px] bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-sm text-slate-200"
+                    className="w-full min-h-[44px] bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-sm text-slate-200 font-mono"
                   />
                 </div>
               ) : input.vehicleType === 'phev' ? (
                 <div className="space-y-1">
-                  <label className="text-[11px] text-slate-400">
-                    Petrol Backup ($/L)
-                  </label>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <label htmlFor="custom-petrol-backup-input" className="text-[11px] text-slate-400">
+                        Petrol Backup ($/L)
+                      </label>
+                      {input.customFuelPricePerL === undefined && (
+                        <span
+                          data-testid="petrol-backup-default-badge"
+                          className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700/60 text-slate-300"
+                        >
+                          Default
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-[10px] text-slate-400 font-mono">
+                      Default: $2.72/L
+                    </span>
+                  </div>
                   <input
+                    id="custom-petrol-backup-input"
+                    data-testid="custom-petrol-backup-input"
                     type="number"
                     step="0.01"
                     value={input.customFuelPricePerL ?? 2.72}
@@ -1135,25 +1210,58 @@ export default function CommuteForm({
                     className="w-full min-h-[44px] bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-sm text-slate-200 font-mono"
                   />
                 </div>
-              ) : (
-                <div className="space-y-1">
-                  <label className="text-[11px] text-slate-400">
-                    Efficiency (kWh/100km)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={input.consumptionOverride ?? 16.5}
-                    onChange={(e) =>
-                      handleFieldChange(
-                        'consumptionOverride',
-                        e.target.value ? parseFloat(e.target.value) : undefined
-                      )
-                    }
-                    className="w-full min-h-[44px] bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-sm text-slate-200 font-mono"
-                  />
-                </div>
-              )}
+              ) : (() => {
+                const isEvEffDefault = input.consumptionOverride === undefined;
+                const evEffValue = input.consumptionOverride ?? 16.5;
+                const evWarning = checkEfficiencyPlausibility(input.vehicleType, evEffValue);
+
+                return (
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <label htmlFor="ev-efficiency-input" className="text-[11px] text-slate-400">
+                          Efficiency (kWh/100km)
+                        </label>
+                        {isEvEffDefault && (
+                          <span
+                            data-testid="ev-efficiency-default-badge"
+                            className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700/60 text-slate-300"
+                          >
+                            Default
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[10px] text-slate-400 font-mono">
+                        Default: 16.5 kWh/100km
+                      </span>
+                    </div>
+                    <input
+                      id="ev-efficiency-input"
+                      data-testid="ev-efficiency-input"
+                      type="number"
+                      step="0.1"
+                      value={input.consumptionOverride ?? 16.5}
+                      onChange={(e) =>
+                        handleFieldChange(
+                          'consumptionOverride',
+                          e.target.value ? parseFloat(e.target.value) : undefined
+                        )
+                      }
+                      className="w-full min-h-[44px] bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-sm text-slate-200 font-mono focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                    />
+                    {evWarning && (
+                      <div
+                        data-testid="ev-efficiency-warning"
+                        className="flex items-center gap-1.5 text-xs text-amber-400 mt-1 font-sans"
+                        role="status"
+                      >
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0 text-amber-400" aria-hidden="true" />
+                        <span>{evWarning}</span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* Concession */}
               <div className="space-y-1">
@@ -1242,6 +1350,43 @@ export default function CommuteForm({
                   </Tooltip>
                 </div>
               </div>
+
+              {/* Distance-Based Wear Assumption */}
+              <div className="pt-2 border-t border-slate-800/40 space-y-1">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <label htmlFor="distance-wear-input" className="text-[11px] text-slate-400 font-medium">
+                      Distance-Based Wear ($ a week)
+                    </label>
+                    {(input.distanceWearWeekly === undefined || input.distanceWearWeekly === 3.0) && (
+                      <span
+                        data-testid="wear-assumption-badge"
+                        className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700/60 text-slate-300"
+                      >
+                        Assumption
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-[10px] text-slate-400 font-mono">
+                    Default: $3.00 a week
+                  </span>
+                </div>
+                <input
+                  id="distance-wear-input"
+                  data-testid="distance-wear-input"
+                  type="number"
+                  step="0.5"
+                  min="0"
+                  max="50"
+                  value={input.distanceWearWeekly ?? 3.0}
+                  onChange={(e) => {
+                    const val = e.target.value !== '' ? parseFloat(e.target.value) : undefined;
+                    handleFieldChange('distanceWearWeekly', val);
+                    handleFieldChange('distanceWear', val);
+                  }}
+                  className="w-full min-h-[40px] bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-sm text-slate-200 font-mono focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                />
+              </div>
             </div>
 
             {/* Value of Your Time */}
@@ -1260,7 +1405,7 @@ export default function CommuteForm({
                     <button
                       type="button"
                       aria-label="Value of Your Time info"
-                      className="text-slate-400 hover:text-slate-200 transition-colors p-1 -m-1 focus:outline-none focus:text-slate-200"
+                      className="text-slate-400 hover:text-slate-200 transition-colors p-1 -m-1 focus:outline-none focus:text-slate-200 min-h-[24px] min-w-[24px] inline-flex items-center justify-center"
                     >
                       <Info className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-200 transition-colors" />
                     </button>
@@ -1347,7 +1492,7 @@ export default function CommuteForm({
                               ? input.customInsurance
                               : (input.defaultInsurance ?? 1311))
                           : 0)
-                      ).toLocaleString('en-NZ')}/yr
+                      ).toLocaleString('en-NZ')} a year
                     </span>
                   )}
                   {isIrdMode && (
@@ -1359,7 +1504,7 @@ export default function CommuteForm({
                       <button
                         type="button"
                         aria-label="Fixed Ownership Costs IRD info"
-                        className="text-slate-400 hover:text-slate-200 transition-colors p-1 -m-1 focus:outline-none focus:text-slate-200"
+                        className="text-slate-400 hover:text-slate-200 transition-colors p-1 -m-1 focus:outline-none focus:text-slate-200 min-h-[24px] min-w-[24px] inline-flex items-center justify-center"
                       >
                         <Info className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-200 transition-colors" />
                       </button>
@@ -1384,7 +1529,7 @@ export default function CommuteForm({
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <label className="text-[11px] text-slate-400">
-                        Annual WOF ($/yr)
+                        Annual WOF ($ a year)
                       </label>
                       <input
                         type="number"
@@ -1399,12 +1544,12 @@ export default function CommuteForm({
                         }}
                         className="w-full min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-sm text-slate-200 font-mono disabled:opacity-50"
                       />
-                      <span className="text-[10px] text-slate-500">VTNZ/AA annual inspection</span>
+                      <span className="text-[10px] text-slate-400">VTNZ/AA annual inspection</span>
                     </div>
 
                     <div className="space-y-1">
                       <label className="text-[11px] text-slate-400">
-                        Annual Rego / Licensing ($/yr)
+                        Annual Rego / Licensing ($ a year)
                       </label>
                       <input
                         type="number"
@@ -1419,7 +1564,7 @@ export default function CommuteForm({
                         }}
                         className="w-full min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-sm text-slate-200 font-mono disabled:opacity-50"
                       />
-                      <span className="text-[10px] text-slate-500">NZTA private light vehicle licence</span>
+                      <span className="text-[10px] text-slate-400">NZTA private light vehicle licence</span>
                     </div>
                   </div>
 
@@ -1441,15 +1586,15 @@ export default function CommuteForm({
                           : input.insuranceEnabled === false
                           ? 'Excluded ($0)'
                           : typeof input.customInsurance === 'number' && !isNaN(input.customInsurance)
-                          ? `Custom: $${input.customInsurance}/yr`
-                          : `Default: $${input.defaultInsurance ?? 1311}/yr`}
+                          ? `Custom: $${input.customInsurance} a year`
+                          : `Default: $${input.defaultInsurance ?? 1311} a year`}
                       </span>
                     </div>
 
                     {input.insuranceEnabled !== false && (
                       <div className="space-y-1.5">
                         <label className="text-[11px] text-slate-400">
-                          Custom Insurance Override ($/yr)
+                          Custom Insurance Override ($ a year)
                         </label>
                         <div className="flex items-center gap-2">
                           <input
@@ -1486,9 +1631,9 @@ export default function CommuteForm({
                             </button>
                           )}
                         </div>
-                        <p className="text-[10px] text-slate-500">
+                        <p className="text-[10px] text-slate-400">
                           {typeof input.customInsurance === 'number' && !isNaN(input.customInsurance)
-                            ? `Custom premium of $${input.customInsurance}/yr completely overrides the default $1,311 NZ benchmark.`
+                            ? `Custom premium of $${input.customInsurance} a year completely overrides the default $1,311 NZ benchmark.`
                             : 'Enter your vehicle policy premium (e.g. $1,850 for Isuzu MU-X or $950 for Honda Jazz) to override the $1,311 NZ benchmark.'}
                         </p>
                       </div>
@@ -1508,7 +1653,7 @@ export default function CommuteForm({
                                 : (input.defaultInsurance ?? 1311))
                             : 0)
                         ) * 0.70 / 12
-                      ).toFixed(0)}/mo`}
+                      ).toFixed(0)} a month`}
                     </span>
                   </div>
                 </div>

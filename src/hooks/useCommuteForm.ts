@@ -2,9 +2,9 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { CommuteInput } from '@/types';
+import { CommuteInput, TabId } from '@/types';
 import { parseCommuteFromParams, serializeCommuteToParams } from '@/lib/urlParams';
-import { FuelBenchmarkDto } from '@/lib/supabase';
+import { FuelBenchmarkDto, getSavedTripFromSupabase } from '@/lib/supabase';
 
 export const DEFAULT_COMMUTE_INPUT: CommuteInput = {
   originSuburbId: 'epsom',
@@ -29,6 +29,8 @@ export const DEFAULT_COMMUTE_INPUT: CommuteInput = {
   evPurchasePrice: 0,
   iceTradeInValue: 0,
   horizonYears: 5,
+  activeTab: 'summary',
+  tab: 'summary',
 };
 
 export interface UseCommuteFormOptions {
@@ -42,6 +44,8 @@ export type UseCommuteFormReturn = [
 ] & {
   commuteInput: CommuteInput;
   setCommuteInput: React.Dispatch<React.SetStateAction<CommuteInput>>;
+  activeTab: TabId;
+  setActiveTab: (tab: TabId) => void;
 };
 
 /**
@@ -62,9 +66,16 @@ export function useCommuteForm(options: UseCommuteFormOptions = {}): UseCommuteF
   const hasHydratedRef = useRef(false);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const isSyncingFromPopstateRef = useRef(false);
+  const isInitialUrlEmptyRef = useRef(
+    !Boolean(
+      (searchParams && searchParams.toString()) ||
+      (typeof window !== 'undefined' && window.location.search)
+    )
+  );
+  const hasUserInteractedRef = useRef(false);
 
   // 1. Lazy-initialize the form state from URL parameters to prevent hydration mismatches
-  const [commuteInput, setCommuteInput] = useState<CommuteInput>(() => {
+  const [commuteInput, setCommuteInputRaw] = useState<CommuteInput>(() => {
     const base: CommuteInput = {
       ...DEFAULT_COMMUTE_INPUT,
       fuelPriceOverride: options.initialFuelPrices?.regular_91,
@@ -81,10 +92,39 @@ export function useCommuteForm(options: UseCommuteFormOptions = {}): UseCommuteF
     return base;
   });
 
+  const setCommuteInput: React.Dispatch<React.SetStateAction<CommuteInput>> = (action) => {
+    hasUserInteractedRef.current = true;
+    setCommuteInputRaw(action);
+  };
+
   // 2. Mark initial hydration complete on mount
   useEffect(() => {
     hasHydratedRef.current = true;
   }, []);
+
+  // 2.5 Fetch saved trip payload from Supabase if tripId parameter is present (STORY-10)
+  useEffect(() => {
+    const rawTripId =
+      searchParams?.get('tripId') ||
+      searchParams?.get('trip_id') ||
+      (typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('tripId') : null);
+
+    if (rawTripId) {
+      getSavedTripFromSupabase(rawTripId)
+        .then((savedPayload) => {
+          if (savedPayload) {
+            setCommuteInputRaw((prev) => ({
+              ...prev,
+              ...savedPayload,
+              tripId: rawTripId,
+            }));
+          }
+        })
+        .catch((err) => {
+          console.warn('Failed to load saved trip from Supabase:', err);
+        });
+    }
+  }, [searchParams]);
 
   // 3. Handle browser back/forward navigation (popstate) without feedback loop
   useEffect(() => {
@@ -92,7 +132,7 @@ export function useCommuteForm(options: UseCommuteFormOptions = {}): UseCommuteF
       if (typeof window === 'undefined') return;
       isSyncingFromPopstateRef.current = true;
       const currentUrlParams = new URLSearchParams(window.location.search);
-      setCommuteInput((prev) => parseCommuteFromParams(currentUrlParams, prev));
+      setCommuteInputRaw((prev) => parseCommuteFromParams(currentUrlParams, prev));
       setTimeout(() => {
         isSyncingFromPopstateRef.current = false;
       }, 50);
@@ -108,6 +148,8 @@ export function useCommuteForm(options: UseCommuteFormOptions = {}): UseCommuteF
     if (!hasHydratedRef.current) return;
     // Guard: do not echo back to URL when state change originated from browser popstate
     if (isSyncingFromPopstateRef.current) return;
+    // Guard: do not auto-populate default params into a clean initial URL until user interacts
+    if (isInitialUrlEmptyRef.current && !hasUserInteractedRef.current) return;
 
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
@@ -116,7 +158,7 @@ export function useCommuteForm(options: UseCommuteFormOptions = {}): UseCommuteF
     debounceTimerRef.current = setTimeout(() => {
       if (typeof window === 'undefined') return;
 
-      const params = serializeCommuteToParams(commuteInput);
+      const params = serializeCommuteToParams(commuteInput, { privacyMode: true });
       const queryString = params.toString();
       const newSearch = queryString ? `?${queryString}` : '';
       const currentSearch = window.location.search;
@@ -136,10 +178,28 @@ export function useCommuteForm(options: UseCommuteFormOptions = {}): UseCommuteF
     };
   }, [commuteInput, pathname]);
 
+  const activeTab: TabId = commuteInput.activeTab || 'summary';
+
+  const setActiveTab = (tab: TabId) => {
+    setCommuteInput((prev) => ({ ...prev, activeTab: tab, tab }));
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      if (tab === 'summary') {
+        url.searchParams.delete('tab');
+        url.searchParams.delete('activeTab');
+      } else {
+        url.searchParams.set('tab', tab);
+      }
+      window.history.pushState(null, '', url.pathname + (url.search ? url.search : ''));
+    }
+  };
+
   const tuple = [commuteInput, setCommuteInput] as const;
   return Object.assign([...tuple] as [CommuteInput, React.Dispatch<React.SetStateAction<CommuteInput>>], {
     commuteInput,
     setCommuteInput,
+    activeTab,
+    setActiveTab,
   });
 }
 

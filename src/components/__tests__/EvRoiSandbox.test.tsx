@@ -2,10 +2,10 @@ import assert from 'node:assert';
 import { describe, it } from 'node:test';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import EvRoiSandbox from '../EvRoiSandbox';
+import EvRoiSandbox, { formatEvVerdictSentence } from '../EvRoiSandbox';
 import { CommuteInput } from '@/types';
 
-describe('FEAT-65: EV ROI Sandbox Component', () => {
+describe('FEAT-65 & STORY-6: EV ROI Sandbox Component & Plain-Language Verdict', () => {
   const mockInput: CommuteInput = {
     originSuburbId: 'takapuna',
     destinationSuburbId: 'cbd',
@@ -72,5 +72,61 @@ describe('FEAT-65: EV ROI Sandbox Component', () => {
     assert.ok(html.includes('data-testid="tco-timeline"'));
     assert.ok(html.includes('data-testid="tco-year-1"'));
     assert.ok(html.includes('data-testid="tco-year-5"'));
+  });
+
+  describe('STORY-6: Plain-Language Verdict Sentence (No Hardcoded Numbers)', () => {
+    it('formats achievable break-even in plain English without technical syntax', () => {
+      const sentence = formatEvVerdictSentence(14000, 2500, 10000, 4.0);
+      assert.strictEqual(sentence, 'An electric car would pay for itself in about 4 years.');
+    });
+
+    it('formats single year break-even accurately', () => {
+      const sentence = formatEvVerdictSentence(18000, 3000, 3000, 1.0);
+      assert.strictEqual(sentence, 'An electric car would pay for itself in about 1 year.');
+    });
+
+    it('formats decades scenario when break-even is 20+ years using dynamic annual mileage', () => {
+      const sentence = formatEvVerdictSentence(5200, 400, 30000, 75.0);
+      assert.strictEqual(
+        sentence,
+        "At about 5,200 km a year, an electric car wouldn't pay itself back for decades."
+      );
+    });
+
+    it('formats immediate break-even when trade-in covers EV purchase', () => {
+      const sentence = formatEvVerdictSentence(10000, 1500, 0, 0);
+      assert.strictEqual(
+        sentence,
+        'An electric car would pay for itself immediately as your trade-in covers the purchase.'
+      );
+    });
+
+    it('replaces the technical "break-even [X] years" string in rendered HTML with human sentence', () => {
+      // 1. High delta scenario (decades)
+      const htmlDecades = renderToStaticMarkup(
+        React.createElement(EvRoiSandbox, { input: mockInput })
+      );
+      assert.ok(
+        htmlDecades.includes("wouldn&#x27;t pay itself back for decades") ||
+          htmlDecades.includes("wouldn't pay itself back for decades"),
+        'Must render decades plain-language sentence'
+      );
+      assert.ok(!htmlDecades.includes('Break-even:'), 'Must not render old technical "Break-even:" prefix');
+
+      // 2. Short delta scenario (achievable in ~2-3 years)
+      const achievableInput: CommuteInput = {
+        ...mockInput,
+        evPurchasePrice: 20000,
+        iceTradeInValue: 18000,
+      };
+      const htmlAchievable = renderToStaticMarkup(
+        React.createElement(EvRoiSandbox, { input: achievableInput })
+      );
+      assert.ok(
+        htmlAchievable.includes('An electric car would pay for itself in about'),
+        'Must render achievable plain-language sentence'
+      );
+      assert.ok(!htmlAchievable.includes('Break-even:'), 'Must not render old technical "Break-even:" prefix');
+    });
   });
 });

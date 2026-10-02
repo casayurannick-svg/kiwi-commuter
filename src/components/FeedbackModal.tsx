@@ -55,7 +55,7 @@ export default function FeedbackModal({ isOpen, onClose, initialSuccess = false 
     e.preventDefault();
 
     if (!message.trim()) {
-      setError('Please provide a feedback message.');
+      setError('Provide a feedback message.');
       return;
     }
 
@@ -82,7 +82,7 @@ export default function FeedbackModal({ isOpen, onClose, initialSuccess = false 
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || 'Failed to submit feedback. Please try again.');
+        throw new Error(data.error || 'Failed to submit feedback. Try again.');
       }
 
       setIsSuccess(true);
@@ -137,7 +137,7 @@ export default function FeedbackModal({ isOpen, onClose, initialSuccess = false 
             type="button"
             onClick={onClose}
             aria-label="Close feedback modal"
-            className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800/80 transition"
+            className="min-h-[24px] min-w-[24px] p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800/80 transition flex items-center justify-center"
           >
             <X className="w-5 h-5" />
           </button>
@@ -151,12 +151,12 @@ export default function FeedbackModal({ isOpen, onClose, initialSuccess = false 
             </div>
             <h3 className="text-base font-semibold text-white">Thank you for your feedback!</h3>
             <p className="text-xs text-slate-400 max-w-sm mt-1 mb-4 leading-relaxed">
-              Your feedback has been successfully recorded. We appreciate your help making Kiwi Commuter better!
+              Your feedback is recorded. Thank you for helping make Kiwi Commuter better.
             </p>
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition active:scale-95 border border-slate-700"
+              className="min-h-[24px] px-5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition active:scale-95 border border-slate-700"
             >
               Done
             </button>
@@ -172,7 +172,7 @@ export default function FeedbackModal({ isOpen, onClose, initialSuccess = false 
             {/* Name Input */}
             <div>
               <label htmlFor="feedback-name" className="block text-xs font-medium text-slate-300 mb-1">
-                Name <span className="text-slate-500 text-[11px] font-normal">(Optional)</span>
+                Name <span className="text-slate-400 text-[11px] font-normal">(Optional)</span>
               </label>
               <input
                 id="feedback-name"
@@ -180,14 +180,14 @@ export default function FeedbackModal({ isOpen, onClose, initialSuccess = false 
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g. Alex Campbell"
-                className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-100 text-xs placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition"
+                className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-100 text-xs placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition"
               />
             </div>
 
             {/* Contact Input */}
             <div>
               <label htmlFor="feedback-contact" className="block text-xs font-medium text-slate-300 mb-1">
-                Contact <span className="text-slate-500 text-[11px] font-normal">(Email / Phone, optional)</span>
+                Contact <span className="text-slate-400 text-[11px] font-normal">(Email / Phone, optional)</span>
               </label>
               <input
                 id="feedback-contact"
@@ -195,7 +195,7 @@ export default function FeedbackModal({ isOpen, onClose, initialSuccess = false 
                 value={contact}
                 onChange={(e) => setContact(e.target.value)}
                 placeholder="e.g. alex@example.com or 021..."
-                className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-100 text-xs placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition"
+                className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-100 text-xs placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition"
               />
             </div>
 
@@ -212,12 +212,12 @@ export default function FeedbackModal({ isOpen, onClose, initialSuccess = false 
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 placeholder="Describe your feedback, fare discrepancy, route issue, or feature idea..."
-                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-100 text-xs placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 resize-none transition"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-100 text-xs placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 resize-none transition"
               />
             </div>
 
             {/* URL Context Note */}
-            <p className="text-[11px] text-slate-500 italic">
+            <p className="text-[11px] text-slate-400 italic">
               Note: Current commute parameters will be attached to help reproduce any issues.
             </p>
 
@@ -227,7 +227,7 @@ export default function FeedbackModal({ isOpen, onClose, initialSuccess = false 
                 type="button"
                 onClick={onClose}
                 disabled={isSubmitting}
-                className="px-4 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800/80 transition"
+                className="min-h-[24px] px-4 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800/80 transition"
               >
                 Cancel
               </button>

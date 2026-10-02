@@ -19,6 +19,25 @@ function createMockArbitrage(overrides?: Partial<ArbitrageResult>): ArbitrageRes
     distanceKm: 18,
     drivingTimeMins: 25,
     transitTimeMins: 40, // 15 mins slower transit
+    stops: {
+      fuel: 32,
+      ruc: 0,
+      parking: 60,
+      distanceWear: 8,
+      total: 100,
+    },
+    stays: {
+      insurance: 15,
+      rego: 3,
+      wof: 2,
+      depreciation: 0,
+      timeMaintenance: 0,
+      total: 20,
+    },
+    fullCost: 120,
+    transitCost: 38.4,
+    carTime: '50m',
+    transitTime: '80m',
     driving: {
       distanceOneWayKm: 18,
       distanceRoundTripKm: 36,

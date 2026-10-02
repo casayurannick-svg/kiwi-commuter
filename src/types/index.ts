@@ -127,7 +127,23 @@ export interface CommuteInput {
   mileage?: number;
   horizonYears?: number;
   horizon?: number;
+  // STORY-1: Single Cost Model (Stops/Stays) Parameters
+  distanceWearWeekly?: number; // Distance-based maintenance (wear) assumption ($/wk, default $3.00)
+  distanceWear?: number; // Alias for distanceWearWeekly
+  depreciationWeekly?: number; // Time-based vehicle depreciation ($/wk)
+  // STORY-3: Tab Navigation State
+  activeTab?: TabId;
+  tab?: TabId;
+  // STORY-7: First-Run Setup Flow Parameters
+  hasCar?: boolean; // False if commuter does not own/drive a car (transit-only mode)
+  isParkingAssumed?: boolean; // True if parking defaulted to $24.50/day via "Not sure"
+  // STORY-10: Shareable Links & Privacy Parameters
+  tripId?: string; // Opaque UUID referencing saved_trips in Supabase
 }
+
+export type TabId = 'summary' | 'compare' | 'advanced';
+export type ActiveTab = TabId;
+
 
 export interface TransitStepDetail {
   line: string;
@@ -254,7 +270,39 @@ export interface TransitCostBreakdown {
   perPersonDailyFare?: number; // BUG-37: Per-commuter daily return fare before passenger scaling
 }
 
+export interface StopsCostBreakdown {
+  fuel: number;
+  ruc: number;
+  parking: number;
+  distanceWear: number;
+  total: number;
+}
+
+export interface StaysCostBreakdown {
+  insurance: number;
+  rego: number;
+  wof: number;
+  depreciation: number;
+  timeMaintenance: number;
+  total: number;
+}
+
+export * from './commute';
+
 export interface CommuteComparisonResult {
+  // STORY-1: Single Cost Model (Stops / Stays / Times)
+  stops: StopsCostBreakdown;
+  stays: StaysCostBreakdown;
+  fullCost: number;
+  transitCost: number;
+  carTime: string;
+  transitTime: string;
+  carTimeMinutes?: number;
+  transitTimeMinutes?: number;
+
+  // STORY-2: Verdict Engine
+  verdict?: import('./commute').CommuteVerdict;
+
   driving: DrivingCostBreakdown;
   transit: TransitCostBreakdown;
   dailySavings: number;
@@ -353,3 +401,13 @@ export interface TcoArbitrageResult {
   isBreakEvenAchieved: boolean;
   cumulativeCosts: TcoYearCost[];
 }
+
+export interface CarFreeSavingsResult {
+  annualCommuteFullCost: number;
+  annualNonCommuteCost: number;
+  carCostTotal: number; // C = annualCommuteFullCost + annualNonCommuteCost
+  annualTransitFare: number; // F = weekly transitCost * 52
+  allowance: number; // A = taxis, rentals and other trips
+  annualSavings: number; // X = C - F - A
+}
+
