@@ -214,16 +214,14 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
     input.transitMode === 'Scooter & Transit';
   const transitPassengers = isMicromobilityMode ? 1 : passengers;
 
-  // Parking daily rate: support parkingTier preset or explicit parkingDailyRate
-  // BUG-44: Retain private vehicle parking costs regardless of the compared alternative mode.
-  let effectiveParkingRate =
-    typeof input.parkingDailyRate === 'number'
-      ? input.parkingDailyRate
-      : 0;
-  if (input.parkingTier && input.parkingTier !== 'CUSTOM' && PARKING_TIER_RATES[input.parkingTier]) {
-    if (typeof input.parkingDailyRate !== 'number' || input.parkingDailyRate === 0) {
-      effectiveParkingRate = PARKING_TIER_RATES[input.parkingTier].rate;
-    }
+  // Parking daily rate: support explicit parkingDailyRate or parkingTier preset
+  // BUG-13: Respect 0 as a valid numeric input without falsy fallback.
+  const rawParkingRate = input.parkingDailyRate ?? input.customParkingDaily;
+  let effectiveParkingRate = 0;
+  if (typeof rawParkingRate === 'number' && !isNaN(rawParkingRate)) {
+    effectiveParkingRate = rawParkingRate;
+  } else if (input.parkingTier && input.parkingTier !== 'CUSTOM' && PARKING_TIER_RATES[input.parkingTier]) {
+    effectiveParkingRate = PARKING_TIER_RATES[input.parkingTier].rate;
   }
 
   // Helper to resolve EV / PHEV electricity rate ($/kWh)
@@ -900,7 +898,7 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
       : (dailyFuelCost + dailyRucCost + dailyMaintenanceCost + dailyFixedCost);
     const dDriveWeekly =
       dDriveBase * d +
-      (effectiveParkingRate * Math.min(input.parkingDaysPerWeek, d)) / passengers;
+      (effectiveParkingRate * Math.min(effectiveParkingDays, d)) / passengers;
     // BUG-43: Use transitPassengers for transit breakeven — ebike is always 1 rider.
     const perCommuterTransitDaily = (dailyTransitFare - firstMileDailyCost) / transitPassengers;
     const perCommuterFirstMileDaily = firstMileDailyCost / transitPassengers;
@@ -1403,7 +1401,7 @@ export function calculateAnnualNonCommuteCost(
         : isMtRoskillToParnell
         ? 9.78
         : route.distanceKm;
-    const weeklyKm = distOneWay * 2 * (input.daysPerWeek || 5);
+    const weeklyKm = distOneWay * 2 * (input.daysPerWeek ?? 5);
     const weeklyWear =
       typeof input.distanceWearWeekly === 'number' && !isNaN(input.distanceWearWeekly)
         ? input.distanceWearWeekly

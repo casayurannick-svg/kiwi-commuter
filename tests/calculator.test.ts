@@ -1250,6 +1250,60 @@ describe('BUG-37: Scale public transport fares by carpool passenger count', () =
       assert.strictEqual(result.transitTime, '92m');
     });
 
+    it('BUG-13: explicitly asserts parking cost of 0 returns exactly $0.00 in "What you\'d stop paying" breakdown even with active commute days and preset tier', () => {
+      // 3 days a week commute with parkingDailyRate: 0 and parkingTier preset
+      const resultWithRateZero = calculateArbitrage({
+        originSuburbId: 'mt-roskill',
+        destinationSuburbId: 'parnell',
+        daysPerWeek: 3,
+        vehicleType: 'diesel',
+        parkingDailyRate: 0,
+        parkingDaysPerWeek: 3,
+        parkingTier: 'CBD_EARLY_BIRD', // Must not fall back to $18/day
+        concession: 'adult',
+        carpoolPassengers: 1,
+      });
+
+      assert.strictEqual(
+        resultWithRateZero.stops.parking,
+        0.0,
+        'stops.parking must be exactly $0.00 when parkingDailyRate is 0, even if parkingTier is CBD_EARLY_BIRD'
+      );
+      assert.strictEqual(
+        resultWithRateZero.driving.weeklyParkingCost,
+        0.0,
+        'weeklyParkingCost must be exactly $0.00 when parkingDailyRate is 0'
+      );
+      assert.strictEqual(
+        resultWithRateZero.stops.total,
+        17.58,
+        'stops.total must reflect $0.00 parking without phantom charges'
+      );
+
+      // Selecting "FREE" tier with 3 days commute
+      const resultWithTierFree = calculateArbitrage({
+        originSuburbId: 'mt-roskill',
+        destinationSuburbId: 'parnell',
+        daysPerWeek: 3,
+        vehicleType: 'diesel',
+        parkingTier: 'FREE',
+        parkingDaysPerWeek: 3,
+        concession: 'adult',
+        carpoolPassengers: 1,
+      });
+
+      assert.strictEqual(
+        resultWithTierFree.stops.parking,
+        0.0,
+        'stops.parking must be exactly $0.00 when parkingTier is FREE'
+      );
+      assert.strictEqual(
+        resultWithTierFree.stops.total,
+        17.58,
+        'stops.total must be 17.58 with FREE parking tier'
+      );
+    });
+
     it('verifies editable distance-wear assumption correctly recalculates stops and stays', () => {
       const result = calculateArbitrage({
         originSuburbId: 'mt-roskill',

@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { SUBURB_CENTROIDS } from '@/config/suburbs';
-import { VehiclePowertrain, VehicleType } from '@/types';
+import { ParkingTier, VehiclePowertrain, VehicleType } from '@/types';
 import { GeocodingResult } from '@/lib/mapbox';
 import AddressAutocomplete from '@/components/AddressAutocomplete';
 import { ArrowLeft, ArrowRight, Check, Zap, Fuel, Leaf, Footprints, MapPin } from 'lucide-react';
@@ -19,6 +19,7 @@ export interface SetupResult {
   powertrain: VehiclePowertrain;
   hasCar: boolean;
   parkingDailyRate: number;
+  parkingTier?: ParkingTier | 'CUSTOM';
   isParkingAssumed: boolean;
 }
 
@@ -183,17 +184,21 @@ export default function SetupFlow({
 
     let parkingDailyRate = 0;
     let isParkingAssumed = false;
+    let parkingTier: ParkingTier | 'CUSTOM' = 'FREE';
 
     if (!hasCar || parking === 'free') {
       parkingDailyRate = 0;
       isParkingAssumed = false;
+      parkingTier = 'FREE';
     } else if (parking === 'not_sure') {
       // "Not sure" defaults to $24.50/day (Auckland typical weekday cap) and flags it as an assumption
       parkingDailyRate = 24.50;
       isParkingAssumed = true;
+      parkingTier = 'CUSTOM';
     } else if (parking === 'pay') {
       parkingDailyRate = payRate > 0 ? payRate : 20.00;
       isParkingAssumed = false;
+      parkingTier = 'CUSTOM';
     }
 
     const resolvedFrom = resolveSuburb(from, fromCoords, fromSuburbId);
@@ -206,11 +211,12 @@ export default function SetupFlow({
       destinationAddress: to.trim() || undefined,
       originCoordinates: resolvedFrom.coordinates,
       destinationCoordinates: resolvedTo.coordinates,
-      daysPerWeek: days || 5,
+      daysPerWeek: days ?? 5,
       vehicleType,
       powertrain,
       hasCar,
       parkingDailyRate,
+      parkingTier,
       isParkingAssumed,
     });
   };

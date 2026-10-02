@@ -427,7 +427,6 @@ describe('src/lib/calculator.ts - calculateCommuteArbitrage', () => {
         destinationSuburbId: 'cbd',
         daysPerWeek: 5,
         vehicleType: 'petrol91',
-        parkingDailyRate: 0,
         parkingDaysPerWeek: 5,
         parkingTier: 'CBD_EARLY_BIRD',
         concession: 'adult',
