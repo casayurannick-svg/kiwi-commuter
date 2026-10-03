@@ -80,7 +80,7 @@ export default function SetupModal({
                 Welcome to Kiwi Commuter
               </h1>
               <p className="text-xs text-slate-400 mt-0.5">
-                Calculate your true transport costs in 4 simple questions.
+                Calculate your true transport costs in few steps.
               </p>
             </div>
           </div>
