@@ -329,11 +329,13 @@ export default function SetupFlow({
                   autoClearOnFocus
                   icon={<MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />}
                   dropdownZIndex="z-50"
+                  onError={() => setApiError(true)}
                   onChange={(val) => {
                     setFrom(val);
                     setFromCoords(undefined);
                     setFromSuburbId(undefined);
                     if (error) setError(null);
+                    setApiError(false);
                   }}
                   onSelect={(item) => {
                     setFrom(item.placeName);
@@ -341,11 +343,13 @@ export default function SetupFlow({
                     const subId = findClosestSuburb(item);
                     setFromSuburbId(subId);
                     if (error) setError(null);
+                    setApiError(false);
                   }}
                   onClear={() => {
                     setFrom('');
                     setFromCoords(undefined);
                     setFromSuburbId(undefined);
+                    setApiError(false);
                   }}
                 />
               </div>
@@ -360,11 +364,13 @@ export default function SetupFlow({
                   autoClearOnFocus
                   icon={<MapPin className="w-3.5 h-3.5 text-sky-400 shrink-0" />}
                   dropdownZIndex="z-50"
+                  onError={() => setApiError(true)}
                   onChange={(val) => {
                     setTo(val);
                     setToCoords(undefined);
                     setToSuburbId(undefined);
                     if (error) setError(null);
+                    setApiError(false);
                   }}
                   onSelect={(item) => {
                     setTo(item.placeName);
@@ -372,11 +378,13 @@ export default function SetupFlow({
                     const subId = findClosestSuburb(item);
                     setToSuburbId(subId);
                     if (error) setError(null);
+                    setApiError(false);
                   }}
                   onClear={() => {
                     setTo('');
                     setToCoords(undefined);
                     setToSuburbId(undefined);
+                    setApiError(false);
                   }}
                 />
               </div>
