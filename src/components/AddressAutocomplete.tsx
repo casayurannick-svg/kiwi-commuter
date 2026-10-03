@@ -14,6 +14,7 @@ export interface AddressAutocompleteProps {
   onSelect: (result: GeocodingResult) => void;
   onClear?: () => void;
   onFocus?: (e: React.FocusEvent<HTMLInputElement>) => void;
+  onError?: () => void; // Added for STORY-23 Error Boundary linkage
   autoClearOnFocus?: boolean;
   icon?: React.ReactNode;
   dropdownZIndex?: string;
@@ -23,11 +24,6 @@ export interface AddressAutocompleteProps {
   headerRight?: React.ReactNode;
 }
 
-/**
- * AddressAutocomplete
- * Reusable Auckland address & suburb autocomplete component powered by Mapbox / AT API geocoding.
- * Complies with WCAG 2.2 AA contrast and minimum touch target sizes.
- */
 export default function AddressAutocomplete({
   id,
   label,
@@ -38,6 +34,7 @@ export default function AddressAutocomplete({
   onSelect,
   onClear,
   onFocus,
+  onError,
   autoClearOnFocus = false,
   icon,
   dropdownZIndex = 'z-50',
@@ -55,12 +52,10 @@ export default function AddressAutocomplete({
   const containerRef = useRef<HTMLDivElement>(null);
   const activeSearchRef = useRef<number>(0);
 
-  // Sync external value changes
   useEffect(() => {
     setQuery(value);
   }, [value]);
 
-  // Click outside listener to dismiss dropdown
   useEffect(() => {
     const handleOutsideClick = (e: MouseEvent | TouchEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
@@ -96,6 +91,10 @@ export default function AddressAutocomplete({
         }
       } catch (err) {
         console.error('Geocoding autocomplete search error:', err);
+        if (activeSearchRef.current === searchId) {
+          setSuggestions([]);
+          if (onError) onError(); // Fire callback to trigger parent banner
+        }
       } finally {
         if (activeSearchRef.current === searchId) {
           setIsLoading(false);
