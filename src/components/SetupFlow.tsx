@@ -123,10 +123,6 @@ export default function SetupFlow({
       setError('Enter where you travel from and to.');
       return false;
     }
-    if (!fromCoords || !toCoords) {
-      setError('Please select valid locations from the suggestions, or use manual entry.');
-      return false;
-    }
     setError(null);
     return true;
   };
@@ -330,6 +326,7 @@ export default function SetupFlow({
                   icon={<MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />}
                   dropdownZIndex="z-50"
                   onError={() => setApiError(true)}
+                  disabled={apiError}
                   onChange={(val) => {
                     setFrom(val);
                     setFromCoords(undefined);
@@ -365,6 +362,7 @@ export default function SetupFlow({
                   icon={<MapPin className="w-3.5 h-3.5 text-sky-400 shrink-0" />}
                   dropdownZIndex="z-50"
                   onError={() => setApiError(true)}
+                  disabled={apiError}
                   onChange={(val) => {
                     setTo(val);
                     setToCoords(undefined);
@@ -733,8 +731,7 @@ export default function SetupFlow({
           data-testid="setup-next-btn"
           aria-label={step === 4 ? 'See my commute' : 'Next'}
           onClick={handleNext}
-          disabled={step === 1 && !isManualMode && (!from.trim() || !to.trim() || !fromCoords || !toCoords)}
-          className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-slate-950 bg-emerald-400 hover:bg-emerald-300 shadow-md shadow-emerald-950 transition disabled:opacity-40 disabled:cursor-not-allowed"
+          className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-slate-950 bg-emerald-400 hover:bg-emerald-300 shadow-md shadow-emerald-950 transition"
         >
           <span>{step === 4 ? 'See my commute' : 'Next'}</span>
           <ArrowRight className="w-4 h-4" />

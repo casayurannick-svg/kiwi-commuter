@@ -20,6 +20,7 @@ export interface AddressAutocompleteProps {
   dropdownZIndex?: string;
   className?: string;
   disabled?: boolean;
+  apiError?: boolean;
   transitMode?: string;
   headerRight?: React.ReactNode;
 }
@@ -40,6 +41,7 @@ export default function AddressAutocomplete({
   dropdownZIndex = 'z-50',
   className = '',
   disabled = false,
+  apiError = false,
   transitMode,
   headerRight,
 }: AddressAutocompleteProps) {
@@ -48,6 +50,7 @@ export default function AddressAutocomplete({
   const [isLoading, setIsLoading] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const [internalApiError, setInternalApiError] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const activeSearchRef = useRef<number>(0);
@@ -75,6 +78,7 @@ export default function AddressAutocomplete({
     setQuery(val);
     onChange(val);
     setHighlightedIndex(-1);
+    setInternalApiError(false);
 
     const cleanVal = val.trim();
     if (cleanVal.length >= 2) {
@@ -93,6 +97,7 @@ export default function AddressAutocomplete({
         console.error('Geocoding autocomplete search error:', err);
         if (activeSearchRef.current === searchId) {
           setSuggestions([]);
+          setInternalApiError(true);
           if (onError) onError(); // Fire callback to trigger parent banner
         }
       } finally {
@@ -174,7 +179,7 @@ export default function AddressAutocomplete({
             aria-label={label || placeholder}
             type="text"
             value={query}
-            disabled={disabled}
+            disabled={disabled || apiError || internalApiError}
             placeholder={placeholder}
             onChange={(e) => handleSearch(e.target.value)}
             onInput={(e) => handleSearch((e.target as HTMLInputElement).value)}

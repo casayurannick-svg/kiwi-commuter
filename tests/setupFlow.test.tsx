@@ -927,6 +927,71 @@ describe('STORY-7: Setup Flow Onboarding Modal', () => {
       });
     });
   });
+
+  describe('STORY-25: Visually disable address autocomplete inputs during Mapbox API failures', () => {
+    it('disables the address autocomplete inputs when Mapbox search fails (apiError is true)', async () => {
+      const dom = new JSDOM('<!DOCTYPE html><html><body><div id="root"></div></body></html>');
+      // @ts-ignore
+      global.window = dom.window;
+      // @ts-ignore
+      global.document = dom.window.document;
+
+      const container = dom.window.document.getElementById('root')!;
+      const root = createRoot(container);
+
+      const originalFetch = global.fetch;
+      const originalToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+      process.env.NEXT_PUBLIC_MAPBOX_TOKEN = 'pk.test_mapbox_token';
+      // @ts-ignore
+      global.fetch = async () => {
+        throw new Error('Mapbox API down');
+      };
+
+      try {
+        flushSync(() => {
+          root.render(
+            React.createElement(SetupFlow, {
+              onComplete: () => {},
+            })
+          );
+        });
+
+        const fromInput = container.querySelector('[data-testid="setup-from-input"]') as HTMLInputElement;
+        const toInput = container.querySelector('[data-testid="setup-to-input"]') as HTMLInputElement;
+
+        assert.strictEqual(fromInput.disabled, false, 'From input is initially enabled');
+        assert.strictEqual(toInput.disabled, false, 'To input is initially enabled');
+
+        const nativeSetter = Object.getOwnPropertyDescriptor(
+          dom.window.HTMLInputElement.prototype,
+          'value'
+        )?.set;
+
+        // Trigger search failure
+        flushSync(() => {
+          nativeSetter?.call(fromInput, 'Queen Street');
+          fromInput.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+        });
+
+        // Allow async search & catch to flush
+        for (let i = 0; i < 20; i++) {
+          await new Promise((r) => setTimeout(r, 20));
+          flushSync(() => {});
+          if (fromInput.disabled) break;
+        }
+
+        assert.strictEqual(fromInput.disabled, true, 'From input must be disabled during API failure');
+        assert.strictEqual(toInput.disabled, true, 'To input must be disabled during API failure');
+      } finally {
+        global.fetch = originalFetch;
+        process.env.NEXT_PUBLIC_MAPBOX_TOKEN = originalToken;
+        flushSync(() => {
+          root.unmount();
+        });
+      }
+    });
+  });
 });
+
 
 

@@ -69,9 +69,10 @@ export async function searchAucklandAddresses(
   const isHobsonvilleQuery = cleanQuery.toLowerCase().includes('hobsonville');
 
   // Try Mapbox Geocoding API if token is configured
-  if (MAPBOX_TOKEN && MAPBOX_TOKEN.startsWith('pk.')) {
+  const activeToken = normalizeMapboxToken(process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '') || MAPBOX_TOKEN;
+  if (activeToken && activeToken.startsWith('pk.')) {
     try {
-      const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(cleanQuery)}.json?country=nz&bbox=174.3,-37.4,175.3,-36.4&proximity=${proximity[0]},${proximity[1]}&types=address,poi,neighborhood,locality,place&limit=6&access_token=${MAPBOX_TOKEN}`;
+      const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(cleanQuery)}.json?country=nz&bbox=174.3,-37.4,175.3,-36.4&proximity=${proximity[0]},${proximity[1]}&types=address,poi,neighborhood,locality,place&limit=6&access_token=${activeToken}`;
       const res = await fetch(url);
       
       if (!res.ok) {
