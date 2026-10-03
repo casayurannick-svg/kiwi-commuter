@@ -92,6 +92,11 @@ export default function AddressAutocomplete({
         });
         if (activeSearchRef.current === searchId) {
           setSuggestions(results);
+          // Turso fallback succeeded: clear any prior error state so banners dismiss
+          // and inputs re-enable automatically.
+          if (internalApiError) {
+            setInternalApiError(false);
+          }
         }
       } catch (err) {
         console.error('Geocoding autocomplete search error:', err);

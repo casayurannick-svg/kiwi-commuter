@@ -70,13 +70,22 @@ export async function searchAucklandAddresses(
 
   // Try Mapbox Geocoding API if token is configured
   const activeToken = normalizeMapboxToken(process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '') || MAPBOX_TOKEN;
+  let mapboxFailed = false;
   if (activeToken && activeToken.startsWith('pk.')) {
     try {
       const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(cleanQuery)}.json?country=nz&bbox=174.3,-37.4,175.3,-36.4&proximity=${proximity[0]},${proximity[1]}&types=address,poi,neighborhood,locality,place&limit=6&access_token=${activeToken}`;
-      const res = await fetch(url);
-      
-      if (!res.ok) {
-        throw new Error(`Mapbox Geocoding API Error: HTTP ${res.status}`);
+      const controller = new AbortController();
+      const timeoutMs = Number(process.env.MAPBOX_TIMEOUT_MS) || 2000;
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+      let res: Response;
+      try {
+        res = await fetch(url, { signal: controller.signal });
+      } finally {
+        clearTimeout(timeoutId);
+      }
+
+      if (!res!.ok) {
+        throw new Error(`Mapbox Geocoding API Error: HTTP ${res!.status}`);
       }
 
       const data = await res.json();
@@ -122,12 +131,28 @@ export async function searchAucklandAddresses(
         return apiResults;
       }
     } catch (e) {
-      console.error('Mapbox Geocoding API call failed:', e);
-      throw e; // Rethrow to notify frontend error boundary
+      console.warn('Mapbox Geocoding API call failed (falling back to Turso):', e);
+      mapboxFailed = true;
     }
   }
 
-  // Fallback: match against Auckland suburb centroids & snap points when no token configured
+  // Turso DB fallback – runs when Mapbox timed out, rate-limited, or returned HTTP error
+  try {
+    const { searchAddressesInTurso } = await import('./turso');
+    const tursoResults = await searchAddressesInTurso(cleanQuery);
+    if (tursoResults.length > 0) {
+      return tursoResults;
+    }
+  } catch (e) {
+    console.warn('Turso address fallback failed:', e);
+  }
+
+  // If both Mapbox and Turso failed and nothing was returned, surface to the caller
+  if (mapboxFailed) {
+    throw new Error('Address search unavailable: Mapbox and Turso both failed');
+  }
+
+  // Final fallback: match against Auckland suburb centroids & snap points when no token configured
   if (isHobsonvilleQuery) {
     if (isFerryMode) {
       return [HOBSONVILLE_FERRY_TERMINAL, HOBSONVILLE_TOWN_CENTRE];
