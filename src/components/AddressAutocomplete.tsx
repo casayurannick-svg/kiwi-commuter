@@ -15,6 +15,7 @@ export interface AddressAutocompleteProps {
   onClear?: () => void;
   onFocus?: (e: React.FocusEvent<HTMLInputElement>) => void;
   onError?: () => void; // Added for STORY-23 Error Boundary linkage
+  onClearError?: () => void;
   autoClearOnFocus?: boolean;
   icon?: React.ReactNode;
   dropdownZIndex?: string;
@@ -36,6 +37,7 @@ export default function AddressAutocomplete({
   onClear,
   onFocus,
   onError,
+  onClearError,
   autoClearOnFocus = false,
   icon,
   dropdownZIndex = 'z-50',
@@ -54,6 +56,7 @@ export default function AddressAutocomplete({
 
   const containerRef = useRef<HTMLDivElement>(null);
   const activeSearchRef = useRef<number>(0);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     setQuery(value);
@@ -71,20 +74,47 @@ export default function AddressAutocomplete({
     return () => {
       document.removeEventListener('mousedown', handleOutsideClick);
       document.removeEventListener('touchstart', handleOutsideClick);
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
     };
   }, []);
 
-  const handleSearch = async (val: string) => {
+  const handleSearch = (val: string) => {
     setQuery(val);
     onChange(val);
     setHighlightedIndex(-1);
+
+    // Clear the maintenance/error banner on every input change
     setInternalApiError(false);
+    if (onClearError) {
+      onClearError();
+    }
+
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
 
     const cleanVal = val.trim();
-    if (cleanVal.length >= 2) {
-      setIsLoading(true);
-      setShowDropdown(true);
+    if (cleanVal.length < 2) {
+      setSuggestions([]);
+      setShowDropdown(false);
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
+    setShowDropdown(true);
+
+    // 300ms debounce to avoid spamming /api/geocode on every keystroke
+    debounceTimerRef.current = setTimeout(async () => {
       const searchId = ++activeSearchRef.current;
+
+      // Clear the maintenance/error banner before dispatching a query
+      setInternalApiError(false);
+      if (onClearError) {
+        onClearError();
+      }
 
       try {
         const results = await searchAucklandAddresses(cleanVal, undefined, {
@@ -92,10 +122,9 @@ export default function AddressAutocomplete({
         });
         if (activeSearchRef.current === searchId) {
           setSuggestions(results);
-          // Turso fallback succeeded: clear any prior error state so banners dismiss
-          // and inputs re-enable automatically.
-          if (internalApiError) {
-            setInternalApiError(false);
+          setInternalApiError(false);
+          if (onClearError) {
+            onClearError();
           }
         }
       } catch (err) {
@@ -110,24 +139,36 @@ export default function AddressAutocomplete({
           setIsLoading(false);
         }
       }
-    } else {
-      setSuggestions([]);
-      setShowDropdown(false);
-      setIsLoading(false);
-    }
+    }, 300);
   };
 
   const handleSelect = (item: GeocodingResult) => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
     setQuery(item.placeName || item.address || '');
     setShowDropdown(false);
     setSuggestions([]);
+    setIsLoading(false);
+    setInternalApiError(false);
+    if (onClearError) {
+      onClearError();
+    }
     onSelect(item);
   };
 
   const handleClear = () => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
     setQuery('');
     setShowDropdown(false);
     setSuggestions([]);
+    setIsLoading(false);
+    setInternalApiError(false);
+    if (onClearError) {
+      onClearError();
+    }
     onChange('');
     if (onClear) {
       onClear();
@@ -182,17 +223,26 @@ export default function AddressAutocomplete({
             aria-expanded={showDropdown && suggestions.length > 0}
             aria-controls={`${id}-listbox`}
             aria-label={label || placeholder}
+            aria-invalid={apiError || internalApiError}
             type="text"
             value={query}
-            disabled={disabled || apiError || internalApiError}
+            disabled={disabled || apiError}
             placeholder={placeholder}
             onChange={(e) => handleSearch(e.target.value)}
             onInput={(e) => handleSearch((e.target as HTMLInputElement).value)}
             onFocus={(e) => {
               if (autoClearOnFocus && query) {
+                if (debounceTimerRef.current) {
+                  clearTimeout(debounceTimerRef.current);
+                }
                 setQuery('');
                 setShowDropdown(false);
                 setSuggestions([]);
+                setIsLoading(false);
+                setInternalApiError(false);
+                if (onClearError) {
+                  onClearError();
+                }
                 onChange('');
                 if (onClear) {
                   onClear();

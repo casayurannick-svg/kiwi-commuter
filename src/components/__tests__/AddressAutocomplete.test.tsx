@@ -58,4 +58,18 @@ describe('AddressAutocomplete – UI state recovery on Turso fallback success', 
     );
     assert.ok(html.includes('disabled=""'), 'Input must be disabled when apiError=true');
   });
+
+  it('renders enabled input by default and does not permanently disable input on search error', () => {
+    const onChange = () => {};
+    const onSelect = () => {};
+    const html = renderToStaticMarkup(
+      React.createElement(AddressAutocomplete, {
+        id: 'test-interactive',
+        value: 'Queen',
+        onChange,
+        onSelect,
+      })
+    );
+    assert.ok(!html.includes('disabled=""'), 'Input must not be disabled by default so users can edit and clear errors');
+  });
 });

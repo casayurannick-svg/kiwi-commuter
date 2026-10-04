@@ -103,7 +103,7 @@ export default async function handler(
       return res.status(200).json({ results: [] });
     }
 
-    if (mapboxQueriedAndEmpty) {
+    if (nomResponse.status === 404 || mapboxQueriedAndEmpty) {
       return res.status(200).json({ results: [] });
     }
 

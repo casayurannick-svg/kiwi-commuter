@@ -328,7 +328,7 @@ export default function SetupFlow({
                   icon={<MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />}
                   dropdownZIndex="z-50"
                   onError={() => setApiError(true)}
-                  disabled={apiError}
+                  onClearError={() => setApiError(false)}
                   onChange={(val) => {
                     setFrom(val);
                     setFromCoords(undefined);
@@ -364,7 +364,7 @@ export default function SetupFlow({
                   icon={<MapPin className="w-3.5 h-3.5 text-sky-400 shrink-0" />}
                   dropdownZIndex="z-50"
                   onError={() => setApiError(true)}
-                  disabled={apiError}
+                  onClearError={() => setApiError(false)}
                   onChange={(val) => {
                     setTo(val);
                     setToCoords(undefined);
