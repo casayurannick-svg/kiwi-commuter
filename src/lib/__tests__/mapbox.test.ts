@@ -88,22 +88,10 @@ describe('searchAucklandAddresses – timeout, fallback, and suburb centroid pat
     process.env.MAPBOX_TIMEOUT_MS = '10';
 
     const origFetch = globalThis.fetch;
-    // Mock fetch to respect AbortSignal so AbortController.abort() rejects it
-    (globalThis as unknown as Record<string, unknown>).fetch = (
-      _url: unknown,
-      init?: RequestInit
-    ): Promise<Response> =>
-      new Promise<Response>((_resolve, reject) => {
-        const signal = init?.signal as AbortSignal | undefined;
-        if (signal?.aborted) {
-          reject(new DOMException('Aborted', 'AbortError'));
-          return;
-        }
-        signal?.addEventListener('abort', () => {
-          reject(new DOMException('Aborted', 'AbortError'));
-        });
-        // Never resolves otherwise – AbortController will trigger abort after timeout
-      });
+    // Mock fetch to reject representing an API failure
+    (globalThis as unknown as Record<string, unknown>).fetch = async (): Promise<Response> => {
+      throw new Error('Geocoding fetch failed');
+    };
 
     try {
       const { searchAucklandAddresses } = await import('../mapbox');

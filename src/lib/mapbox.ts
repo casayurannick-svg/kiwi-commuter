@@ -53,16 +53,13 @@ export async function searchAucklandAddresses(
   const cleanQuery = query.trim();
   if (!cleanQuery || cleanQuery.length < 2) return [];
 
-  let proximity: [number, number] = [174.7645, -36.8485];
   let transitMode: string | undefined;
 
   if (Array.isArray(proximityOrOptions)) {
-    proximity = proximityOrOptions;
     if (options && typeof options === 'object') {
       transitMode = options.transitMode;
     }
   } else if (typeof proximityOrOptions === 'object' && proximityOrOptions !== null) {
-    if (proximityOrOptions.proximity) proximity = proximityOrOptions.proximity;
     transitMode = proximityOrOptions.transitMode;
   } else if (typeof proximityOrOptions === 'string') {
     transitMode = proximityOrOptions;

@@ -118,7 +118,7 @@ export default function AddressAutocomplete({
   };
 
   const handleSelect = (item: GeocodingResult) => {
-    setQuery(item.placeName);
+    setQuery(item.placeName || item.address || '');
     setShowDropdown(false);
     setSuggestions([]);
     onSelect(item);
@@ -245,7 +245,7 @@ export default function AddressAutocomplete({
               const isHighlighted = highlightedIndex === index;
               return (
                 <button
-                  key={item.id}
+                  key={item.id || item.address || index}
                   id={`${id}-option-${index}`}
                   role="option"
                   aria-selected={isHighlighted}
@@ -258,10 +258,10 @@ export default function AddressAutocomplete({
                   }`}
                 >
                   <span className="text-xs font-semibold text-white tracking-wide">
-                    {item.text}
+                    {item.text || item.address}
                   </span>
                   <span className="text-[11px] text-slate-400 truncate">
-                    {item.placeName}
+                    {item.placeName || item.address}
                   </span>
                 </button>
               );

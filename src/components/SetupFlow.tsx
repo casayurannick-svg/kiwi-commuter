@@ -70,10 +70,12 @@ export default function SetupFlow({
   const findClosestSuburb = (item: GeocodingResult): string => {
     let closestSuburbId = 'cbd';
     let minDistance = Infinity;
+    const coords = item.coordinates || (typeof item.longitude === 'number' && typeof item.latitude === 'number' ? [item.longitude, item.latitude] : undefined);
+    if (!coords) return closestSuburbId;
     for (const sub of SUBURB_CENTROIDS) {
       const d = Math.hypot(
-        sub.coordinates[0] - item.coordinates[0],
-        sub.coordinates[1] - item.coordinates[1]
+        sub.coordinates[0] - coords[0],
+        sub.coordinates[1] - coords[1]
       );
       if (d < minDistance) {
         minDistance = d;
@@ -335,8 +337,8 @@ export default function SetupFlow({
                     setApiError(false);
                   }}
                   onSelect={(item) => {
-                    setFrom(item.placeName);
-                    setFromCoords(item.coordinates);
+                    setFrom(item.placeName || item.address || '');
+                    setFromCoords(item.coordinates || (typeof item.longitude === 'number' && typeof item.latitude === 'number' ? [item.longitude, item.latitude] : undefined));
                     const subId = findClosestSuburb(item);
                     setFromSuburbId(subId);
                     if (error) setError(null);
@@ -371,8 +373,8 @@ export default function SetupFlow({
                     setApiError(false);
                   }}
                   onSelect={(item) => {
-                    setTo(item.placeName);
-                    setToCoords(item.coordinates);
+                    setTo(item.placeName || item.address || '');
+                    setToCoords(item.coordinates || (typeof item.longitude === 'number' && typeof item.latitude === 'number' ? [item.longitude, item.latitude] : undefined));
                     const subId = findClosestSuburb(item);
                     setToSuburbId(subId);
                     if (error) setError(null);
