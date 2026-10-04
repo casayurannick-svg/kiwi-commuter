@@ -192,4 +192,52 @@ test.describe('Address Autocomplete E2E - Local /api/geocode delegation', () => 
     await fromInput.type(' more text');
     await expect(banner).toHaveCount(0);
   });
+
+  test('typing new keystrokes aborts in-flight request and catches AbortError without UI errors', async ({ page }) => {
+    await page.route('**/api/geocode*', async (route) => {
+      // Simulate network delay so request remains in-flight when next keystroke happens
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      try {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            address: 'Ponsonby Central, Auckland',
+            latitude: -36.855,
+            longitude: 174.745,
+          }),
+        });
+      } catch {
+        // Ignored if aborted
+      }
+    });
+
+    await page.goto('/');
+    const modal = page.locator('[data-testid="setup-modal"]');
+    await expect(modal).toBeVisible();
+
+    const fromInput = modal.locator('[data-testid="setup-from-input"]');
+    await expect(fromInput).toBeVisible();
+
+    // Start typing
+    await fromInput.fill('Pon');
+    // Wait for debounce to dispatch the request
+    await page.waitForTimeout(320);
+
+    // Immediately type more characters to abort the in-flight request
+    await fromInput.type('sonby');
+
+    // Final debounced request should finish with 200 OK
+    const [finalResponse] = await Promise.all([
+      page.waitForResponse((res) => res.url().includes('/api/geocode') && res.status() === 200),
+    ]);
+
+    expect(finalResponse.status()).toBe(200);
+
+    // Suggestions dropdown appears and no UI error is triggered
+    const dropdown = modal.locator('[data-testid="setup-from-input-dropdown"]');
+    await expect(dropdown).toBeVisible({ timeout: 5000 });
+    await expect(modal.locator('text=Live address search is currently down')).toHaveCount(0);
+    await expect(fromInput).toBeEnabled();
+  });
 });

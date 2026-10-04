@@ -327,6 +327,32 @@ describe('src/lib/mapbox.ts - /api/geocode client adapter', () => {
     }
   });
 
+  it('passes AbortSignal to fetch and rejects with AbortError when aborted', async () => {
+    const origToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+    const origFetch = globalThis.fetch;
+
+    process.env.NEXT_PUBLIC_MAPBOX_TOKEN = 'pk.test_valid_token';
+    const controller = new AbortController();
+
+    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      assert.strictEqual(init?.signal, controller.signal);
+      const error = new Error('The operation was aborted');
+      error.name = 'AbortError';
+      throw error;
+    };
+
+    try {
+      const { searchAucklandAddresses } = await import('../src/lib/mapbox');
+      await assert.rejects(
+        () => searchAucklandAddresses('Queen Street', { signal: controller.signal }),
+        (err: Error) => err.name === 'AbortError'
+      );
+    } finally {
+      process.env.NEXT_PUBLIC_MAPBOX_TOKEN = origToken;
+      globalThis.fetch = origFetch;
+    }
+  });
+
   it('verifies Directions API still targets api.mapbox.com/directions/v5', async () => {
     const { readFileSync } = await import('node:fs');
     const content = readFileSync('src/lib/mapbox.ts', 'utf-8');

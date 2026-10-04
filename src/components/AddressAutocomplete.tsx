@@ -57,6 +57,7 @@ export default function AddressAutocomplete({
   const containerRef = useRef<HTMLDivElement>(null);
   const activeSearchRef = useRef<number>(0);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     setQuery(value);
@@ -77,6 +78,10 @@ export default function AddressAutocomplete({
       if (debounceTimerRef.current) {
         clearTimeout(debounceTimerRef.current);
       }
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
     };
   }, []);
 
@@ -84,6 +89,12 @@ export default function AddressAutocomplete({
     setQuery(val);
     onChange(val);
     setHighlightedIndex(-1);
+
+    // Cancel in-flight fetch request on new keystroke
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
 
     // Clear the maintenance/error banner on every input change
     setInternalApiError(false);
@@ -108,6 +119,11 @@ export default function AddressAutocomplete({
 
     // 300ms debounce to avoid spamming /api/geocode on every keystroke
     debounceTimerRef.current = setTimeout(async () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
       const searchId = ++activeSearchRef.current;
 
       // Clear the maintenance/error banner before dispatching a query
@@ -119,8 +135,10 @@ export default function AddressAutocomplete({
       try {
         const results = await searchAucklandAddresses(cleanVal, undefined, {
           transitMode,
+          signal: controller.signal,
         });
-        if (activeSearchRef.current === searchId) {
+
+        if (!controller.signal.aborted && activeSearchRef.current === searchId) {
           setSuggestions(results);
           setInternalApiError(false);
           if (onClearError) {
@@ -128,6 +146,15 @@ export default function AddressAutocomplete({
           }
         }
       } catch (err) {
+        // Catch 'AbortError' without UI errors
+        if (
+          controller.signal.aborted ||
+          (err instanceof Error && err.name === 'AbortError') ||
+          (typeof err === 'object' && err !== null && 'name' in err && (err as { name?: string }).name === 'AbortError')
+        ) {
+          return;
+        }
+
         console.error('Geocoding autocomplete search error:', err);
         if (activeSearchRef.current === searchId) {
           setSuggestions([]);
@@ -135,7 +162,8 @@ export default function AddressAutocomplete({
           if (onError) onError(); // Fire callback to trigger parent banner
         }
       } finally {
-        if (activeSearchRef.current === searchId) {
+        // Only disable isLoading if request not aborted
+        if (!controller.signal.aborted && activeSearchRef.current === searchId) {
           setIsLoading(false);
         }
       }
@@ -143,6 +171,10 @@ export default function AddressAutocomplete({
   };
 
   const handleSelect = (item: GeocodingResult) => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
     }
@@ -158,6 +190,10 @@ export default function AddressAutocomplete({
   };
 
   const handleClear = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
     }
@@ -232,6 +268,10 @@ export default function AddressAutocomplete({
             onInput={(e) => handleSearch((e.target as HTMLInputElement).value)}
             onFocus={(e) => {
               if (autoClearOnFocus && query) {
+                if (abortControllerRef.current) {
+                  abortControllerRef.current.abort();
+                  abortControllerRef.current = null;
+                }
                 if (debounceTimerRef.current) {
                   clearTimeout(debounceTimerRef.current);
                 }

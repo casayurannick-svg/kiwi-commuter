@@ -23,6 +23,7 @@ export interface GeocodingResult {
 export interface AddressSearchOptions {
   transitMode?: string;
   proximity?: [number, number];
+  signal?: AbortSignal;
 }
 
 export const HOBSONVILLE_FERRY_TERMINAL: GeocodingResult = {
@@ -54,15 +55,21 @@ export async function searchAucklandAddresses(
   if (!cleanQuery || cleanQuery.length < 2) return [];
 
   let transitMode: string | undefined;
+  let signal: AbortSignal | undefined;
 
   if (Array.isArray(proximityOrOptions)) {
     if (options && typeof options === 'object') {
       transitMode = options.transitMode;
+      signal = options.signal;
     }
   } else if (typeof proximityOrOptions === 'object' && proximityOrOptions !== null) {
     transitMode = proximityOrOptions.transitMode;
+    signal = proximityOrOptions.signal;
   } else if (typeof proximityOrOptions === 'string') {
     transitMode = proximityOrOptions;
+  }
+  if (!signal && options && typeof options === 'object' && options.signal) {
+    signal = options.signal;
   }
 
   const isFerryMode = transitMode?.toUpperCase() === 'FERRY';
@@ -73,7 +80,9 @@ export async function searchAucklandAddresses(
   let mapboxFailed = false;
   if (activeToken && activeToken.startsWith('pk.')) {
     try {
-      const res = await fetch(`/api/geocode?q=${encodeURIComponent(cleanQuery)}`);
+      const res = await fetch(`/api/geocode?q=${encodeURIComponent(cleanQuery)}`, {
+        signal,
+      });
       if (res.status === 404) {
         return [];
       }
@@ -86,6 +95,13 @@ export async function searchAucklandAddresses(
       }
       return [data];
     } catch (e) {
+      if (
+        (e instanceof Error && e.name === 'AbortError') ||
+        (typeof e === 'object' && e !== null && 'name' in e && (e as { name?: string }).name === 'AbortError') ||
+        signal?.aborted
+      ) {
+        throw e;
+      }
       console.warn('Mapbox Geocoding API call failed (falling back to Turso):', e);
       mapboxFailed = true;
     }
