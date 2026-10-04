@@ -15,6 +15,9 @@ export interface GeocodingResult {
   text: string;
   coordinates: [number, number]; // [lng, lat]
   suburbName?: string;
+  address?: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface AddressSearchOptions {
@@ -73,63 +76,12 @@ export async function searchAucklandAddresses(
   let mapboxFailed = false;
   if (activeToken && activeToken.startsWith('pk.')) {
     try {
-      const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(cleanQuery)}.json?country=nz&bbox=174.3,-37.4,175.3,-36.4&proximity=${proximity[0]},${proximity[1]}&types=address,poi,neighborhood,locality,place&limit=6&access_token=${activeToken}`;
-      const controller = new AbortController();
-      const timeoutMs = Number(process.env.MAPBOX_TIMEOUT_MS) || 2000;
-      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-      let res: Response;
-      try {
-        res = await fetch(url, { signal: controller.signal });
-      } finally {
-        clearTimeout(timeoutId);
+      const res = await fetch(`/api/geocode?q=${encodeURIComponent(cleanQuery)}`);
+      if (!res.ok) {
+        throw new Error(`Mapbox Geocoding API Error: HTTP ${res.status}`);
       }
-
-      if (!res!.ok) {
-        throw new Error(`Mapbox Geocoding API Error: HTTP ${res!.status}`);
-      }
-
       const data = await res.json();
-      interface MapboxFeatureContext {
-        id: string;
-        text: string;
-      }
-
-      interface MapboxFeatureItem {
-        id: string;
-        place_name: string;
-        text: string;
-        center: [number, number];
-        context?: MapboxFeatureContext[];
-      }
-
-      if (Array.isArray(data.features) && data.features.length > 0) {
-        const apiResults = (data.features as MapboxFeatureItem[]).map((f) => ({
-          id: f.id,
-          placeName: f.place_name,
-          text: f.text,
-          coordinates: f.center,
-          suburbName:
-            f.context?.find(
-              (c) => c.id.startsWith('locality') || c.id.startsWith('neighborhood')
-            )?.text || f.text,
-        }));
-
-        if (isHobsonvilleQuery) {
-          if (isFerryMode) {
-            const withoutTerminal = apiResults.filter(
-              (r) => r.id !== HOBSONVILLE_FERRY_TERMINAL.id && !r.text.toLowerCase().includes('ferry')
-            );
-            return [HOBSONVILLE_FERRY_TERMINAL, ...withoutTerminal].slice(0, 6);
-          } else {
-            const withoutTerminal = apiResults.filter(
-              (r) => r.id !== HOBSONVILLE_FERRY_TERMINAL.id && !r.text.toLowerCase().includes('ferry')
-            );
-            return [HOBSONVILLE_TOWN_CENTRE, ...withoutTerminal].slice(0, 6);
-          }
-        }
-
-        return apiResults;
-      }
+      return [data];
     } catch (e) {
       console.warn('Mapbox Geocoding API call failed (falling back to Turso):', e);
       mapboxFailed = true;
