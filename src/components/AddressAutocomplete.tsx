@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, Loader2, X } from 'lucide-react';
 import { GeocodingResult, searchAucklandAddresses } from '@/lib/mapbox';
+import { getCacheEntry, setCacheEntry } from '@/lib/autocompleteCache';
 
 export interface AddressAutocompleteProps {
   id: string;
@@ -114,6 +115,15 @@ export default function AddressAutocomplete({
       return;
     }
 
+    // Check LRU cache for existing results
+    const cachedEntry = getCacheEntry(cleanVal);
+    if (cachedEntry) {
+      setSuggestions(cachedEntry.results);
+      setShowDropdown(true);
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     setShowDropdown(true);
 
@@ -140,6 +150,8 @@ export default function AddressAutocomplete({
 
         if (!controller.signal.aborted && activeSearchRef.current === searchId) {
           setSuggestions(results);
+          // Store results in LRU cache for future queries
+          setCacheEntry(cleanVal, results);
           setInternalApiError(false);
           if (onClearError) {
             onClearError();
