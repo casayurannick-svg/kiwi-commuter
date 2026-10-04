@@ -1,10 +1,14 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
-export interface GeocodeResponse {
-  address: string;
-  latitude: number;
-  longitude: number;
-}
+export type GeocodeResponse =
+  | {
+      address: string;
+      latitude: number;
+      longitude: number;
+    }
+  | {
+      results: [];
+    };
 
 export interface GeocodeErrorResponse {
   error: string;
@@ -30,9 +34,11 @@ export default async function handler(
 
   // 3. Try Mapbox first
   const apiKey = process.env.MAPBOX_API_KEY || process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+  let mapboxQueriedAndEmpty = false;
+
   if (apiKey) {
     try {
-      const mapboxUrl = `https://api.mapbox.com/search/geocode/v6/forward?q=${encodeURIComponent(cleanQuery)}&access_token=${apiKey}`;
+      const mapboxUrl = `https://api.mapbox.com/search/geocode/v6/forward?q=${encodeURIComponent(cleanQuery)}&access_token=${apiKey}&country=nz`;
       const response = await fetch(mapboxUrl);
 
       if (response.ok) {
@@ -58,6 +64,8 @@ export default async function handler(
           if (address && typeof latitude === 'number' && typeof longitude === 'number') {
             return res.status(200).json({ address, latitude, longitude });
           }
+        } else {
+          mapboxQueriedAndEmpty = true;
         }
       }
     } catch (error) {
@@ -67,7 +75,7 @@ export default async function handler(
 
   // 4. Fallback to Nominatim if Mapbox fails
   try {
-    const nominatimUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(cleanQuery)}&format=json&limit=1`;
+    const nominatimUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(cleanQuery)}&format=json&limit=1&countrycodes=nz`;
     const nomResponse = await fetch(nominatimUrl, {
       headers: {
         'User-Agent': 'NZTransportCostDashboard/1.0',
@@ -92,11 +100,18 @@ export default async function handler(
         }
       }
 
-      return res.status(404).json({ error: 'No results found for that query' });
+      return res.status(200).json({ results: [] });
+    }
+
+    if (mapboxQueriedAndEmpty) {
+      return res.status(200).json({ results: [] });
     }
 
     return res.status(nomResponse.status || 502).json({ error: 'Nominatim geocoding service error' });
   } catch (error) {
+    if (mapboxQueriedAndEmpty) {
+      return res.status(200).json({ results: [] });
+    }
     console.error('Nominatim geocoding fallback error:', error);
     return res.status(500).json({ error: 'Internal server error during geocoding' });
   }

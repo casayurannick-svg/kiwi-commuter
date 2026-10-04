@@ -74,10 +74,16 @@ export async function searchAucklandAddresses(
   if (activeToken && activeToken.startsWith('pk.')) {
     try {
       const res = await fetch(`/api/geocode?q=${encodeURIComponent(cleanQuery)}`);
+      if (res.status === 404) {
+        return [];
+      }
       if (!res.ok) {
         throw new Error(`Mapbox Geocoding API Error: HTTP ${res.status}`);
       }
       const data = await res.json();
+      if (Array.isArray(data?.results) && data.results.length === 0) {
+        return [];
+      }
       return [data];
     } catch (e) {
       console.warn('Mapbox Geocoding API call failed (falling back to Turso):', e);

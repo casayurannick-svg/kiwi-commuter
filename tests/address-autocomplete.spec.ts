@@ -8,7 +8,7 @@ test.describe('Address Autocomplete E2E - Local /api/geocode delegation', () => 
     // Track requests and responses
     page.on('request', (req) => {
       const url = req.url();
-      if (url.includes('api.mapbox.com')) {
+      if (url.includes('api.mapbox.com/search') || url.includes('api.mapbox.com/geocoding')) {
         mapboxRequests.push(url);
       }
     });
@@ -85,8 +85,9 @@ test.describe('Address Autocomplete E2E - Local /api/geocode delegation', () => 
     const mapboxRequests: string[] = [];
 
     page.on('request', (req) => {
-      if (req.url().includes('api.mapbox.com')) {
-        mapboxRequests.push(req.url());
+      const url = req.url();
+      if (url.includes('api.mapbox.com/search') || url.includes('api.mapbox.com/geocoding')) {
+        mapboxRequests.push(url);
       }
     });
 
@@ -123,5 +124,71 @@ test.describe('Address Autocomplete E2E - Local /api/geocode delegation', () => 
     // Verify no error states
     await expect(modal.locator('text=Live address search is currently down')).toHaveCount(0);
     await expect(toInput).toBeEnabled();
+  });
+
+  test('empty geocode results ({ results: [] }) do NOT trigger maintenance warning banner', async ({ page }) => {
+    await page.route('**/api/geocode*', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ results: [] }),
+      });
+    });
+
+    await page.goto('/');
+    const modal = page.locator('[data-testid="setup-modal"]');
+    await expect(modal).toBeVisible();
+
+    const fromInput = modal.locator('[data-testid="setup-from-input"]');
+    await expect(fromInput).toBeVisible();
+    await expect(fromInput).toBeEnabled();
+
+    const [geocodeResponse] = await Promise.all([
+      page.waitForResponse((res) => res.url().includes('/api/geocode') && res.status() === 200),
+      fromInput.fill('Nonexistent Place ZZ99'),
+    ]);
+
+    expect(geocodeResponse.status()).toBe(200);
+    const data = await geocodeResponse.json();
+    expect(data).toEqual({ results: [] });
+
+    // Assert maintenance warning banner is NOT visible in the DOM
+    await expect(modal.locator('text=Live address search is currently down')).toHaveCount(0);
+    await expect(modal.locator('text=down for maintenance')).toHaveCount(0);
+
+    // Assert input remains enabled
+    await expect(fromInput).toBeEnabled();
+  });
+
+  test('HTTP 500 geocode error triggers maintenance warning banner and disables input', async ({ page }) => {
+    await page.route('**/api/geocode*', async (route) => {
+      await route.fulfill({
+        status: 500,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: 'Internal server error during geocoding' }),
+      });
+    });
+
+    await page.goto('/');
+    const modal = page.locator('[data-testid="setup-modal"]');
+    await expect(modal).toBeVisible();
+
+    const fromInput = modal.locator('[data-testid="setup-from-input"]');
+    await expect(fromInput).toBeVisible();
+    await expect(fromInput).toBeEnabled();
+
+    const [geocodeResponse] = await Promise.all([
+      page.waitForResponse((res) => res.url().includes('/api/geocode') && res.status() === 500),
+      fromInput.fill('Failing Search Query'),
+    ]);
+
+    expect(geocodeResponse.status()).toBe(500);
+
+    // Assert maintenance warning banner IS triggered and visible in the DOM
+    const banner = modal.locator('text=Live address search is currently down for maintenance');
+    await expect(banner).toBeVisible({ timeout: 5000 });
+
+    // Assert input is disabled
+    await expect(fromInput).toBeDisabled();
   });
 });

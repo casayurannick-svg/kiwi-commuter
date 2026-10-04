@@ -188,14 +188,18 @@ describe('Geocode API Route (Mapbox to Nominatim fallback adapter)', () => {
     }
   });
 
-  it('returns 404 when both Mapbox and Nominatim return no results', async () => {
+  it('returns 200 with { results: [] } when both Mapbox and Nominatim return no results', async () => {
     const origKey = process.env.MAPBOX_API_KEY;
     const origFetch = globalThis.fetch;
+
+    let mapboxUrl = '';
+    let nominatimUrl = '';
 
     process.env.MAPBOX_API_KEY = 'pk.mock_token';
     globalThis.fetch = async (input: RequestInfo | URL): Promise<Response> => {
       const url = String(input);
       if (url.includes('api.mapbox.com')) {
+        mapboxUrl = url;
         return {
           ok: true,
           status: 200,
@@ -203,6 +207,7 @@ describe('Geocode API Route (Mapbox to Nominatim fallback adapter)', () => {
         } as unknown as Response;
       }
       if (url.includes('nominatim.openstreetmap.org')) {
+        nominatimUrl = url;
         return {
           ok: true,
           status: 200,
@@ -218,8 +223,10 @@ describe('Geocode API Route (Mapbox to Nominatim fallback adapter)', () => {
         query: { q: 'Nonexistent Place XYZ' },
       });
       await handler(req, res);
-      assert.strictEqual(res.getStatusCode(), 404);
-      assert.deepStrictEqual(res.getData(), { error: 'No results found for that query' });
+      assert.strictEqual(res.getStatusCode(), 200);
+      assert.deepStrictEqual(res.getData(), { results: [] });
+      assert.ok(mapboxUrl.includes('country=nz'), 'Mapbox request must include country=nz');
+      assert.ok(nominatimUrl.includes('countrycodes=nz'), 'Nominatim request must include countrycodes=nz');
     } finally {
       process.env.MAPBOX_API_KEY = origKey;
       globalThis.fetch = origFetch;
@@ -228,6 +235,32 @@ describe('Geocode API Route (Mapbox to Nominatim fallback adapter)', () => {
 });
 
 describe('src/lib/mapbox.ts - /api/geocode client adapter', () => {
+  it('returns [] when /api/geocode returns { results: [] } (empty results without error)', async () => {
+    const origToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+    const origFetch = globalThis.fetch;
+
+    process.env.NEXT_PUBLIC_MAPBOX_TOKEN = 'pk.test_valid_token';
+    globalThis.fetch = async (input: RequestInfo | URL): Promise<Response> => {
+      const url = String(input);
+      if (url.startsWith('/api/geocode')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ results: [] }),
+        } as unknown as Response;
+      }
+      throw new Error('Unexpected URL: ' + url);
+    };
+
+    try {
+      const { searchAucklandAddresses } = await import('../src/lib/mapbox');
+      const results = await searchAucklandAddresses('Nonexistent Street 9999');
+      assert.deepStrictEqual(results, []);
+    } finally {
+      process.env.NEXT_PUBLIC_MAPBOX_TOKEN = origToken;
+      globalThis.fetch = origFetch;
+    }
+  });
   it('calls /api/geocode?q=... and returns [data]', async () => {
     const origToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
     const origFetch = globalThis.fetch;
