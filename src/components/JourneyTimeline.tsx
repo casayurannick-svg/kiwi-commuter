@@ -108,8 +108,16 @@ export default function JourneyTimeline({
 
     return journeyLegs.map((leg) => {
       if (leg.type === 'FIRST_MILE') {
-        const dur = firstMileDirections?.durationMinutes ?? leg.durationMins;
         const dist = firstMileDirections?.distanceKm ?? localStop.distanceKm;
+        const speed =
+          firstMileMode === 'CYCLE' || firstMileMode === 'SCOOTER'
+            ? 15
+            : (firstMileMode as string) === 'DRIVE'
+            ? 30
+            : 4.5;
+        const dur =
+          firstMileDirections?.durationMinutes ??
+          Math.max(1, Math.round((dist / speed) * 60));
         return {
           ...leg,
           title:

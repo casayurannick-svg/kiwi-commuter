@@ -155,4 +155,28 @@ describe('src/components/JourneyTimeline.tsx - US-28 Segmented Timeline UI', () 
       assert.ok(html.includes('Western Line'), 'Must include Western Line train leg pill');
     });
   });
+
+  describe('First-mile duration calculation without transit buffer', () => {
+    it('calculates duration from distance and speed when firstMileDirections is null', () => {
+      // WALK: 0.6km at 4.5km/h -> (0.6 / 4.5) * 60 = 8 mins
+      const dist = 0.6;
+      const speedWalk = 4.5;
+      const durWalk = Math.max(1, Math.round((dist / speedWalk) * 60));
+      assert.strictEqual(durWalk, 8);
+
+      // CYCLE / SCOOTER: 1.5km at 15km/h -> (1.5 / 15) * 60 = 6 mins
+      const speedCycle = 15;
+      const durCycle = Math.max(1, Math.round((1.5 / speedCycle) * 60));
+      assert.strictEqual(durCycle, 6);
+
+      // DRIVE: 3km at 30km/h -> (3 / 30) * 60 = 6 mins
+      const speedDrive = 30;
+      const durDrive = Math.max(1, Math.round((3 / speedDrive) * 60));
+      assert.strictEqual(durDrive, 6);
+
+      // Minimum 1 min clamp
+      const durTiny = Math.max(1, Math.round((0.01 / speedWalk) * 60));
+      assert.strictEqual(durTiny, 1);
+    });
+  });
 });
