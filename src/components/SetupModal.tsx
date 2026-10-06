@@ -3,6 +3,7 @@
 import React, { useEffect, useRef } from 'react';
 import KiwiPathwayIcon from '@/components/icons/KiwiPathwayIcon';
 import SetupFlow, { SetupResult } from '@/components/SetupFlow';
+import { DateTimeWeatherBadge } from '@/components/DateTimeWeatherBadge';
 import { X } from 'lucide-react';
 
 export interface SetupModalProps {
@@ -82,6 +83,9 @@ export default function SetupModal({
               <p className="text-xs text-slate-400 mt-0.5">
                 Calculate your true transport costs in few steps.
               </p>
+              <div className="mt-2.5">
+                <DateTimeWeatherBadge />
+              </div>
             </div>
           </div>
 
