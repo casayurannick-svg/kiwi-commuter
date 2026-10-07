@@ -134,7 +134,7 @@ export default function ShareButton({
         onClick={handleShareLink}
         className={
           className ||
-          'min-h-[32px] px-2.5 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5 text-xs font-semibold transition active:scale-95'
+          'min-h-[44px] px-3 py-2 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5 text-xs font-semibold transition active:scale-95'
         }
         title="Copy shareable link with current commute parameters"
         aria-label="Share comparison link"

@@ -299,7 +299,7 @@ export default function SetupFlow({
                 setIsManualMode(!isManualMode);
                 setError(null);
               }}
-              className="text-xs px-2.5 py-1 rounded border border-slate-700 bg-slate-800/80 text-slate-300 hover:text-white hover:border-slate-600 transition"
+              className="text-xs px-3 py-2 min-h-[44px] rounded-lg border border-slate-700 bg-slate-800/80 text-slate-300 hover:text-white hover:border-slate-600 transition flex items-center justify-center shrink-0"
             >
               {isManualMode ? 'Use Map Autofill' : 'Enter Manually'}
             </button>
@@ -327,6 +327,7 @@ export default function SetupFlow({
                   autoClearOnFocus
                   icon={<MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />}
                   dropdownZIndex="z-50"
+                  apiError={apiError}
                   onError={() => setApiError(true)}
                   onClearError={() => setApiError(false)}
                   onChange={(val) => {
@@ -363,6 +364,7 @@ export default function SetupFlow({
                   autoClearOnFocus
                   icon={<MapPin className="w-3.5 h-3.5 text-sky-400 shrink-0" />}
                   dropdownZIndex="z-50"
+                  apiError={apiError}
                   onError={() => setApiError(true)}
                   onClearError={() => setApiError(false)}
                   onChange={(val) => {
@@ -481,7 +483,7 @@ export default function SetupFlow({
                     setDays(d);
                     if (error) setError(null);
                   }}
-                  className={`flex flex-col items-center justify-center p-3 sm:p-4 rounded-xl border font-bold transition-all ${
+                  className={`flex flex-col items-center justify-center p-3 sm:p-4 min-h-[44px] rounded-xl border font-bold transition-all ${
                     isSelected
                       ? 'bg-emerald-500 text-white border-emerald-400 shadow-md shadow-emerald-950'
                       : 'bg-slate-950/70 border-slate-800 text-slate-200 hover:border-slate-700 hover:bg-slate-900'
@@ -524,7 +526,7 @@ export default function SetupFlow({
                     setDrive(opt.id);
                     if (error) setError(null);
                   }}
-                  className={`w-full flex items-center justify-between p-2.5 sm:p-3.5 rounded-xl border text-left transition-all ${
+                  className={`w-full flex items-center justify-between p-2.5 sm:p-3.5 min-h-[44px] rounded-xl border text-left transition-all ${
                     isSelected
                       ? 'bg-emerald-500/15 border-emerald-500 text-white shadow-sm'
                       : 'bg-slate-950/70 border-slate-800/80 text-slate-200 hover:bg-slate-900 hover:border-slate-700'
@@ -587,7 +589,7 @@ export default function SetupFlow({
                 setParking('free');
                 if (error) setError(null);
               }}
-              className={`w-full flex items-center justify-between p-3.5 sm:p-4 rounded-xl border text-left transition-all ${
+              className={`w-full flex items-center justify-between p-3.5 sm:p-4 min-h-[44px] rounded-xl border text-left transition-all ${
                 parking === 'free'
                   ? 'bg-emerald-500/15 border-emerald-500 text-white'
                   : 'bg-slate-950/70 border-slate-800/80 text-slate-200 hover:bg-slate-900'
@@ -625,7 +627,7 @@ export default function SetupFlow({
                   setParking('pay');
                   if (error) setError(null);
                 }}
-                className="w-full flex items-center justify-between p-3.5 sm:p-4 text-left"
+                className="w-full flex items-center justify-between p-3.5 sm:p-4 min-h-[44px] text-left"
               >
                 <div>
                   <div className="font-semibold text-sm sm:text-base text-white">I pay for it</div>
@@ -659,7 +661,7 @@ export default function SetupFlow({
                       step="0.5"
                       value={payRate}
                       onChange={(e) => setPayRate(parseFloat(e.target.value) || 0)}
-                      className="w-full bg-slate-900 border border-slate-700 rounded-lg py-1.5 pl-6 pr-2.5 text-xs text-white font-mono font-bold"
+                      className="w-full bg-slate-900 border border-slate-700 rounded-lg py-1.5 pl-6 pr-2.5 min-h-[44px] text-xs text-white font-mono font-bold"
                     />
                   </div>
                   <span className="text-xs text-slate-400">a day</span>
@@ -675,7 +677,7 @@ export default function SetupFlow({
                 setParking('not_sure');
                 if (error) setError(null);
               }}
-              className={`w-full flex items-center justify-between p-3.5 sm:p-4 rounded-xl border text-left transition-all ${
+              className={`w-full flex items-center justify-between p-3.5 sm:p-4 min-h-[44px] rounded-xl border text-left transition-all ${
                 parking === 'not_sure'
                   ? 'bg-emerald-500/15 border-emerald-500 text-white'
                   : 'bg-slate-950/70 border-slate-800/80 text-slate-200 hover:bg-slate-900'
@@ -720,7 +722,7 @@ export default function SetupFlow({
               type="button"
               data-testid="setup-back-btn"
               onClick={handleBack}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold text-slate-300 hover:text-white bg-slate-800/60 hover:bg-slate-800 border border-slate-700/60 transition"
+              className="inline-flex items-center justify-center gap-1.5 px-4 py-2 min-h-[44px] rounded-xl text-xs sm:text-sm font-semibold text-slate-300 hover:text-white bg-slate-800/60 hover:bg-slate-800 border border-slate-700/60 transition"
             >
               <ArrowLeft className="w-4 h-4" />
               <span>Back</span>
@@ -733,7 +735,7 @@ export default function SetupFlow({
           data-testid="setup-next-btn"
           aria-label={step === 4 ? 'See my commute' : 'Next'}
           onClick={handleNext}
-          className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-slate-950 bg-emerald-400 hover:bg-emerald-300 shadow-md shadow-emerald-950 transition"
+          className="inline-flex items-center justify-center gap-1.5 px-5 py-2.5 min-h-[44px] rounded-xl text-xs sm:text-sm font-bold text-slate-950 bg-emerald-400 hover:bg-emerald-300 shadow-md shadow-emerald-950 transition"
         >
           <span>{step === 4 ? 'See my commute' : 'Next'}</span>
           <ArrowRight className="w-4 h-4" />

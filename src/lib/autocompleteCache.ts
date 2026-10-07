@@ -19,8 +19,9 @@ interface CacheEntry {
 
 /** Load the cache array from localStorage. Returns empty array if none or malformed. */
 function loadCache(): CacheEntry[] {
-  if (typeof window === 'undefined' || !window.localStorage) return [];
+  if (typeof window === 'undefined') return [];
   try {
+    if (!window.localStorage) return [];
     const raw = window.localStorage.getItem(CACHE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw) as CacheEntry[];
@@ -34,11 +35,12 @@ function loadCache(): CacheEntry[] {
 
 /** Persist the given cache array to localStorage. */
 function saveCache(cache: CacheEntry[]): void {
-  if (typeof window === 'undefined' || !window.localStorage) return;
+  if (typeof window === 'undefined') return;
   try {
+    if (!window.localStorage) return;
     window.localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
   } catch {
-    // Silently ignore storage errors (e.g., quota exceeded)
+    // Silently ignore storage errors (e.g., quota exceeded, security error)
   }
 }
 

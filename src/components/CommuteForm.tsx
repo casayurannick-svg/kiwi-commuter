@@ -414,7 +414,7 @@ export default function CommuteForm({
     activeTransitMode === 'Scooter & Transit';
 
   return (
-    <div className="glass-panel rounded-2xl p-4 sm:p-5 border border-slate-800 space-y-4">
+    <div className="glass-panel rounded-2xl flex flex-col p-4 sm:p-5 px-4 sm:px-6 border border-slate-800 space-y-4 max-w-full overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between pb-2.5 border-b border-slate-800">
         <h2 className="text-sm font-bold text-white flex items-center gap-2">
@@ -426,7 +426,7 @@ export default function CommuteForm({
       </div>
 
       {/* Origin & Destination (US-28 & US-42 Inferred Zone Badges with Height Alignment) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 gap-3">
         {/* Origin */}
         <div className="space-y-1.5 relative">
           <div className="flex items-center justify-between gap-1 min-h-[36px]">
@@ -482,9 +482,10 @@ export default function CommuteForm({
                       originCoordinates: sub ? sub.coordinates : undefined,
                     });
                   }}
-                  className="absolute right-2.5 p-1 text-slate-400 hover:text-white"
+                  aria-label="Clear origin address"
+                  className="absolute right-1 p-2.5 min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-400 hover:text-white rounded-lg hover:bg-slate-800/80 transition"
                 >
-                  <X className="w-3.5 h-3.5" />
+                  <X className="w-4 h-4" />
                 </button>
               ) : null}
             </div>
@@ -563,9 +564,10 @@ export default function CommuteForm({
                       destinationCoordinates: sub ? sub.coordinates : undefined,
                     });
                   }}
-                  className="absolute right-2.5 p-1 text-slate-400 hover:text-white"
+                  aria-label="Clear destination address"
+                  className="absolute right-1 p-2.5 min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-400 hover:text-white rounded-lg hover:bg-slate-800/80 transition"
                 >
-                  <X className="w-3.5 h-3.5" />
+                  <X className="w-4 h-4" />
                 </button>
               ) : null}
             </div>
@@ -1309,7 +1311,7 @@ export default function CommuteForm({
               <div className={`flex items-center pt-4 justify-between ${isIrdMode ? 'opacity-60' : ''}`}>
                 <div className="flex items-center gap-2">
                   <label
-                    className={`text-xs text-slate-300 flex items-center gap-2 select-none ${
+                    className={`text-xs text-slate-300 flex items-center gap-2.5 select-none min-h-[44px] py-1 cursor-pointer ${
                       isIrdMode ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
                     }`}
                   >
@@ -1319,7 +1321,7 @@ export default function CommuteForm({
                       disabled={isIrdMode}
                       checked={isIrdMode ? false : input.includeMaintenanceWear}
                       onChange={(e) => handleFieldChange('includeMaintenanceWear', e.target.checked)}
-                      className={`w-4 h-4 rounded text-emerald-500 bg-slate-900 border-slate-700 ${
+                      className={`w-5 h-5 rounded text-emerald-500 bg-slate-900 border-slate-700 cursor-pointer ${
                         isIrdMode ? 'opacity-50 pointer-events-none' : ''
                       }`}
                     />
@@ -1575,13 +1577,13 @@ export default function CommuteForm({
 
                   <div className="pt-2 border-t border-slate-800 space-y-2">
                     <div className="flex items-center justify-between">
-                      <label className={`text-xs text-slate-300 flex items-center gap-2 select-none ${isIrdMode ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
+                      <label className={`text-xs text-slate-300 flex items-center gap-2.5 select-none min-h-[44px] py-1 ${isIrdMode ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
                         <input
                           type="checkbox"
                           disabled={isIrdMode}
                           checked={input.insuranceEnabled !== false}
                           onChange={(e) => handleFieldChange('insuranceEnabled', e.target.checked)}
-                          className="w-4 h-4 rounded text-emerald-500 bg-slate-900 border-slate-700 disabled:opacity-50"
+                          className="w-5 h-5 rounded text-emerald-500 bg-slate-900 border-slate-700 disabled:opacity-50 cursor-pointer"
                         />
                         <span className="font-semibold text-slate-200">Include Comprehensive Insurance</span>
                       </label>

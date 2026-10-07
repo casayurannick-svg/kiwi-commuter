@@ -137,7 +137,7 @@ export default function FeedbackModal({ isOpen, onClose, initialSuccess = false 
             type="button"
             onClick={onClose}
             aria-label="Close feedback modal"
-            className="min-h-[24px] min-w-[24px] p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800/80 transition flex items-center justify-center"
+            className="min-h-[44px] min-w-[44px] p-2 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800/80 transition flex items-center justify-center"
           >
             <X className="w-5 h-5" />
           </button>
@@ -156,7 +156,7 @@ export default function FeedbackModal({ isOpen, onClose, initialSuccess = false 
             <button
               type="button"
               onClick={onClose}
-              className="min-h-[24px] px-5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition active:scale-95 border border-slate-700"
+              className="min-h-[44px] px-6 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition active:scale-95 border border-slate-700 flex items-center justify-center"
             >
               Done
             </button>
@@ -222,19 +222,19 @@ export default function FeedbackModal({ isOpen, onClose, initialSuccess = false 
             </p>
 
             {/* Actions */}
-            <div className="flex items-center justify-end gap-2.5 pt-2">
+            <div className="flex items-center justify-end gap-3 pt-2">
               <button
                 type="button"
                 onClick={onClose}
                 disabled={isSubmitting}
-                className="min-h-[24px] px-4 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800/80 transition"
+                className="min-h-[44px] px-4 py-2.5 rounded-xl text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800/80 transition flex items-center justify-center"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isSubmitting || !message.trim()}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:pointer-events-none text-white text-xs font-semibold shadow-md shadow-emerald-950 transition active:scale-95"
+                className="min-h-[44px] inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:pointer-events-none text-white text-xs font-semibold shadow-md shadow-emerald-950 transition active:scale-95"
               >
                 {isSubmitting ? (
                   <>

@@ -17,7 +17,7 @@ export default function FeedbackButton({
       <button
         type="button"
         onClick={onClick}
-        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700/80 text-slate-300 hover:text-white border border-slate-700/60 text-xs font-medium transition active:scale-95 ${className}`}
+        className={`inline-flex items-center gap-1.5 px-3 py-2 min-h-[44px] rounded-lg bg-slate-800/80 hover:bg-slate-700/80 text-slate-300 hover:text-white border border-slate-700/60 text-xs font-medium transition active:scale-95 ${className}`}
       >
         <MessageSquare className="w-3.5 h-3.5 text-emerald-400" />
         <span>Report Feedback</span>
@@ -32,7 +32,7 @@ export default function FeedbackButton({
       onClick={onClick}
       title="Report Feedback"
       aria-label="Report Feedback"
-      className={`min-h-[32px] px-2.5 py-1 rounded-lg bg-slate-800/80 hover:bg-slate-700/80 text-slate-300 hover:text-white border border-slate-700/60 flex items-center gap-1.5 text-xs font-semibold transition active:scale-95 ${className}`}
+      className={`min-h-[44px] px-3 py-2 rounded-lg bg-slate-800/80 hover:bg-slate-700/80 text-slate-300 hover:text-white border border-slate-700/60 flex items-center gap-1.5 text-xs font-semibold transition active:scale-95 ${className}`}
     >
       <MessageSquare className="w-3.5 h-3.5 text-emerald-400" />
       <span className="hidden sm:inline">Feedback</span>

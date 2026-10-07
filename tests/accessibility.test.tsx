@@ -183,7 +183,7 @@ describe('STORY-11: Copy, Formatting & Accessibility Pass', () => {
         React.createElement(ShareButton, { commuteInput: fixtureInput })
       );
       assert.ok(
-        shareHtml.includes('min-h-[32px]') || shareHtml.includes('min-h-[24px]'),
+        shareHtml.includes('min-h-[44px]') || shareHtml.includes('min-h-[32px]') || shareHtml.includes('min-h-[24px]'),
         'ShareButton must meet >= 24px target height'
       );
 
@@ -191,7 +191,7 @@ describe('STORY-11: Copy, Formatting & Accessibility Pass', () => {
         React.createElement(FeedbackButton, { onClick: () => {} })
       );
       assert.ok(
-        feedbackBtnHtml.includes('min-h-[32px]') || feedbackBtnHtml.includes('min-h-[24px]'),
+        feedbackBtnHtml.includes('min-h-[44px]') || feedbackBtnHtml.includes('min-h-[32px]') || feedbackBtnHtml.includes('min-h-[24px]'),
         'FeedbackButton must meet >= 24px target height'
       );
 
@@ -202,8 +202,9 @@ describe('STORY-11: Copy, Formatting & Accessibility Pass', () => {
       const closeBtn = dom.window.document.querySelector('button[aria-label="Close feedback modal"]');
       assert.ok(closeBtn, 'Close button must exist in FeedbackModal');
       assert.ok(
-        closeBtn.className.includes('min-h-[24px]') && closeBtn.className.includes('min-w-[24px]'),
-        'Close button must have min-h-[24px] and min-w-[24px]'
+        (closeBtn.className.includes('min-h-[44px]') || closeBtn.className.includes('min-h-[24px]')) &&
+        (closeBtn.className.includes('min-w-[44px]') || closeBtn.className.includes('min-w-[24px]')),
+        'Close button must have minimum target dimensions'
       );
     });
   });

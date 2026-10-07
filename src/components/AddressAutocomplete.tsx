@@ -328,9 +328,9 @@ export default function AddressAutocomplete({
               onClick={handleClear}
               data-testid={`${testId}-clear-btn`}
               aria-label="Clear address input"
-              className="absolute right-2 p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800/80 min-h-[24px] min-w-[24px] flex items-center justify-center transition"
+              className="absolute right-1 p-2.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800/80 min-h-[44px] min-w-[44px] flex items-center justify-center transition"
             >
-              <X className="w-3.5 h-3.5" aria-hidden="true" />
+              <X className="w-4 h-4" aria-hidden="true" />
             </button>
           ) : null}
         </div>

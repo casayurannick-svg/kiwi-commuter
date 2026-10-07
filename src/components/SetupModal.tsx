@@ -63,11 +63,11 @@ export default function SetupModal({
       aria-modal="true"
       aria-labelledby="setup-modal-title"
       data-testid="setup-modal"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md transition-opacity animate-in fade-in duration-200 overflow-y-auto"
+      className="fixed inset-0 z-50 flex items-center justify-center px-3 py-4 sm:p-4 bg-black/80 backdrop-blur-md transition-opacity animate-in fade-in duration-200 overflow-y-auto"
     >
       <div
         ref={modalRef}
-        className="relative w-full max-w-lg my-auto bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-visible p-5 sm:p-7 text-slate-100"
+        className="relative w-full max-w-lg my-auto bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-visible p-4 sm:p-7 text-slate-100"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header Branding */}
@@ -95,9 +95,9 @@ export default function SetupModal({
               onClick={onClose}
               aria-label="Close setup modal"
               data-testid="setup-modal-close-btn"
-              className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800/80 transition min-h-[24px] min-w-[24px] flex items-center justify-center"
+              className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800/80 transition min-h-[44px] min-w-[44px] flex items-center justify-center"
             >
-              <X className="w-4 h-4" />
+              <X className="w-5 h-5" />
             </button>
           )}
         </div>

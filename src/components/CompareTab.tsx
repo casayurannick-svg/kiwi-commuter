@@ -123,7 +123,7 @@ export default function CompareTab({
                 type="button"
                 aria-pressed={isActive}
                 onClick={() => setTimeframe(t)}
-                className={`min-h-[32px] px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold capitalize transition-all ${
+                className={`min-h-[44px] px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold capitalize transition-all ${
                   isActive
                     ? 'bg-emerald-500 text-white shadow-sm shadow-emerald-950'
                     : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
@@ -155,17 +155,21 @@ export default function CompareTab({
           id="toggle-fixed-costs"
           aria-checked={includeFixedCosts}
           onClick={() => setIncludeFixedCosts((prev) => !prev)}
-          className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-[#090d16] ${
-            includeFixedCosts ? 'bg-emerald-500' : 'bg-slate-700'
-          }`}
+          className={`relative inline-flex items-center justify-center p-2 min-h-[44px] min-w-[44px] shrink-0 cursor-pointer rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-[#090d16]`}
         >
           <span className="sr-only">Include costs I&apos;d pay anyway</span>
           <span
-            aria-hidden="true"
-            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
-              includeFixedCosts ? 'translate-x-5' : 'translate-x-0'
+            className={`relative inline-flex h-6 w-11 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
+              includeFixedCosts ? 'bg-emerald-500' : 'bg-slate-700'
             }`}
-          />
+          >
+            <span
+              aria-hidden="true"
+              className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                includeFixedCosts ? 'translate-x-5' : 'translate-x-0'
+              }`}
+            />
+          </span>
         </button>
       </div>
 

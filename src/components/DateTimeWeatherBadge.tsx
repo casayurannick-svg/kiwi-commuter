@@ -150,15 +150,21 @@ export const DateTimeWeatherBadge = () => {
   const { label: weatherLabel, icon: WeatherIcon } = getWeatherInfo(weatherCode);
 
   return (
-    <div className="flex items-center space-x-2 rounded-full bg-slate-900 bg-opacity-60 px-3 py-1 text-sm text-white backdrop-blur-sm">
-      <Calendar size={16} className="stroke-current shrink-0" />
-      <span>{dateStr}</span>
-      <Clock size={16} className="stroke-current shrink-0" />
-      <span>{timeStr}</span>
-      <WeatherIcon size={16} className="stroke-current shrink-0" />
-      <span>
-        {tempC !== null ? `Auckland ${tempC}°C ${weatherLabel}` : 'Loading…'}
-      </span>
+    <div className="inline-flex flex-wrap items-center gap-2 rounded-2xl sm:rounded-full bg-slate-900/80 px-3 py-1 text-xs sm:text-sm text-white backdrop-blur-sm max-w-full">
+      <div className="flex items-center gap-1.5 shrink-0">
+        <Calendar size={14} className="stroke-current shrink-0 text-slate-300" />
+        <span>{dateStr}</span>
+      </div>
+      <div className="flex items-center gap-1.5 shrink-0">
+        <Clock size={14} className="stroke-current shrink-0 text-slate-300" />
+        <span>{timeStr}</span>
+      </div>
+      <div className="flex items-center gap-1.5 shrink-0">
+        <WeatherIcon size={14} className="stroke-current shrink-0 text-slate-300" />
+        <span>
+          {tempC !== null ? `Auckland ${tempC}°C ${weatherLabel}` : 'Loading…'}
+        </span>
+      </div>
     </div>
   );
 };

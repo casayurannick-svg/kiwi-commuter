@@ -133,7 +133,7 @@ export default function SummaryTab({
             onClick={() => onEditCommute?.(1)}
             aria-label="Change commute route and frequency"
             data-testid="summary-change-route-btn"
-            className="text-xs sm:text-sm font-semibold text-emerald-400 hover:text-emerald-300 underline underline-offset-4 ml-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded px-1 min-h-[24px] inline-flex items-center"
+            className="text-xs sm:text-sm font-semibold text-emerald-400 hover:text-emerald-300 underline underline-offset-4 ml-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded px-1.5 min-h-[44px] inline-flex items-center"
           >
             Change
           </button>
@@ -211,7 +211,7 @@ export default function SummaryTab({
           type="button"
           onClick={() => setIsEditingWear((prev) => !prev)}
           aria-expanded={isEditingWear}
-          className="font-semibold text-emerald-400 hover:text-emerald-300 underline underline-offset-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded min-h-[24px] inline-flex items-center"
+          className="font-semibold text-emerald-400 hover:text-emerald-300 underline underline-offset-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded min-h-[44px] inline-flex items-center px-1"
         >
           {isEditingWear ? 'Done' : 'Change'}
         </button>
@@ -238,28 +238,30 @@ export default function SummaryTab({
             <button
               type="button"
               onClick={() => setIsEditingWear(false)}
-              className="text-xs text-emerald-400 font-medium hover:underline flex items-center gap-1 min-h-[24px]"
+              className="text-xs text-emerald-400 font-medium hover:underline flex items-center gap-1 min-h-[44px] px-2"
             >
-              <Check className="w-3 h-3" /> Done
+              <Check className="w-3.5 h-3.5" /> Done
             </button>
           </div>
 
-          <div className="flex items-center gap-4">
-            <input
-              type="range"
-              min="0"
-              max="15"
-              step="0.5"
-              value={commuteInput.distanceWearWeekly ?? 3.0}
-              onChange={(e) =>
-                setCommuteInput((prev) => ({
-                  ...prev,
-                  distanceWearWeekly: parseFloat(e.target.value),
-                  distanceWear: parseFloat(e.target.value),
-                }))
-              }
-              className="flex-1 accent-emerald-500 cursor-pointer"
-            />
+          <div className="flex items-center gap-4 py-1">
+            <div className="flex-1 flex items-center min-h-[44px]">
+              <input
+                type="range"
+                min="0"
+                max="15"
+                step="0.5"
+                value={commuteInput.distanceWearWeekly ?? 3.0}
+                onChange={(e) =>
+                  setCommuteInput((prev) => ({
+                    ...prev,
+                    distanceWearWeekly: parseFloat(e.target.value),
+                    distanceWear: parseFloat(e.target.value),
+                  }))
+                }
+                className="w-full h-3 accent-emerald-500 cursor-pointer rounded-lg"
+              />
+            </div>
             <div className="font-mono text-sm text-white font-bold min-w-[70px] text-right">
               ${(commuteInput.distanceWearWeekly ?? 3.0).toFixed(2)} a week
             </div>

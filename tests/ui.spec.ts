@@ -181,6 +181,24 @@ test.describe('Mobile Viewport & Layout Regression (BUG-41)', () => {
     const clientWidth = await page.evaluate(() => document.documentElement.clientWidth);
     expect(scrollWidth).toBeLessThanOrEqual(clientWidth + 1);
   });
+
+  test('ensures no horizontal scrolling exists at 320px width on Setup Modal and Dashboard', async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 568 });
+
+    // 1. Check Setup Modal at 320px
+    await page.goto('/');
+    await page.waitForSelector('[data-testid="setup-modal"]');
+    let scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+    let clientWidth = await page.evaluate(() => document.documentElement.clientWidth);
+    expect(scrollWidth).toBeLessThanOrEqual(clientWidth + 1);
+
+    // 2. Check Dashboard at 320px
+    await page.goto('/?from=mt-roskill&to=parnell&days=3');
+    await page.waitForSelector('main');
+    scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+    clientWidth = await page.evaluate(() => document.documentElement.clientWidth);
+    expect(scrollWidth).toBeLessThanOrEqual(clientWidth + 1);
+  });
 });
 
 test.describe('Advanced Tab & Custom Commute Form Interactivity', () => {
