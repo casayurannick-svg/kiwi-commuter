@@ -241,4 +241,85 @@ describe('AddressAutocomplete Component', () => {
       root.unmount();
     });
   });
+
+  it('renders dropdown with full width bounds and multi-line wrapping without truncation (US-mobile-legibility)', async () => {
+    const dom = new JSDOM('<!DOCTYPE html><html><body><div id="root"></div></body></html>');
+    // @ts-ignore
+    global.window = dom.window;
+    // @ts-ignore
+    global.document = dom.window.document;
+
+    const container = dom.window.document.getElementById('root')!;
+    const root = createRoot(container);
+
+    flushSync(() => {
+      root.render(
+        React.createElement(AddressAutocomplete, {
+          id: 'test-legibility',
+          testId: 'test-legibility',
+          value: '',
+          onChange: () => {},
+          onSelect: () => {},
+        })
+      );
+    });
+
+    const input = container.querySelector('#test-legibility') as HTMLInputElement;
+    const nativeSetter = Object.getOwnPropertyDescriptor(
+      dom.window.HTMLInputElement.prototype,
+      'value'
+    )?.set;
+
+    flushSync(() => {
+      nativeSetter?.call(input, 'Ponsonby');
+      input.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+    });
+
+    let dropdown: HTMLElement | null = null;
+    for (let i = 0; i < 20; i++) {
+      await new Promise((r) => setTimeout(r, 25));
+      flushSync(() => {});
+      dropdown = container.querySelector('[data-testid="test-legibility-dropdown"]');
+      if (dropdown) break;
+    }
+
+    assert.ok(dropdown, 'Dropdown is rendered');
+    assert.ok(
+      dropdown.className.includes('w-full') && dropdown.className.includes('left-0') && dropdown.className.includes('right-0'),
+      'Dropdown spans full container width minus parent padding'
+    );
+    assert.ok(
+      dropdown.className.includes('overflow-x-hidden'),
+      'Dropdown explicitly prevents horizontal scrolling'
+    );
+
+    const suggestion0 = container.querySelector('[data-testid="test-legibility-suggestion-0"]') as HTMLElement;
+    assert.ok(suggestion0, 'Suggestion button is rendered');
+
+    const addressSpan = suggestion0.querySelector('span:first-child') as HTMLElement;
+    assert.ok(addressSpan, 'Primary address span exists');
+    assert.ok(
+      addressSpan.className.includes('break-words') && addressSpan.className.includes('whitespace-normal'),
+      'Primary address text wraps cleanly across multiple lines without truncation'
+    );
+    assert.ok(
+      !addressSpan.className.includes('truncate'),
+      'Primary address text does not have truncate utility'
+    );
+
+    const subTextSpan = suggestion0.querySelector('span:nth-child(2)') as HTMLElement;
+    assert.ok(subTextSpan, 'Sub-label text span exists');
+    assert.ok(
+      subTextSpan.className.includes('break-words') && subTextSpan.className.includes('whitespace-normal'),
+      'Sub-label text wraps cleanly across multiple lines'
+    );
+    assert.ok(
+      !subTextSpan.className.includes('truncate'),
+      'Sub-label text does not truncate'
+    );
+
+    flushSync(() => {
+      root.unmount();
+    });
+  });
 });

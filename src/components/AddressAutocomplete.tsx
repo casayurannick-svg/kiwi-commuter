@@ -341,7 +341,7 @@ export default function AddressAutocomplete({
             id={`${id}-listbox`}
             role="listbox"
             data-testid={`${testId}-dropdown`}
-            className={`absolute ${dropdownZIndex} left-0 right-0 mt-1.5 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl max-h-56 overflow-y-auto divide-y divide-slate-800 animate-in fade-in duration-150`}
+            className={`absolute ${dropdownZIndex} left-0 right-0 w-full mt-1.5 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl max-h-60 overflow-y-auto overflow-x-hidden divide-y divide-slate-800 animate-in fade-in duration-150`}
           >
             {suggestions.map((item, index) => {
               const isHighlighted = highlightedIndex === index;
@@ -355,14 +355,14 @@ export default function AddressAutocomplete({
                   data-testid={`${testId}-suggestion-${index}`}
                   onClick={() => handleSelect(item)}
                   onMouseEnter={() => setHighlightedIndex(index)}
-                  className={`w-full text-left px-3.5 py-2.5 transition flex flex-col gap-0.5 min-h-[44px] justify-center ${
+                  className={`w-full text-left px-3.5 py-2.5 transition flex flex-col gap-1 min-h-[44px] justify-center ${
                     isHighlighted ? 'bg-slate-800 text-white' : 'hover:bg-slate-800/80 text-slate-200'
                   }`}
                 >
-                  <span className="text-xs font-semibold text-white tracking-wide">
+                  <span className="text-xs font-semibold text-white tracking-wide break-words whitespace-normal leading-snug">
                     {item.text || item.address}
                   </span>
-                  <span className="text-[11px] text-slate-400 truncate">
+                  <span className="text-[11px] text-slate-400 break-words whitespace-normal leading-relaxed">
                     {item.placeName || item.address}
                   </span>
                 </button>

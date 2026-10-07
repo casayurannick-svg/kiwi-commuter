@@ -281,13 +281,13 @@ export default function SetupFlow({
 
       {/* Step 1: Where do you travel? */}
       {step === 1 && (
-        <div className="space-y-5 animate-fadeIn" data-testid="setup-step-1">
-          <div className="flex items-start justify-between">
+        <div className="space-y-4 sm:space-y-5 animate-fadeIn" data-testid="setup-step-1">
+          <div className="flex items-start justify-between gap-2">
             <div>
-              <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+              <h2 className="text-lg sm:text-2xl font-bold text-white tracking-tight leading-tight">
                 Where do you travel?
               </h2>
-              <p className="text-xs sm:text-sm text-slate-300 mt-1">
+              <p className="text-[11px] sm:text-sm text-slate-300 mt-0.5 sm:mt-1">
                 Enter where you travel from and to.
               </p>
             </div>
@@ -299,7 +299,7 @@ export default function SetupFlow({
                 setIsManualMode(!isManualMode);
                 setError(null);
               }}
-              className="text-xs px-3 py-2 min-h-[44px] rounded-lg border border-slate-700 bg-slate-800/80 text-slate-300 hover:text-white hover:border-slate-600 transition flex items-center justify-center shrink-0"
+              className="text-[11px] sm:text-xs px-2.5 sm:px-3 py-1.5 sm:py-2 min-h-[44px] rounded-lg border border-slate-700 bg-slate-800/80 text-slate-300 hover:text-white hover:border-slate-600 transition flex items-center justify-center shrink-0"
             >
               {isManualMode ? 'Use Map Autofill' : 'Enter Manually'}
             </button>
@@ -460,12 +460,12 @@ export default function SetupFlow({
 
       {/* Step 2 */}
       {step === 2 && (
-        <div className="space-y-5 animate-fadeIn" data-testid="setup-step-2">
+        <div className="space-y-4 sm:space-y-5 animate-fadeIn" data-testid="setup-step-2">
           <div>
-            <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+            <h2 className="text-lg sm:text-2xl font-bold text-white tracking-tight leading-tight">
               How many days a week?
             </h2>
-            <p className="text-xs sm:text-sm text-slate-300 mt-1">
+            <p className="text-[11px] sm:text-sm text-slate-300 mt-0.5 sm:mt-1">
               Select how many days you commute each week.
             </p>
           </div>
@@ -502,12 +502,12 @@ export default function SetupFlow({
 
       {/* Step 3 */}
       {step === 3 && (
-        <div className="space-y-5 animate-fadeIn" data-testid="setup-step-3">
+        <div className="space-y-4 sm:space-y-5 animate-fadeIn" data-testid="setup-step-3">
           <div>
-            <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+            <h2 className="text-lg sm:text-2xl font-bold text-white tracking-tight leading-tight">
               What do you drive?
             </h2>
-            <p className="text-xs sm:text-sm text-slate-300 mt-1">
+            <p className="text-[11px] sm:text-sm text-slate-300 mt-0.5 sm:mt-1">
               We&apos;ll use a typical fuel use for it. You can change this later.
             </p>
           </div>
@@ -570,12 +570,12 @@ export default function SetupFlow({
 
       {/* Step 4 */}
       {step === 4 && (
-        <div className="space-y-5 animate-fadeIn" data-testid="setup-step-4">
+        <div className="space-y-4 sm:space-y-5 animate-fadeIn" data-testid="setup-step-4">
           <div>
-            <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+            <h2 className="text-lg sm:text-2xl font-bold text-white tracking-tight leading-tight">
               What&apos;s parking like at work?
             </h2>
-            <p className="text-xs sm:text-sm text-slate-300 mt-1">
+            <p className="text-[11px] sm:text-sm text-slate-300 mt-0.5 sm:mt-1">
               Choose your usual parking situation.
             </p>
           </div>

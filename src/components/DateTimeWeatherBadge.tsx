@@ -150,17 +150,17 @@ export const DateTimeWeatherBadge = () => {
   const { label: weatherLabel, icon: WeatherIcon } = getWeatherInfo(weatherCode);
 
   return (
-    <div className="inline-flex flex-wrap items-center gap-2 rounded-2xl sm:rounded-full bg-slate-900/80 px-3 py-1 text-xs sm:text-sm text-white backdrop-blur-sm max-w-full">
-      <div className="flex items-center gap-1.5 shrink-0">
-        <Calendar size={14} className="stroke-current shrink-0 text-slate-300" />
+    <div className="inline-flex flex-wrap items-center gap-1.5 sm:gap-2 rounded-xl sm:rounded-full bg-slate-900/80 px-2.5 py-0.5 sm:px-3 sm:py-1 text-[11px] sm:text-xs text-white backdrop-blur-sm max-w-full">
+      <div className="flex items-center gap-1 shrink-0">
+        <Calendar size={12} className="stroke-current shrink-0 text-slate-300 sm:w-3.5 sm:h-3.5" />
         <span>{dateStr}</span>
       </div>
-      <div className="flex items-center gap-1.5 shrink-0">
-        <Clock size={14} className="stroke-current shrink-0 text-slate-300" />
+      <div className="flex items-center gap-1 shrink-0">
+        <Clock size={12} className="stroke-current shrink-0 text-slate-300 sm:w-3.5 sm:h-3.5" />
         <span>{timeStr}</span>
       </div>
-      <div className="flex items-center gap-1.5 shrink-0">
-        <WeatherIcon size={14} className="stroke-current shrink-0 text-slate-300" />
+      <div className="flex items-center gap-1 shrink-0">
+        <WeatherIcon size={12} className="stroke-current shrink-0 text-slate-300 sm:w-3.5 sm:h-3.5" />
         <span>
           {tempC !== null ? `Auckland ${tempC}°C ${weatherLabel}` : 'Loading…'}
         </span>

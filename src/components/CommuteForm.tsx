@@ -492,16 +492,16 @@ export default function CommuteForm({
 
             {/* Suggestions Dropdown */}
             {showOriginDropdown && originSuggestions.length > 0 && (
-              <div className="absolute z-50 left-0 right-0 mt-1 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl max-h-56 overflow-y-auto divide-y divide-slate-800">
+              <div className="absolute z-50 left-0 right-0 w-full mt-1 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl max-h-60 overflow-y-auto overflow-x-hidden divide-y divide-slate-800">
                 {originSuggestions.map((item) => (
                   <button
                     key={item.id}
                     type="button"
                     onClick={() => handleSelectOriginAddress(item)}
-                    className="w-full text-left px-3 py-2.5 hover:bg-slate-800/80 transition flex flex-col gap-0.5"
+                    className="w-full text-left px-3.5 py-2.5 hover:bg-slate-800/80 transition flex flex-col gap-1 min-h-[44px] justify-center"
                   >
-                    <span className="text-xs font-semibold text-white">{item.text}</span>
-                    <span className="text-[11px] text-slate-400 truncate">{item.placeName}</span>
+                    <span className="text-xs font-semibold text-white break-words whitespace-normal leading-snug">{item.text}</span>
+                    <span className="text-[11px] text-slate-400 break-words whitespace-normal leading-relaxed">{item.placeName}</span>
                   </button>
                 ))}
               </div>
@@ -574,16 +574,16 @@ export default function CommuteForm({
 
             {/* Suggestions Dropdown */}
             {showDestDropdown && destSuggestions.length > 0 && (
-              <div className="absolute z-50 left-0 right-0 mt-1 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl max-h-56 overflow-y-auto divide-y divide-slate-800">
+              <div className="absolute z-50 left-0 right-0 w-full mt-1 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl max-h-60 overflow-y-auto overflow-x-hidden divide-y divide-slate-800">
                 {destSuggestions.map((item) => (
                   <button
                     key={item.id}
                     type="button"
                     onClick={() => handleSelectDestAddress(item)}
-                    className="w-full text-left px-3 py-2.5 hover:bg-slate-800/80 transition flex flex-col gap-0.5"
+                    className="w-full text-left px-3.5 py-2.5 hover:bg-slate-800/80 transition flex flex-col gap-1 min-h-[44px] justify-center"
                   >
-                    <span className="text-xs font-semibold text-white">{item.text}</span>
-                    <span className="text-[11px] text-slate-400 truncate">{item.placeName}</span>
+                    <span className="text-xs font-semibold text-white break-words whitespace-normal leading-snug">{item.text}</span>
+                    <span className="text-[11px] text-slate-400 break-words whitespace-normal leading-relaxed">{item.placeName}</span>
                   </button>
                 ))}
               </div>

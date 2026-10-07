@@ -17,6 +17,7 @@ import { SetupResult } from '@/components/SetupFlow';
 import { useCommuteForm } from '@/hooks/useCommuteForm';
 import { useSearchParams } from 'next/navigation';
 import React, { useEffect, useMemo, useState } from 'react';
+import { Calculator, MessageSquare } from 'lucide-react';
 
 interface DashboardClientProps {
   initialFuelPrices?: FuelBenchmarkDto;
@@ -264,7 +265,7 @@ export default function DashboardClient({ initialFuelPrices }: DashboardClientPr
       </main>
 
       {/* Minimal Footer with Compact Inline Links */}
-      <footer className="border-t border-slate-800/80 px-4 sm:px-6 py-4 text-xs text-slate-400 mt-8">
+      <footer className="border-t border-slate-800/80 px-4 sm:px-6 py-4 text-xs text-slate-400 mt-8 pb-20 md:pb-4">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
           <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-2 gap-y-1">
             <span className="font-semibold text-slate-300">Kiwi Commuter</span>
@@ -302,6 +303,44 @@ export default function DashboardClient({ initialFuelPrices }: DashboardClientPr
           </div>
         </div>
       </footer>
+
+      {/* Sticky Mobile Action Bar for Core Controls (Mobile viewports only, hidden on md+) */}
+      <div
+        data-testid="mobile-action-bar"
+        className="md:hidden sticky bottom-0 z-50 bg-[#090d16]/95 backdrop-blur-md border-t border-slate-800/90 px-4 py-2.5 shadow-2xl safe-pb"
+      >
+        <div className="flex items-center justify-between gap-2.5 max-w-lg mx-auto">
+          {/* Primary Calculation / Route Edit Action */}
+          <button
+            type="button"
+            data-testid="mobile-edit-commute-btn"
+            onClick={() => handleEditCommute(1)}
+            aria-label="Edit commute calculation parameters"
+            className="flex-1 min-h-[44px] px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md shadow-emerald-950/50 transition active:scale-[0.98]"
+          >
+            <Calculator className="w-4 h-4 shrink-0" />
+            <span>Recalculate Commute</span>
+          </button>
+
+          {/* Core Feedback Action */}
+          <button
+            type="button"
+            data-testid="mobile-feedback-btn"
+            onClick={() => setIsFeedbackOpen(true)}
+            aria-label="Report Feedback"
+            className="min-h-[44px] min-w-[44px] px-3 py-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700/70 text-xs font-semibold flex items-center justify-center gap-1.5 transition active:scale-[0.98] shrink-0"
+          >
+            <MessageSquare className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span className="text-xs">Feedback</span>
+          </button>
+
+          {/* Share Action */}
+          <ShareButton
+            commuteInput={commuteInput}
+            className="min-h-[44px] min-w-[44px] px-2.5 py-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center text-xs font-semibold transition active:scale-[0.98] shrink-0"
+          />
+        </div>
+      </div>
 
       {/* In-App Feedback Reporter Modal */}
       <FeedbackModal isOpen={isFeedbackOpen} onClose={() => setIsFeedbackOpen(false)} />

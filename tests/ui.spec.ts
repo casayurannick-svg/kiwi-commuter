@@ -199,6 +199,97 @@ test.describe('Mobile Viewport & Layout Regression (BUG-41)', () => {
     clientWidth = await page.evaluate(() => document.documentElement.clientWidth);
     expect(scrollWidth).toBeLessThanOrEqual(clientWidth + 1);
   });
+
+  test('AddressAutocomplete dropdown wraps long addresses and stays within viewport bounds on mobile (375px)', async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 667 });
+    await page.goto('/');
+
+    const modal = page.locator('[data-testid="setup-modal"]');
+    await expect(modal).toBeVisible();
+
+    const fromInput = modal.locator('[data-testid="setup-from-input"]');
+    await fromInput.click();
+    await fromInput.pressSequentially('Mount Roskill', { delay: 30 });
+
+    const dropdown = modal.locator('[data-testid="setup-from-input-dropdown"]');
+    await expect(dropdown).toBeVisible({ timeout: 15000 });
+
+    // Assert dropdown width does not exceed modal/screen bounds and has no horizontal scroll
+    const isOverflowing = await dropdown.evaluate((el) => {
+      const rect = el.getBoundingClientRect();
+      const parentRect = el.parentElement?.getBoundingClientRect() || rect;
+      return {
+        hasHorizontalScroll: el.scrollWidth > el.clientWidth,
+        isWithinViewport: rect.left >= 0 && rect.right <= window.innerWidth + 1,
+        isWithinParentWidth: Math.abs(rect.width - parentRect.width) <= 2,
+      };
+    });
+
+    expect(isOverflowing.hasHorizontalScroll).toBe(false);
+    expect(isOverflowing.isWithinViewport).toBe(true);
+    expect(isOverflowing.isWithinParentWidth).toBe(true);
+
+    // Assert suggestion item text wraps and is visible
+    const suggestion0 = modal.locator('[data-testid="setup-from-input-suggestion-0"]');
+    await expect(suggestion0).toBeVisible();
+    const isTextWrapping = await suggestion0.evaluate((btn) => {
+      const primarySpan = btn.querySelector('span:first-child') as HTMLElement | null;
+      const subSpan = btn.querySelector('span:nth-child(2)') as HTMLElement | null;
+      return {
+        primaryWhiteBreak: primarySpan?.style.whiteSpace || window.getComputedStyle(primarySpan!).whiteSpace,
+        subWhiteBreak: subSpan?.style.whiteSpace || window.getComputedStyle(subSpan!).whiteSpace,
+        hasNoTruncateClass: !primarySpan?.className.includes('truncate') && !subSpan?.className.includes('truncate'),
+      };
+    });
+
+    expect(isTextWrapping.hasNoTruncateClass).toBe(true);
+    expect(isTextWrapping.primaryWhiteBreak).toBe('normal');
+    expect(isTextWrapping.subWhiteBreak).toBe('normal');
+  });
+
+  test('renders sticky mobile action bar on small viewports and hides on md+ viewports without obscuring content', async ({ page }) => {
+    // 1. Mobile Viewport (375px)
+    await page.setViewportSize({ width: 375, height: 667 });
+    await page.goto('/?from=mt-roskill&to=parnell&days=3');
+    await page.waitForSelector('main');
+
+    const mobileBar = page.locator('[data-testid="mobile-action-bar"]');
+    await expect(mobileBar).toBeVisible();
+
+    // Verify classes: sticky, bottom-0, z-50, md:hidden
+    const barClasses = await mobileBar.getAttribute('class');
+    expect(barClasses).toContain('sticky');
+    expect(barClasses).toContain('bottom-0');
+    expect(barClasses).toContain('z-50');
+    expect(barClasses).toContain('md:hidden');
+
+    // Verify core controls inside mobile bar
+    const recalculateBtn = mobileBar.locator('[data-testid="mobile-edit-commute-btn"]');
+    const feedbackBtn = mobileBar.locator('[data-testid="mobile-feedback-btn"]');
+    await expect(recalculateBtn).toBeVisible();
+    await expect(feedbackBtn).toBeVisible();
+
+    // Clicking recalculate opens the route edit modal
+    await recalculateBtn.click();
+    const modal = page.locator('[data-testid="setup-modal"]');
+    await expect(modal).toBeVisible();
+    // Close modal if close button available or close via modal close button
+    const modalCloseBtn = modal.locator('[data-testid="setup-modal-close-btn"]');
+    if (await modalCloseBtn.count() > 0) {
+      await modalCloseBtn.click();
+    } else {
+      await page.keyboard.press('Escape');
+    }
+
+    // Verify footer has bottom padding (pb-20) to prevent content being obscured on mobile
+    const footer = page.locator('footer');
+    const footerClasses = await footer.getAttribute('class');
+    expect(footerClasses).toContain('pb-20');
+
+    // 2. Desktop Viewport (1024px) - bar should be hidden
+    await page.setViewportSize({ width: 1024, height: 768 });
+    await expect(mobileBar).toBeHidden();
+  });
 });
 
 test.describe('Advanced Tab & Custom Commute Form Interactivity', () => {
