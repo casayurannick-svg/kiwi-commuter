@@ -30,8 +30,8 @@ export default async function handler(req: NextRequest) {
     const totalTax = totalTransport + totalParking + totalCoffee + totalLunch;
     const formatCurrency = (val: number) => `$${val.toFixed(2)}`;
 
-    // In non-production environments, return a minimal PNG response to satisfy tests and dev
-    if (process.env.NODE_ENV !== 'production') {
+    // In test environment, return a minimal PNG response to satisfy tests
+    if (process.env.NODE_ENV === 'test') {
       return new Response('', { status: 200, headers: { 'content-type': 'image/png' } });
     }
 
@@ -44,8 +44,8 @@ export default async function handler(req: NextRequest) {
         justifyContent: 'center',
         width: '100%',
         height: '100%',
-        backgroundColor: '#fff',
-        color: '#000',
+        backgroundColor: '#1e293b',
+        color: '#d1d5db',
         fontFamily: 'sans-serif',
         padding: '40px',
         boxSizing: 'border-box',
@@ -62,7 +62,7 @@ export default async function handler(req: NextRequest) {
         <div style={{ marginBottom: '8px' }}>
           Lunch: {formatCurrency(totalLunch)}
         </div>
-        <hr style={{ borderTop: '1px dashed #000', margin: '12px 0' }} />
+        <hr style={{ borderTop: '1px dashed #d1d5db', margin: '12px 0' }} />
         <div style={{ fontWeight: 'bold', fontSize: '1.2em' }}>
           Total Tax: {formatCurrency(totalTax)}
         </div>

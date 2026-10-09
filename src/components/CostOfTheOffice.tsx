@@ -25,7 +25,7 @@ export default function CostOfTheOffice() {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4">
       {/* Left column – sliders */}
-      <div className="space-y-6">
+      <div className="space-y-6 bg-slate-800 border border-slate-700 rounded p-4">
         <div>
           <label className="block font-medium mb-1" htmlFor="days">
             Days in office: {days}
@@ -34,7 +34,7 @@ export default function CostOfTheOffice() {
               id="days"
               type="range"
               min="1"
-              max="30"
+              max="7"
               step="1"
               value={days}
               onChange={(e) => setDays(parseInt(e.target.value, 10))}
@@ -88,7 +88,7 @@ export default function CostOfTheOffice() {
         </div>
         <a
           href={receiptUrl}
-          className="inline-block mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          className="inline-block mt-4 px-4 py-2 bg-emerald-600 text-white rounded hover:bg-emerald-700"
           target="_blank"
           rel="noopener noreferrer"
         >
@@ -97,10 +97,10 @@ export default function CostOfTheOffice() {
       </div>
 
       {/* Right column – visual receipt */}
-      <div className="border border-gray-300 rounded p-6 bg-slate-800 shadow-sm text-slate-300">
+      <div className="border border-slate-700 rounded p-6 bg-slate-800 shadow-sm text-slate-300">
         <h2 className="text-lg font-semibold mb-4">Weekly Cost Receipt</h2>
         <div className="space-y-2">
-          <div>Parking: {formatCurrency(totalParking)}</div>
+          <div className="text-emerald-400">Parking: {formatCurrency(totalParking)}</div>
           <div>Coffee: {formatCurrency(totalCoffee)}</div>
           <div>Lunch: {formatCurrency(totalLunch)}</div>
         </div>
