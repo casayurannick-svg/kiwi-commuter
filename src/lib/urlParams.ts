@@ -100,7 +100,7 @@ export function serializeCommuteToParams(
       derivedPower = VEHICLE_TYPE_TO_POWERTRAIN[vt as VehicleType];
     }
   }
-  const power: VehiclePowertrain = input.powertrain || derivedPower;
+  const power: VehiclePowertrain = (input.powertrain as VehiclePowertrain) || derivedPower;
   if (power) params.set('power', power);
 
   const econ = input.fuelEconomy ?? input.consumptionOverride ?? input.efficiency;
@@ -322,7 +322,7 @@ export function parseCommuteFromParams(
     params.get('drivetrain') ||
     params.get('drive_train');
 
-  let resolvedPowertrain: VehiclePowertrain = fallback.powertrain || 'PETROL_91';
+  let resolvedPowertrain: VehiclePowertrain = (fallback.powertrain as VehiclePowertrain) || 'PETROL_91';
   let initialVehicleType: VehicleType = 'petrol91';
   if (fallback.vehicleType) {
     const fvt = fallback.vehicleType.toLowerCase();

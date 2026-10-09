@@ -579,7 +579,8 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
   } else if (isFerry && isWaiheke) {
     // US-20: Waiheke Ferry (Fullers360) bypasses the AT $50 weekly cap and applies Fullers commercial rates
     const perPersonStandard = WAIHEKE_FERRY_FARES.singleTripStandard;
-    const concessionRate = WAIHEKE_FERRY_FARES.concessionFares[input.concession] ?? perPersonStandard;
+    const concessionKey = input.concession as keyof typeof WAIHEKE_FERRY_FARES.concessionFares;
+const concessionRate = WAIHEKE_FERRY_FARES.concessionFares[concessionKey] ?? perPersonStandard;
     const perPersonConcession = round2(concessionRate);
 
     singleTripStandardFare = round2(perPersonStandard * passengers);
@@ -627,8 +628,8 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
         perPersonConcession = perPersonStandard;
       }
     } else {
-      const concessionInfo =
-        CONCESSION_MULTIPLIERS[input.concession] || CONCESSION_MULTIPLIERS.adult;
+      const concessionKey = input.concession as keyof typeof CONCESSION_MULTIPLIERS;
+const concessionInfo = CONCESSION_MULTIPLIERS[concessionKey] ?? CONCESSION_MULTIPLIERS.adult;
       perPersonConcession = round2(perPersonStandard * concessionInfo.multiplier);
     }
 
@@ -672,8 +673,8 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
           ? 7.90
           : (concessionTable[clampedConcessionZone] ?? concessionTable[maxConcessionZone]);
     } else {
-      const concessionInfo =
-        CONCESSION_MULTIPLIERS[input.concession] || CONCESSION_MULTIPLIERS.adult;
+      const concessionKey = input.concession as keyof typeof CONCESSION_MULTIPLIERS;
+const concessionInfo = CONCESSION_MULTIPLIERS[concessionKey] ?? CONCESSION_MULTIPLIERS.adult;
       perPersonConcession = round2(perPersonStandard * concessionInfo.multiplier);
     }
 

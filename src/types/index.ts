@@ -65,7 +65,7 @@ export interface CommuteInput {
   destinationSuburbId: string;
   daysPerWeek: number; // 1 to 7
   vehicleType: VehicleType | 'EV' | 'PHEV' | string;
-  powertrain?: VehiclePowertrain;
+  powertrain?: VehiclePowertrain | string;
   power?: VehiclePowertrain | string; // BUG-40: Alias for powertrain (e.g., power=DIESEL)
   propulsion?: string; // FEAT-73: Alias for propulsion profile (e.g. EV, PHEV)
   efficiency?: number; // FEAT-73: Alias for battery efficiency (kWh/100km)
@@ -74,7 +74,7 @@ export interface CommuteInput {
   parkingDailyRate: number; // NZD
   parkingDaysPerWeek: number; // days paying parking
   parkingTier?: ParkingTier | 'CUSTOM';
-  concession: ConcessionType;
+  concession: ConcessionType | string;
   fareConcession?: FareConcession;
   includeMaintenanceWear: boolean;
   maintenanceCostPerKm?: number; // NZ AA average ~$0.18/km

@@ -7,6 +7,7 @@ import VerdictCard from '@/components/VerdictCard';
 import ExpandableCostRow, { CostItem } from '@/components/ExpandableCostRow';
 import CarFreeCard from '@/components/CarFreeCard';
 import { MapPin, Car, Bus, Train, Ship, Bike, Clock, Sliders, Check } from 'lucide-react';
+
 import { getPrimaryTransitMode } from '@/lib/routing';
 
 export interface SummaryTabProps {
@@ -109,7 +110,7 @@ export default function SummaryTab({
     if (support) {
       support = support
         .replace(/and the \w+ takes/gi, `and the ${primaryModeNoun} takes`)
-        .replace(/The \w+ takes/gi, `The ${primaryModeNoun} takes`);
+        .replace(/The \w+ takes/gi, `the ${primaryModeNoun} takes`);
     }
 
     return {
@@ -176,6 +177,7 @@ export default function SummaryTab({
 
       {/* 2. Verdict Card (Headline + Natural Language Support Copy) */}
       <VerdictCard verdict={effectiveVerdict} />
+
 
       {/* 3. Expandable Cost Rows (What you'd stop paying vs What you'd still pay) */}
       <div className="space-y-3 pt-1">

@@ -7,7 +7,9 @@ import AdvancedRow from '@/components/AdvancedRow';
 import EvRoiSandbox from '@/components/EvRoiSandbox';
 import FuelRadarWidget from '@/components/FuelRadarWidget';
 import CommuteForm from '@/components/CommuteForm';
+import CostOfTheOffice from '@/components/CostOfTheOffice';
 import JourneyTimeline from '@/components/JourneyTimeline';
+
 import RouteMap from '@/components/RouteMap';
 import MonthlySavingsChart from '@/components/MonthlySavingsChart';
 
@@ -119,6 +121,15 @@ export default function AdvancedTab({
               </div>
             )}
           </div>
+        </AdvancedRow>
+        {/* Row 5: Office Cost Calculator */}
+        <AdvancedRow
+          id="office-cost"
+          title="Office cost calculator"
+          hint="Adjust days, parking, coffee & lunch."
+          defaultExpanded={false}
+        >
+          <CostOfTheOffice />
         </AdvancedRow>
 
         {/* Row 5: STORY-13 — Value of your time (hourly wage → opportunity cost) */}

@@ -1,8 +1,8 @@
-// Turso (libSQL) client utilities for address search fallback
 import { createClient, Client } from '@libsql/client';
+import { drizzle } from 'drizzle-orm/libsql';
+import * as schema from '@/db/schema';
 import type { GeocodingResult } from '@/lib/mapbox';
 
-// Initialize Turso client using env variables. Ensure both URL and auth token are present.
 const tursoUrl = process.env.TURSO_DATABASE_URL ?? '';
 const tursoAuthToken = process.env.TURSO_AUTH_TOKEN ?? '';
 
@@ -15,12 +15,8 @@ if (tursoUrl && tursoAuthToken) {
   }
 }
 
-/**
- * Simple full‑text like search against the Auckland addresses table.
- * The table is expected to have columns: id, street_number, street_name, suburb, city,
- * postcode, latitude, longitude, etc. Indexes on street_name and suburb should be created
- * in the database for performance (sub‑millisecond response for typical queries).
- */
+export const db = tursoClient ? drizzle(tursoClient, { schema }) : null;
+
 export async function searchAddressesInTurso(query: string): Promise<GeocodingResult[]> {
   if (!tursoClient) {
     console.warn('Turso client not configured; returning empty results');
@@ -30,7 +26,6 @@ export async function searchAddressesInTurso(query: string): Promise<GeocodingRe
   const clean = query.trim().toLowerCase();
   if (!clean) return [];
 
-  // Use parameterised query to avoid SQL injection.
   const sql = `
     SELECT id, street_number, street_name, suburb, latitude, longitude
     FROM auckland_addresses
@@ -40,7 +35,6 @@ export async function searchAddressesInTurso(query: string): Promise<GeocodingRe
   const likePattern = `%${clean}%`;
   try {
     const result = await tursoClient.execute({ sql, args: [likePattern, likePattern] });
-    // Map rows to GeocodingResult shape expected by UI.
     const rows = result.rows as unknown as Array<{
       id: number;
       street_number: string;
@@ -64,10 +58,6 @@ export async function searchAddressesInTurso(query: string): Promise<GeocodingRe
 
 export { tursoClient };
 
-/**
- * Helper to ensure appropriate indexes exist. This runs at import time for dev convenience.
- * In production you would use migration files; here we attempt a CREATE INDEX IF NOT EXISTS.
- */
 async function ensureIndexes() {
   if (!tursoClient) return;
   const indexSql = [
@@ -82,5 +72,4 @@ async function ensureIndexes() {
     }
   }
 }
-// Fire-and-forget index creation (best‑effort).
 ensureIndexes();
