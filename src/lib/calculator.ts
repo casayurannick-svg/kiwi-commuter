@@ -28,6 +28,7 @@ import {
   CommuteComparisonResult,
   CommuteInput,
   DrivingCostBreakdown,
+  EVChargingSource,
   JourneyLeg,
   StaysCostBreakdown,
   StopsCostBreakdown,
@@ -52,7 +53,7 @@ export const WEEKS_PER_MONTH = 52 / 12; // 4.33333333
  * Fixed ownership costs (insurance, WOF, rego) continue to use the full 52-week / 365-day calendar year.
  */
 export const ANNUAL_COMMUTE_WEEKS = 47;
-export { IRD_MILEAGE_RATE_PER_KM, calculateVerdict };
+export { IRD_MILEAGE_RATE_PER_KM, calculateVerdict, NZ_EV_CHARGING_RATES };
 
 /**
  * FEAT-73 & FEAT-74: Statutory NZTA Road User Charges (RUC) Rates ($/km)
@@ -235,16 +236,20 @@ export function calculateCommuteArbitrage(input: CommuteInput): CommuteCompariso
 
   // Helper to resolve EV / PHEV electricity rate ($/kWh)
   const resolveEvKwhRate = (): number => {
+    const activeSource = input.chargeSource ?? input.evChargingSource;
+    if (activeSource && activeSource !== 'CUSTOM') {
+      if (NZ_EV_CHARGING_RATES[activeSource] !== undefined) {
+        return NZ_EV_CHARGING_RATES[activeSource];
+      }
+    }
+    if (activeSource === 'CUSTOM') {
+      if (typeof input.kwhRate === 'number' && !isNaN(input.kwhRate) && input.kwhRate > 0) {
+        return input.kwhRate;
+      }
+      return input.homeKWhRate ?? input.fuelPriceOverride ?? NZ_EV_CHARGING_RATES.CUSTOM ?? 0.18;
+    }
     if (typeof input.kwhRate === 'number' && !isNaN(input.kwhRate) && input.kwhRate > 0) {
       return input.kwhRate;
-    }
-    if (input.evChargingSource) {
-      if (input.evChargingSource === 'CUSTOM') {
-        return input.homeKWhRate ?? input.fuelPriceOverride ?? 0.18;
-      }
-      if (NZ_EV_CHARGING_RATES[input.evChargingSource] !== undefined) {
-        return NZ_EV_CHARGING_RATES[input.evChargingSource];
-      }
     }
     if (input.evChargingMode && input.evChargingMode !== 'custom') {
       return EV_CHARGING_PRESETS[input.evChargingMode]?.rate ?? 0.18;
@@ -1386,15 +1391,18 @@ export function calculateAnnualNonCommuteCost(
   // Fuel / Energy cost per km
   let fuelCostPerKm = 0;
   if (effectiveVehicleType === 'bev') {
+    const activeSource = input.chargeSource ?? input.evChargingSource;
     const evRate =
-      typeof input.kwhRate === 'number' && !isNaN(input.kwhRate) && input.kwhRate > 0
+      activeSource && activeSource !== 'CUSTOM' && NZ_EV_CHARGING_RATES[activeSource] !== undefined
+        ? NZ_EV_CHARGING_RATES[activeSource]
+        : typeof input.kwhRate === 'number' && !isNaN(input.kwhRate) && input.kwhRate > 0
         ? input.kwhRate
-        : (input.evChargingSource && NZ_EV_CHARGING_RATES[input.evChargingSource]) ||
+        : (activeSource && NZ_EV_CHARGING_RATES[activeSource]) ||
           (input.evChargingMode && EV_CHARGING_PRESETS[input.evChargingMode]?.rate) ||
           input.homeKWhRate ||
           input.fuelPriceOverride ||
           vehicle.defaultFuelPrice ||
-          0.28;
+          0.18;
     fuelCostPerKm = (consumption / 100) * evRate;
   } else if (effectiveVehicleType === 'phev') {
     const petrolPrice = input.customFuelPricePerL ?? input.fuelPriceOverride ?? 2.72;
@@ -1702,7 +1710,7 @@ export function calculateTcoArbitrage(input: TcoInput): TcoArbitrageResult {
       ? input.kwhRate
       : typeof input.homeKWhRate === 'number' && input.homeKWhRate > 0
       ? input.homeKWhRate
-      : 0.33;
+      : NZ_EV_CHARGING_RATES[(input.chargeSource ?? input.evChargingSource ?? 'HOME_OFFPEAK') as EVChargingSource] ?? NZ_EV_CHARGING_RATES['HOME_OFFPEAK'];
 
   const evRucRate = NZ_RUC_LIGHT_EV_RATE_PER_KM;
   const evMaintenanceCost =

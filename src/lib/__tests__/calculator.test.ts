@@ -2054,3 +2054,77 @@ describe('STORY-13: 47-Week Annual Commute Multiplier & Time Opportunity Cost', 
     assert.strictEqual(result.timeMetrics!.annualOpportunityCost, 0);
   });
 });
+
+describe('EV default kWh rate resolution (BUG FIX)', () => {
+  const baseEvInput = {
+    originSuburbId: 'mt-roskill',
+    destinationSuburbId: 'parnell',
+    daysPerWeek: 3,
+    vehicleType: 'bev' as const,
+    powertrain: 'BEV' as const,
+    parkingDailyRate: 4.0,
+    parkingDaysPerWeek: 3,
+    concession: 'adult' as const,
+    carpoolPassengers: 1,
+    includeMaintenanceWear: true,
+    distanceWearWeekly: 3.0,
+  };
+
+  it('HOME_OFFPEAK uses $0.18/kWh by default (not $0.33)', () => {
+    const resultHomeOffpeak = calculateCommuteArbitrage({
+      ...baseEvInput,
+      chargeSource: 'HOME_OFFPEAK',
+      evChargingSource: 'HOME_OFFPEAK',
+    });
+    // Also compute with an explicit kwhRate of 0.18 to confirm they match
+    const resultExplicit018 = calculateCommuteArbitrage({
+      ...baseEvInput,
+      chargeSource: 'CUSTOM',
+      evChargingSource: 'CUSTOM',
+      kwhRate: 0.18,
+    });
+    assert.ok(resultHomeOffpeak.driving.dailyFuelCost > 0, 'dailyFuelCost should be > 0');
+    assert.strictEqual(resultHomeOffpeak.driving.dailyFuelCost, resultExplicit018.driving.dailyFuelCost,
+      'HOME_OFFPEAK preset and explicit kwhRate=0.18 must produce identical daily fuel cost');
+  });
+
+  it('PUBLIC_DC uses $0.85/kWh', () => {
+    const resultDc = calculateCommuteArbitrage({
+      ...baseEvInput,
+      chargeSource: 'PUBLIC_DC',
+      evChargingSource: 'PUBLIC_DC',
+    });
+    const resultExplicit085 = calculateCommuteArbitrage({
+      ...baseEvInput,
+      chargeSource: 'CUSTOM',
+      evChargingSource: 'CUSTOM',
+      kwhRate: 0.85,
+    });
+    assert.ok(resultDc.driving.dailyFuelCost > 0, 'dailyFuelCost should be > 0');
+    assert.strictEqual(resultDc.driving.dailyFuelCost, resultExplicit085.driving.dailyFuelCost,
+      'PUBLIC_DC preset and explicit kwhRate=0.85 must produce identical daily fuel cost');
+  });
+
+  it('CUSTOM uses user-provided kwhRate', () => {
+    const customRate = 0.42;
+    const resultCustom = calculateCommuteArbitrage({
+      ...baseEvInput,
+      chargeSource: 'CUSTOM',
+      evChargingSource: 'CUSTOM',
+      kwhRate: customRate,
+    });
+    // Cost ratio between CUSTOM(0.42) and HOME_OFFPEAK(0.18) should be 0.42/0.18
+    const resultHome = calculateCommuteArbitrage({
+      ...baseEvInput,
+      chargeSource: 'HOME_OFFPEAK',
+      evChargingSource: 'HOME_OFFPEAK',
+    });
+    assert.ok(resultCustom.driving.dailyFuelCost > 0, 'dailyFuelCost should be > 0');
+    const expectedRatio = 0.42 / 0.18;
+    const actualRatio = resultCustom.driving.dailyFuelCost / resultHome.driving.dailyFuelCost;
+    assert.ok(
+      Math.abs(actualRatio - expectedRatio) < 0.05,
+      `Cost ratio CUSTOM($0.42)/HOME_OFFPEAK($0.18) should be ~${expectedRatio.toFixed(2)} but got ${actualRatio.toFixed(2)}`
+    );
+  });
+});

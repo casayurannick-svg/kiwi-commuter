@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { CommuteInput, ArbitrageResult } from '@/types';
-import { calculateCommuteArbitrage, NZ_RUC_LIGHT_EV_RATE_PER_KM } from '@/lib/calculator';
+import { calculateCommuteArbitrage, NZ_RUC_LIGHT_EV_RATE_PER_KM, NZ_EV_CHARGING_RATES } from '@/lib/calculator';
 import { Fuel, Zap, Bus, CheckCircle2, TrendingDown } from 'lucide-react';
 
 export interface CommuteMatrixProps {
@@ -40,7 +40,10 @@ export function CommuteMatrix({ input, arbitrage }: CommuteMatrixProps) {
       powertrain: 'BEV',
       propulsion: 'EV',
       efficiency: input.evEfficiency ?? input.efficiency ?? 15,
-      kwhRate: input.kwhRate ?? 0.33,
+      kwhRate:
+        input.chargeSource && input.chargeSource !== 'CUSTOM'
+          ? NZ_EV_CHARGING_RATES[input.chargeSource]
+          : (input.kwhRate ?? NZ_EV_CHARGING_RATES[input.chargeSource ?? 'HOME_OFFPEAK']),
     });
   }, [input]);
 
@@ -335,7 +338,7 @@ export function CommuteMatrix({ input, arbitrage }: CommuteMatrixProps) {
           </div>
 
           <div className="mt-4 pt-3 border-t border-slate-800/60 text-[11px] text-slate-400 flex items-center justify-between">
-            <span>Rate: ${input.kwhRate ?? 0.33}/kWh</span>
+            <span>Rate: ${input.kwhRate ?? NZ_EV_CHARGING_RATES[input.chargeSource ?? 'HOME_OFFPEAK']}/kWh</span>
             <span>Eff: {input.evEfficiency ?? input.efficiency ?? 15} kWh/100km</span>
           </div>
         </div>

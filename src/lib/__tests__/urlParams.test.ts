@@ -472,13 +472,13 @@ describe('src/lib/urlParams.ts - URL Search Param Synchronization', () => {
       const evParams = new URLSearchParams('power=BEV');
       const parsedEv = parseCommuteFromParams(evParams, defaultFallback);
       assert.strictEqual(parsedEv.chargeSource, 'HOME_OFFPEAK');
-      assert.strictEqual(parsedEv.kwhRate, 0.33);
+      assert.strictEqual(parsedEv.kwhRate, 0.18);
       assert.strictEqual(parsedEv.evEfficiency, 15);
 
       const phevParams = new URLSearchParams('power=PHEV');
       const parsedPhev = parseCommuteFromParams(phevParams, defaultFallback);
       assert.strictEqual(parsedPhev.chargeSource, 'HOME_OFFPEAK');
-      assert.strictEqual(parsedPhev.kwhRate, 0.33);
+      assert.strictEqual(parsedPhev.kwhRate, 0.18);
       assert.strictEqual(parsedPhev.evEfficiency, 15);
     });
 
@@ -511,12 +511,12 @@ describe('src/lib/urlParams.ts - URL Search Param Synchronization', () => {
       };
       const defaultEvParams = serializeCommuteToParams(defaultEv);
       assert.strictEqual(defaultEvParams.get('chargeSource'), 'HOME_OFFPEAK');
-      assert.strictEqual(defaultEvParams.get('kwhRate'), '0.33');
+      assert.strictEqual(defaultEvParams.get('kwhRate'), '0.18');
       assert.strictEqual(defaultEvParams.get('evEfficiency'), '15');
 
       const parsedDefaults = parseCommuteFromParams(defaultEvParams, defaultFallback);
       assert.strictEqual(parsedDefaults.chargeSource, 'HOME_OFFPEAK');
-      assert.strictEqual(parsedDefaults.kwhRate, 0.33);
+      assert.strictEqual(parsedDefaults.kwhRate, 0.18);
       assert.strictEqual(parsedDefaults.evEfficiency, 15);
     });
   });

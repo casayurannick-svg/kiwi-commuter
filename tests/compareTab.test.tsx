@@ -140,9 +140,9 @@ describe('STORY-5: Compare Tab & Cost Base Toggle', () => {
         })
       );
 
-      // Section 5 Fixture: stops.total = $29.58, transit = $29.40, EV stops = $22.38
+      // Section 5 Fixture: stops.total = $29.58, transit = $29.40, EV stops = $21.06
       assert.ok(html.includes('$29.58'), 'Your car must show stops.total ($29.58)');
-      assert.ok(html.includes('$22.38'), 'EV must show stops.total ($22.38)');
+      assert.ok(html.includes('$21.06'), 'EV must show stops.total ($21.06)');
       assert.ok(html.includes('$29.40'), 'Transit must show transitCost ($29.40)');
       assert.ok(!html.includes('$47.70'), 'Must NOT show full car cost when toggle is OFF');
     });
@@ -180,10 +180,10 @@ describe('STORY-5: Compare Tab & Cost Base Toggle', () => {
       const text = container.textContent || '';
       // When toggle is ON:
       // Your car fullCost = $47.70
-      // EV fullCost = $40.50
+      // EV fullCost = $39.18
       // Public transit = $29.40 (unaffected by vehicle fixed costs)
       assert.ok(text.includes('$47.70'), 'Your car must show fullCost ($47.70) when toggle is ON');
-      assert.ok(text.includes('$40.50'), 'EV must show fullCost ($40.50) when toggle is ON');
+      assert.ok(text.includes('$39.18'), 'EV must show fullCost ($39.18) when toggle is ON');
       assert.ok(text.includes('$29.40'), 'Transit must remain $29.40 when toggle is ON');
 
       flushSync(() => {
@@ -221,7 +221,7 @@ describe('STORY-5: Compare Tab & Cost Base Toggle', () => {
 
       // Click Monthly (52 / 12 multiplier)
       // Car stops: 29.58 * 52 / 12 = 128.18
-      // EV stops: 22.38 * 52 / 12 = 96.98
+      // EV stops: 21.06 * 52 / 12 = 91.26
       // Transit: 29.40 * 52 / 12 = 127.40
       flushSync(() => {
         monthlyBtn.click();
@@ -229,13 +229,13 @@ describe('STORY-5: Compare Tab & Cost Base Toggle', () => {
 
       let text = container.textContent || '';
       assert.ok(text.includes('$128.18'), 'Monthly car cost must be $128.18');
-      assert.ok(text.includes('$96.98'), 'Monthly EV cost must be $96.98');
+      assert.ok(text.includes('$91.26'), 'Monthly EV cost must be $91.26');
       assert.ok(text.includes('$127.40'), 'Monthly transit cost must be $127.40');
       assert.ok(text.includes('a month') || text.includes('/mo'), 'Must display a month unit suffix');
 
       // Click Yearly (52 multiplier)
       // Car stops: 29.58 * 52 = 1538.16
-      // EV stops: 22.38 * 52 = 1163.76
+      // EV stops: 21.06 * 52 = 1095.12
       // Transit: 29.40 * 52 = 1528.80
       flushSync(() => {
         yearlyBtn.click();
@@ -243,7 +243,7 @@ describe('STORY-5: Compare Tab & Cost Base Toggle', () => {
 
       text = container.textContent || '';
       assert.ok(text.includes('1,538.16'), 'Yearly car cost must be $1,538.16');
-      assert.ok(text.includes('1,163.76'), 'Yearly EV cost must be $1,163.76');
+      assert.ok(text.includes('1,095.12'), 'Yearly EV cost must be $1,095.12');
       assert.ok(text.includes('1,528.80'), 'Yearly transit cost must be $1,528.80');
       assert.ok(text.includes('a year') || text.includes('/yr'), 'Must display a year unit suffix');
 

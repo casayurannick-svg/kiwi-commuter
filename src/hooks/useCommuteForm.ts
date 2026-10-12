@@ -24,7 +24,7 @@ export const DEFAULT_COMMUTE_INPUT: CommuteInput = {
   defaultInsurance: 1311,
   calculationMode: 'FUEL',
   chargeSource: 'HOME_OFFPEAK',
-  kwhRate: 0.33,
+  kwhRate: 0.18,
   evEfficiency: 15,
   evPurchasePrice: 0,
   iceTradeInValue: 0,

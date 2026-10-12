@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { CommuteInput, CommuteComparisonResult } from '@/types';
-import { calculateCommuteArbitrage } from '@/lib/calculator';
+import { calculateCommuteArbitrage, NZ_EV_CHARGING_RATES } from '@/lib/calculator';
 import CostBarChart, { CompareBarItem, CompareTimeframe } from '@/components/CostBarChart';
 import { Car, Zap, Bus } from 'lucide-react';
 
@@ -38,7 +38,10 @@ export default function CompareTab({
       power: 'BEV',
       propulsion: 'BEV',
       consumptionOverride: commuteInput.evEfficiency ?? 15,
-      fuelPriceOverride: commuteInput.kwhRate ?? 0.33,
+      fuelPriceOverride:
+        commuteInput.chargeSource && commuteInput.chargeSource !== 'CUSTOM'
+          ? NZ_EV_CHARGING_RATES[commuteInput.chargeSource]
+          : (commuteInput.kwhRate ?? NZ_EV_CHARGING_RATES[commuteInput.chargeSource ?? 'HOME_OFFPEAK']),
     });
   }, [commuteInput]);
 

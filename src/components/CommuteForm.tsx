@@ -209,7 +209,7 @@ export default function CommuteForm({
       consumptionOverride: nextConsumptionOverride,
       fuelPriceOverride: isEvOrPhev ? (input.fuelPriceOverride ?? 0.18) : undefined,
       homeKWhRate: isEvOrPhev ? (input.homeKWhRate ?? 0.18) : undefined,
-      kwhRate: isEvOrPhev ? (input.kwhRate ?? 0.33) : undefined,
+      kwhRate: isEvOrPhev ? (input.chargeSource && input.chargeSource !== 'CUSTOM' ? NZ_EV_CHARGING_RATES[input.chargeSource] : (input.kwhRate ?? NZ_EV_CHARGING_RATES['HOME_OFFPEAK'])) : undefined,
       evEfficiency: isEvOrPhev ? (input.evEfficiency ?? 15) : undefined,
       chargeSource: isEvOrPhev ? (input.chargeSource ?? input.evChargingSource ?? 'HOME_OFFPEAK') : undefined,
       evChargingSource: isEvOrPhev ? (input.chargeSource ?? input.evChargingSource ?? 'HOME_OFFPEAK') : undefined,
@@ -220,7 +220,7 @@ export default function CommuteForm({
 
   const handleChargingSourceSelect = (source: EVChargingSource) => {
     const rate = source === 'CUSTOM'
-      ? (input.kwhRate ?? input.homeKWhRate ?? input.fuelPriceOverride ?? 0.33)
+      ? (input.kwhRate ?? input.homeKWhRate ?? input.fuelPriceOverride ?? NZ_EV_CHARGING_RATES['HOME_OFFPEAK'])
       : NZ_EV_CHARGING_RATES[source];
     const mode = source.toLowerCase() as EvChargingMode;
     const updated: CommuteInput = {

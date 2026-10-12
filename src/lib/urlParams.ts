@@ -139,7 +139,8 @@ export function serializeCommuteToParams(
       input.kwhRate ??
       input.homeKWhRate ??
       (input.fuelPriceOverride !== undefined && input.fuelPriceOverride <= 1.50 ? input.fuelPriceOverride : undefined) ??
-      0.33;
+      NZ_EV_CHARGING_RATES[(input.chargeSource ?? input.evChargingSource ?? 'HOME_OFFPEAK') as EVChargingSource] ??
+      NZ_EV_CHARGING_RATES['HOME_OFFPEAK'];
     if (kwhRate !== undefined) params.set('kwhRate', kwhRate.toString());
 
     const evEfficiency =
@@ -649,7 +650,7 @@ export function parseCommuteFromParams(
       : fallback.kwhRate !== undefined
       ? fallback.kwhRate
       : isEvPhev
-      ? (params.has('chargeSource') && defaultKwhRate !== undefined ? defaultKwhRate : 0.33)
+      ? (params.has('chargeSource') && defaultKwhRate !== undefined ? defaultKwhRate : defaultKwhRate)
       : undefined;
 
   const resolvedEvEfficiency =
