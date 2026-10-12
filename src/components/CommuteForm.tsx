@@ -141,6 +141,22 @@ export default function CommuteForm({
     }
   }, [input.customInsurance]);
 
+  // Store custom kWh rate as string in local state so clearing the field doesn't snap back immediately
+  const [customKwhRate, setCustomKwhRate] = useState<string>(() => {
+    const val = input.kwhRate ?? input.homeKWhRate ?? input.fuelPriceOverride;
+    return typeof val === 'number' && !isNaN(val) ? val.toString() : '0.18';
+  });
+
+  useEffect(() => {
+    const currentRate = input.kwhRate ?? input.homeKWhRate ?? input.fuelPriceOverride;
+    if (typeof currentRate === 'number' && !isNaN(currentRate)) {
+      const parsed = parseFloat(customKwhRate);
+      if (isNaN(parsed) || parsed !== currentRate) {
+        setCustomKwhRate(currentRate.toString());
+      }
+    }
+  }, [input.kwhRate, input.homeKWhRate, input.fuelPriceOverride, customKwhRate]);
+
   const notifyChange = (updated: CommuteInput) => {
     if (onInputChange) onInputChange(updated);
     if (onChange) onChange(updated);
@@ -1076,7 +1092,7 @@ export default function CommuteForm({
                     ⚡ EV Power Source
                   </label>
                   <span className="text-[11px] font-bold text-emerald-400 font-mono">
-                    ${(input.homeKWhRate ?? input.fuelPriceOverride ?? 0.18).toFixed(2)}/kWh
+                    ${(input.chargeSource && input.chargeSource !== 'CUSTOM' ? NZ_EV_CHARGING_RATES[input.chargeSource] : (input.kwhRate ?? input.homeKWhRate ?? input.fuelPriceOverride ?? 0.18)).toFixed(2)}/kWh
                   </span>
                 </div>
 
@@ -1089,7 +1105,7 @@ export default function CommuteForm({
                       { source: 'CUSTOM', label: 'Custom', sub: 'Manual' },
                     ] as const
                   ).map((item) => {
-                    const currentSource = input.evChargingSource || (input.evChargingMode ? (input.evChargingMode.toUpperCase() as EVChargingSource) : 'HOME_OFFPEAK');
+                    const currentSource = input.chargeSource || input.evChargingSource || (input.evChargingMode ? (input.evChargingMode.toUpperCase() as EVChargingSource) : 'HOME_OFFPEAK');
                     const isSelected = currentSource === item.source;
                     return (
                       <button
@@ -1109,7 +1125,7 @@ export default function CommuteForm({
                   })}
                 </div>
 
-                {((input.evChargingSource || input.evChargingMode?.toUpperCase()) === 'CUSTOM') && (
+                {((input.chargeSource || input.evChargingSource || input.evChargingMode?.toUpperCase()) === 'CUSTOM') && (
                   <div className="pt-1.5 flex items-center gap-2">
                     <span className="text-xs text-slate-400">Custom Rate:</span>
                     <input
@@ -1117,13 +1133,27 @@ export default function CommuteForm({
                       step="0.01"
                       min="0.01"
                       max="2.50"
-                      value={input.homeKWhRate ?? input.fuelPriceOverride ?? 0.18}
+                      value={customKwhRate}
                       onChange={(e) => {
-                        const val = e.target.value ? parseFloat(e.target.value) : 0.18;
+                        const valStr = e.target.value;
+                        setCustomKwhRate(valStr);
+                        let val: number | undefined;
+                        if (valStr.trim() === '') {
+                          val = undefined;
+                        } else {
+                          const parsed = parseFloat(valStr);
+                          if (!isNaN(parsed)) {
+                            val = Math.min(2.50, Math.max(0.01, parsed));
+                          } else {
+                            val = undefined;
+                          }
+                        }
                         const updated = {
                           ...input,
+                          chargeSource: 'CUSTOM' as const,
                           evChargingSource: 'CUSTOM' as const,
                           evChargingMode: 'custom' as const,
+                          kwhRate: val,
                           fuelPriceOverride: val,
                           homeKWhRate: val,
                         };

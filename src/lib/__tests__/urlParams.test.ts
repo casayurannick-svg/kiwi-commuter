@@ -518,6 +518,23 @@ describe('src/lib/urlParams.ts - URL Search Param Synchronization', () => {
       assert.strictEqual(parsedDefaults.chargeSource, 'HOME_OFFPEAK');
       assert.strictEqual(parsedDefaults.kwhRate, 0.18);
       assert.strictEqual(parsedDefaults.evEfficiency, 15);
+
+      // Custom typed kwhRate round-trip
+      const customTypedEv: CommuteInput = {
+        ...defaultFallback,
+        vehicleType: 'bev',
+        powertrain: 'BEV',
+        chargeSource: 'CUSTOM',
+        evChargingSource: 'CUSTOM',
+        kwhRate: 0.27,
+      };
+      const customParams = serializeCommuteToParams(customTypedEv);
+      assert.strictEqual(customParams.get('chargeSource'), 'CUSTOM');
+      assert.strictEqual(customParams.get('kwhRate'), '0.27');
+
+      const parsedCustom = parseCommuteFromParams(customParams, defaultFallback);
+      assert.strictEqual(parsedCustom.chargeSource, 'CUSTOM');
+      assert.strictEqual(parsedCustom.kwhRate, 0.27);
     });
   });
 

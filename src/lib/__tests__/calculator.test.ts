@@ -2127,4 +2127,47 @@ describe('EV default kWh rate resolution (BUG FIX)', () => {
       `Cost ratio CUSTOM($0.42)/HOME_OFFPEAK($0.18) should be ~${expectedRatio.toFixed(2)} but got ${actualRatio.toFixed(2)}`
     );
   });
+
+  it('changing custom rate directly changes calculateCommuteArbitrage EV cost', () => {
+    const costLow = calculateCommuteArbitrage({
+      ...baseEvInput,
+      chargeSource: 'CUSTOM',
+      evChargingSource: 'CUSTOM',
+      kwhRate: 0.15,
+    });
+    const costHigh = calculateCommuteArbitrage({
+      ...baseEvInput,
+      chargeSource: 'CUSTOM',
+      evChargingSource: 'CUSTOM',
+      kwhRate: 0.45,
+    });
+
+    assert.ok(
+      costHigh.driving.dailyFuelCost > costLow.driving.dailyFuelCost,
+      `Higher custom rate ($0.45) must produce higher daily fuel cost than $0.15: ${costHigh.driving.dailyFuelCost} vs ${costLow.driving.dailyFuelCost}`
+    );
+    assert.strictEqual(
+      Math.round((costHigh.driving.dailyFuelCost / costLow.driving.dailyFuelCost) * 10) / 10,
+      3,
+      '3x custom rate should roughly triple daily fuel cost'
+    );
+
+    // Empty/undefined custom rate falls back to 0.18 for calculation
+    const costFallback = calculateCommuteArbitrage({
+      ...baseEvInput,
+      chargeSource: 'CUSTOM',
+      evChargingSource: 'CUSTOM',
+      kwhRate: undefined,
+    });
+    const costDefault018 = calculateCommuteArbitrage({
+      ...baseEvInput,
+      chargeSource: 'HOME_OFFPEAK',
+      evChargingSource: 'HOME_OFFPEAK',
+    });
+    assert.strictEqual(
+      costFallback.driving.dailyFuelCost,
+      costDefault018.driving.dailyFuelCost,
+      'Undefined custom kwhRate must fall back to 0.18 for calculation'
+    );
+  });
 });

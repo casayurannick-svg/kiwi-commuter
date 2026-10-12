@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Refactor (UI)**: Moved `RouteMap` from the right column to the left sidebar column beneath `MonthlySavingsChart` in `DashboardClient` to optimize layout balance across widescreen displays.
 
 ### Fixed
+- **BUG**: Fixed EV Custom Rate input not affecting calculations. `CommuteForm.tsx` now sets `kwhRate` and `chargeSource: 'CUSTOM'`, clamps custom input between $0.01 and $2.50, allows the field to remain empty during editing without prematurely snapping to $0.18, and falls back to $0.18 only during calculations.
 - **BUG**: Fixed EV default charging-rate mismatch where `HOME_OFFPEAK` ($0.18/kWh) was overridden by a stale `$0.33` fallback. Made `NZ_EV_CHARGING_RATES[chargeSource]` the single source of truth when `chargeSource !== 'CUSTOM'`, ensuring only `CUSTOM` uses the user's `kwhRate`. Removed all hardcoded `?? 0.33` fallbacks across `CommuteForm`, `CommuteMatrix`, `CompareTab`, `urlParams`, and `calculator.ts`.
 - **BUG-78**: Fixed zero-value trade-in handling in `EvRoiSandbox` to properly reflect `$0` ICE trade-in/resale values without falling back to the `$15k` default, and removed internal `FEAT-65` badge from the sandbox header.
 - **BUG-77**: Isolated `CommuteMatrix` from IRD calculation mode leakage by explicitly setting `calculationMode: 'FUEL'` and `calcMode: 'FUEL'` in `iceArbitrage` and `evArbitrage` useMemo blocks, ensuring itemized fuel and electricity values render accurately when IRD True Cost mode is toggled.
