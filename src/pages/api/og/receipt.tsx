@@ -35,8 +35,8 @@ export default async function handler(req: NextRequest) {
       return new Response('', { status: 200, headers: { 'content-type': 'image/png' } });
     }
 
-    // Generate receipt image using @vercel/og
-    const { ImageResponse } = await import('@vercel/og');
+    // Generate receipt image using next/og
+    const { ImageResponse } = await import('next/og');
     const receipt = (
       <div style={{
         display: 'flex',
