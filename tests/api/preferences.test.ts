@@ -1,6 +1,6 @@
 import assert from 'node:assert';
 import { describe, it } from 'node:test';
-import handler from '../index';
+import handler from '@/pages/api/preferences/index';
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 // Mock helper to create mock NextApiRequest and NextApiResponse

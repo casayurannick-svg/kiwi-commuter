@@ -1,0 +1,14 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "kiwi-commuter",
+	"main": ".open-next/worker.js",
+	"compatibility_date": "2026-10-28",
+	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+	"assets": {
+		"directory": ".open-next/assets",
+		"binding": "ASSETS"
+	},
+	"observability": { "enabled": true },
+	// Keep vars set in the Cloudflare dashboard on each deploy (not stored in git)
+	"keep_vars": true
+}

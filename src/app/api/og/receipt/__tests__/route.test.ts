@@ -1,9 +1,9 @@
 import assert from 'node:assert';
 import { describe, it } from 'node:test';
-import handler from '../receipt';
+import { GET as handler } from '../route';
 import { NextRequest } from 'next/server';
 
-describe('src/pages/api/og/receipt.tsx - OG Receipt Edge Route', () => {
+describe('src/app/api/og/receipt/route.tsx - OG Receipt Route', () => {
   it('successfully returns a 200 Response with image/png content-type for valid query parameters', async () => {
     const req = new NextRequest(
       'http://localhost:3000/api/og/receipt?days=5&transport=12.5&parking=20&coffee=5&lunch=15'
