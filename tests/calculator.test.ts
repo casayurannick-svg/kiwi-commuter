@@ -730,27 +730,12 @@ describe('US-09: EV Public Charging vs. Home Off-Peak Rate Arbitrage', () => {
 });
 
 describe('US-15: Privacy-Friendly Traffic & Web Analytics Integration', () => {
-  it('verifies @vercel/analytics is declared in package.json dependencies', () => {
-    const pkgPath = path.resolve(process.cwd(), 'package.json');
-    const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
-    assert.ok(
-      pkg.dependencies && pkg.dependencies['@vercel/analytics'],
-      'package.json must contain @vercel/analytics dependency'
-    );
-  });
-
-  it('verifies RootLayout embeds <Analytics /> component', () => {
-    const layoutPath = path.resolve(process.cwd(), 'src/app/layout.tsx');
-    const content = fs.readFileSync(layoutPath, 'utf-8');
-
-    assert.ok(
-      content.includes("from '@vercel/analytics/react'"),
-      'layout.tsx must import Analytics from @vercel/analytics/react'
-    );
-    assert.ok(
-      content.includes('<Analytics'),
-      'layout.tsx must render <Analytics /> component'
-    );
+  // Analytics now comes from Cloudflare Web Analytics, injected at the edge (no app code).
+  it('does not ship Vercel Analytics (app is hosted on Cloudflare Workers)', () => {
+    const pkg = JSON.parse(fs.readFileSync(path.resolve(process.cwd(), 'package.json'), 'utf-8'));
+    assert.ok(!pkg.dependencies?.['@vercel/analytics'], 'remove @vercel/analytics');
+    const layout = fs.readFileSync(path.resolve(process.cwd(), 'src/app/layout.tsx'), 'utf-8');
+    assert.ok(!layout.includes('@vercel/analytics'), 'layout.tsx must not import @vercel/analytics');
   });
 });
 

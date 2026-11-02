@@ -1,11 +1,7 @@
 // Lazy import of ImageResponse within the handler to avoid import-time errors in test environments
 import { NextRequest } from 'next/server';
 
-export const config = {
-  runtime: 'edge',
-};
-
-export default async function handler(req: NextRequest) {
+export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
 
@@ -51,20 +47,20 @@ export default async function handler(req: NextRequest) {
         boxSizing: 'border-box',
       }}>
         <div style={{ marginBottom: '8px' }}>
-          Transport: {formatCurrency(totalTransport)}
+          {`Transport: ${formatCurrency(totalTransport)}`}
         </div>
         <div style={{ marginBottom: '8px' }}>
-          Parking: {formatCurrency(totalParking)}
+          {`Parking: ${formatCurrency(totalParking)}`}
         </div>
         <div style={{ marginBottom: '8px' }}>
-          Coffee: {formatCurrency(totalCoffee)}
+          {`Coffee: ${formatCurrency(totalCoffee)}`}
         </div>
         <div style={{ marginBottom: '8px' }}>
-          Lunch: {formatCurrency(totalLunch)}
+          {`Lunch: ${formatCurrency(totalLunch)}`}
         </div>
         <hr style={{ borderTop: '1px dashed #d1d5db', margin: '12px 0' }} />
         <div style={{ fontWeight: 'bold', fontSize: '1.2em' }}>
-          Total Tax: {formatCurrency(totalTax)}
+          {`Total Tax: ${formatCurrency(totalTax)}`}
         </div>
       </div>
     );
