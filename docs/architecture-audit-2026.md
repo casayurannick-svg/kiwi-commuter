@@ -15,7 +15,7 @@ The audit covers framework conventions, domain calculations, Supabase data inges
 - **Icons**: `lucide-react` (v1.48.0).
 - **Mapping & Geospatial**: `mapbox-gl` (v3.31.0), `@turf/helpers` (v7.4.0), `@turf/nearest-point` (v7.4.0).
 - **Charts**: `recharts` (v3.10.1).
-- **Analytics**: `@vercel/analytics` (v2.0.1).
+- **Analytics**: Cloudflare Web Analytics (edge-injected; `@vercel/analytics` removed Nov 2026).
 - **Database / Backend**: `@supabase/supabase-js` (v2.117.1).
 - **Test Runners**: Node.js native test runner (`tsx --test`), Vitest (v4.1.11), Playwright (v1.63.0).
 
@@ -37,7 +37,7 @@ nz_transport_cost_dashboard/
     │   │   ├── routes/         # POST: Mapbox Directions API proxy
     │   │   └── transit/        # POST: Auckland Transport GTFS/routing endpoint
     │   ├── globals.css         # Global Tailwind directives, CSS variables, glassmorphism
-    │   ├── layout.tsx          # Root HTML layout, metadata, Vercel analytics
+    │   ├── layout.tsx          # Root HTML layout, metadata
     │   └── page.tsx            # Server Component fetching initial fuel benchmarks
     ├── components/             # React Client & Server UI components
     │   ├── __tests__/          # Component-level render & unit tests
@@ -193,7 +193,7 @@ If Supabase is unconfigured, offline, or returns an error, [src/lib/supabase.ts]
 ### 3.5 Absence of Saved Trips or User Data
 - **Saved Trips**: There is **no table** or persistence mechanism for user profiles, accounts, or saved trips in Supabase.
 - **Trip State**: Trips are serialized entirely into URL query parameters (stateless permalinks).
-- **Analytics**: Web analytics are handled exclusively by `@vercel/analytics`, not Supabase.
+- **Analytics**: Web analytics are handled by Cloudflare Web Analytics, not Supabase.
 - **Feedback**: Feedback submissions bypass Supabase and are routed directly to GitHub Issues via [src/app/api/feedback/route.ts](file:///Users/niccasayuran/agy_projects/nz_transport_cost_dashboard/src/app/api/feedback/route.ts).
 
 ---

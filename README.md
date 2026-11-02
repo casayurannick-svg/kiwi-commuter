@@ -2,8 +2,8 @@
 
 A high-performance Next.js application comparing daily driving expenses (Fuel + NZTA RUC + Central Auckland Parking) against Auckland Public Transport (AT HOP Zonal Fares & the flagship $50 7-Day Cap) to calculate net monthly financial arbitrage.
 
-[![Production Status](https://img.shields.io/badge/Production-Live-success?style=flat-square&logo=vercel)](https://kiwi-commuter.vercel.app)
-![Next.js](https://img.shields.io/badge/Next.js-14_App_Router-black?style=flat-square&logo=next.js)
+[![Production Status](https://img.shields.io/badge/Production-Live-success?style=flat-square&logo=cloudflare)](https://www.kiwicommuter.app)
+![Next.js](https://img.shields.io/badge/Next.js-15_App_Router-black?style=flat-square&logo=next.js)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?style=flat-square&logo=typescript)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-38bdf8?style=flat-square&logo=tailwindcss)
 ![AT HOP](https://img.shields.io/badge/Auckland_Transport-$50_7--Day_Cap-003865?style=flat-square)
@@ -189,6 +189,15 @@ npm start
 ```
 
 ---
+
+## ☁️ Hosting & Deploy
+
+Hosted on **Cloudflare Workers** via [OpenNext](https://opennext.js.org/cloudflare) at `www.kiwicommuter.app` (apex 308-redirects to www). Workers Builds deploys every push to `main`.
+
+- `npm run cf:build` builds the worker; `npm run cf:preview` runs it locally.
+- No runtime fs reads, no edge-runtime routes, no Vercel-specific APIs.
+- `NEXT_PUBLIC_*` vars are Cloudflare **build** variables; API keys are runtime **secrets** (`keep_vars: true` in `wrangler.jsonc`).
+- Analytics: Cloudflare Web Analytics (no app code).
 
 ## 📊 Arbitrage Calculation Formula
 
