@@ -33,11 +33,11 @@ flowchart TD
 
     subgraph Persistence & Cache
         SUPABASE[(Supabase PostgreSQL\nfuel_benchmarks Table)]
-        EDGE_CACHE[Vercel ISR Edge Cache\nrevalidate = 3600]
+        EDGE_CACHE[OpenNext static-assets cache\nrevalidate = 3600]
     end
 
     subgraph Application Layer
-        NEXT[Next.js 14 App Router]
+        NEXT[Next.js 15 App Router]
         CALC[src/lib/calculator.ts\nMath Arbitrage Engine]
         API_FUEL[/api/fuel]
         API_CALC[/api/calculate]

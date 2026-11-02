@@ -38,7 +38,7 @@
 
 Kiwi Commuter is a full-stack, edge-cached web application architected to compare the total financial cost of personal vehicle ownership and commuting against Auckland Transport (AT) public transit in real time.
 
-The system is designed around zero-infrastructure operating costs (utilizing generous free tiers on Vercel, Supabase, and Mapbox) while maintaining high availability through aggressive caching and multi-layer deterministic fallbacks.
+The system is designed around zero-infrastructure operating costs (utilizing generous free tiers on Cloudflare Workers, Supabase, and Mapbox) while maintaining high availability through aggressive caching and multi-layer deterministic fallbacks.
 
 ```mermaid
 flowchart TD
@@ -47,7 +47,7 @@ flowchart TD
         MapUI["Mapbox GL Route Visualizer"]
     end
 
-    subgraph VercelEdge["Vercel Edge Network / Serverless"]
+    subgraph CFWorkers["Cloudflare Workers (OpenNext)"]
         APICalc["POST /api/calculate"]
         APIFuel["GET /api/fuel (ISR Caching: 1hr)"]
         MathEngine["Arbitrage Engine (calculator.ts)"]
@@ -351,5 +351,5 @@ sequenceDiagram
 | **Supabase Cold Starts / Connection Limits** | Serverless REST client with automatic fallback to statutory static constants. |
 | **MBIE Website Layout Changes** | Regex pattern matching for multiple header formats + automated GitHub Actions email alerts on failure. |
 | **Mapbox Rate Limits (Free Tier 50k requests/mo)** | Geodesic coordinate fallback renders visual paths without throwing fatal errors. |
-| **Vercel Edge Function Timeouts** | Calculation logic is entirely synchronous and executes in $< 2\text{ms}$. |
+| **Workers CPU Limits** | Calculation logic is entirely synchronous and executes in $< 2\text{ms}$. |
 | **Mobile Web Compatibility** | CSS Safe Area Insets (`env(safe-area-inset-bottom)`) and minimum 44px touch targets. |

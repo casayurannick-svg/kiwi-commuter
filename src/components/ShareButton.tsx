@@ -22,7 +22,7 @@ export async function buildShareUrl(
   commuteInput: CommuteInput,
   originUrl = typeof window !== 'undefined' && window.location.origin
     ? window.location.origin
-    : 'https://kiwi-commuter.vercel.app',
+    : 'https://www.kiwicommuter.app',
   currentPath = typeof window !== 'undefined' && window.location.pathname
     ? window.location.pathname
     : '/'
@@ -71,7 +71,7 @@ export default function ShareButton({
       const originUrl =
         typeof window !== 'undefined' && window.location.origin
           ? window.location.origin
-          : 'https://kiwi-commuter.vercel.app';
+          : 'https://www.kiwicommuter.app';
       const currentPath =
         typeof window !== 'undefined' && window.location.pathname
           ? window.location.pathname

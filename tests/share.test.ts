@@ -201,14 +201,14 @@ describe('STORY-10: Shareable Links & Privacy (Street Address Obfuscation & Trip
     it('buildShareUrl generates a privacy fallback URL without street numbers when Supabase is offline', async () => {
       const shareUrl = await buildShareUrl(
         residentialInput,
-        'https://kiwi-commuter.vercel.app',
+        'https://www.kiwicommuter.app',
         '/'
       );
 
       // Verify that no full street address numbers are exposed in the share URL
       assert.ok(!shareUrl.includes('10+McAlister') && !shareUrl.includes('10%20McAlister'));
       assert.ok(!shareUrl.includes('56+Parnell') && !shareUrl.includes('56%20Parnell'));
-      assert.ok(shareUrl.startsWith('https://kiwi-commuter.vercel.app'));
+      assert.ok(shareUrl.startsWith('https://www.kiwicommuter.app'));
     });
 
     it('renders ShareButton component without leaking street addresses', () => {

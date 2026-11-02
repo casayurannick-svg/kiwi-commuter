@@ -39,7 +39,7 @@ The application calculates real daily, monthly, and annual financial deltas betw
 ## 3. Product Goals & Scope
 - **Instant Clarity:** Deliver an accurate, side-by-side comparison in < 3 clicks without requiring sign-up or onboarding.
 - **Regulatory Accuracy:** Automatically apply statutory NZTA RUC rates, Auckland Transport HOP zone pricing, the $50 7-day fare cap, and MBIE weekly fuel benchmarks.
-- **Zero-Cost Operations:** Run entirely on cloud free tiers (Vercel, Supabase, GitHub Actions, Mapbox, AT Developer API).
+- **Zero-Cost Operations:** Run entirely on cloud free tiers (Cloudflare Workers, Supabase, GitHub Actions, Mapbox, AT Developer API).
 - **Out of Scope:** Real-time bus GPS tracking / delay notifications (served natively by AT Mobile).
 
 ---
