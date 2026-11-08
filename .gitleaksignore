@@ -1,0 +1,5 @@
+# Placeholder values in .env.example (truncated JWT headers, not real keys). Checked 8 Nov 2026 (KC-000).
+d3f0e5743a53a31e7989c993ecc8c0ed82ce7e0e:.env.example:generic-api-key:9
+d3f0e5743a53a31e7989c993ecc8c0ed82ce7e0e:.env.example:generic-api-key:10
+.env.example:generic-api-key:9
+.env.example:generic-api-key:10
