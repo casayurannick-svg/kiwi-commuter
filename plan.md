@@ -2,7 +2,7 @@
 
 Source of truth for tickets. Drive doc "05 Kiwi Commuter - status and backlog" is a read-only copy refreshed at each handover. Ideas go in Drive "06 Ideas inbox". Rules: AGENTS.md.
 
-Next ticket number: KC-015. Older work (US-, BUG-, FEAT-, STORY-) is in docs/USER_STORIES.md and CHANGELOG.md.
+Next ticket number: KC-016. Older work (US-, BUG-, FEAT-, STORY-) is in docs/USER_STORIES.md and CHANGELOG.md.
 
 ## Active
 
@@ -30,6 +30,12 @@ Next ticket number: KC-015. Older work (US-, BUG-, FEAT-, STORY-) is in docs/USE
   - Done when: Mt Roskill to Parnell fixture headline equals the avoidable-cost delta; fixed costs only on the labelled line; OG receipt and share text match.
 
 ### P1
+
+- [x] KC-015 Fix 5 failing e2e tests in tests/address-autocomplete.spec.ts
+  - Cause: src/lib/mapbox.ts only called /api/geocode when NEXT_PUBLIC_MAPBOX_TOKEN started with pk., so CI (no token) never hit /api/geocode.
+  - Do: make client always call /api/geocode (server handles Mapbox/Nominatim fallback); keep Turso and suburb fallbacks after it. In tests 1 and 2 mock /api/geocode with page.route (no real network).
+  - Done when: all 5 e2e tests pass with no Mapbox token set; all checks in AGENTS.md pass.
+  - Also: CI Playwright serves the prod build (dev server timed out); 500 test asserts STORY-25 disabled inputs; setupFlow unit test waits up to 3 s.
 
 - [ ] KC-004 Rate limiting and spend caps on upstream APIs
   - Why: no limits; /api/routes makes several billable Google Routes calls per request; Nominatim 1 req/s policy; Mapbox quota.
