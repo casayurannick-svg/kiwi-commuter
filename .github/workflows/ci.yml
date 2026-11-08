@@ -8,6 +8,24 @@ on:
   workflow_dispatch:
 
 jobs:
+  secrets-scan:
+    name: Secrets scan (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository (full history)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install gitleaks
+        run: |
+          curl -sSL -o gitleaks.tgz https://github.com/gitleaks/gitleaks/releases/download/v8.28.0/gitleaks_8.28.0_linux_x64.tar.gz
+          tar xzf gitleaks.tgz gitleaks
+          sudo mv gitleaks /usr/local/bin/
+
+      - name: Scan full history
+        run: gitleaks git --redact -v
+
   ci-test:
     name: Unit & E2E Regression Gates
     runs-on: ubuntu-latest

@@ -12,7 +12,9 @@
     "fetch:fuel": "tsx scripts/fetch-mbie-fuel.ts",
     "cf:build": "opennextjs-cloudflare build",
     "cf:preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
-    "cf:deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy"
+    "cf:deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "prepare": "git config core.hooksPath .githooks || true",
+    "secrets": "gitleaks git --redact -v"
   },
   "dependencies": {
     "@libsql/client": "^0.18.0",
