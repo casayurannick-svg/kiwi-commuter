@@ -75,39 +75,36 @@ export async function searchAucklandAddresses(
   const isFerryMode = transitMode?.toUpperCase() === 'FERRY';
   const isHobsonvilleQuery = cleanQuery.toLowerCase().includes('hobsonville');
 
-  // Try Mapbox Geocoding API if token is configured
-  const activeToken = normalizeMapboxToken(process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '') || MAPBOX_TOKEN;
-  let mapboxFailed = false;
-  if (activeToken && activeToken.startsWith('pk.')) {
-    try {
-      const res = await fetch(`/api/geocode?q=${encodeURIComponent(cleanQuery)}`, {
-        signal,
-      });
-      if (res.status === 404) {
-        return [];
-      }
-      if (!res.ok) {
-        throw new Error(`Mapbox Geocoding API Error: HTTP ${res.status}`);
-      }
-      const data = await res.json();
-      if (Array.isArray(data?.results) && data.results.length === 0) {
-        return [];
-      }
-      return [data];
-    } catch (e) {
-      if (
-        (e instanceof Error && e.name === 'AbortError') ||
-        (typeof e === 'object' && e !== null && 'name' in e && (e as { name?: string }).name === 'AbortError') ||
-        signal?.aborted
-      ) {
-        throw e;
-      }
-      console.warn('Mapbox Geocoding API call failed (falling back to Turso):', e);
-      mapboxFailed = true;
+  // Always call local /api/geocode endpoint (server handles Mapbox / Nominatim fallback)
+  let geocodeFailed = false;
+  try {
+    const res = await fetch(`/api/geocode?q=${encodeURIComponent(cleanQuery)}`, {
+      signal,
+    });
+    if (res.status === 404) {
+      return [];
     }
+    if (!res.ok) {
+      throw new Error(`Geocoding API Error: HTTP ${res.status}`);
+    }
+    const data = await res.json();
+    if (Array.isArray(data?.results) && data.results.length === 0) {
+      return [];
+    }
+    return [data];
+  } catch (e) {
+    if (
+      (e instanceof Error && e.name === 'AbortError') ||
+      (typeof e === 'object' && e !== null && 'name' in e && (e as { name?: string }).name === 'AbortError') ||
+      signal?.aborted
+    ) {
+      throw e;
+    }
+    console.warn('Geocoding API call failed (falling back to Turso):', e);
+    geocodeFailed = true;
   }
 
-  // Turso DB fallback – runs when Mapbox timed out, rate-limited, or returned HTTP error
+  // Turso DB fallback – runs when geocoding timed out, rate-limited, or returned HTTP error
   try {
     const { searchAddressesInTurso } = await import('./turso');
     const tursoResults = await searchAddressesInTurso(cleanQuery);
@@ -118,12 +115,7 @@ export async function searchAucklandAddresses(
     console.warn('Turso address fallback failed:', e);
   }
 
-  // If both Mapbox and Turso failed and nothing was returned, surface to the caller
-  if (mapboxFailed) {
-    throw new Error('Address search unavailable: Mapbox and Turso both failed');
-  }
-
-  // Final fallback: match against Auckland suburb centroids & snap points when no token configured
+  // Final fallback: match against Auckland suburb centroids & snap points
   if (isHobsonvilleQuery) {
     if (isFerryMode) {
       return [HOBSONVILLE_FERRY_TERMINAL, HOBSONVILLE_TOWN_CENTRE];
@@ -134,13 +126,22 @@ export async function searchAucklandAddresses(
 
   const lower = cleanQuery.toLowerCase();
   const matched = SUBURB_CENTROIDS.filter((s) => s.name.toLowerCase().includes(lower));
-  return matched.slice(0, 6).map((s) => ({
-    id: `suburb-${s.id}`,
-    placeName: `${s.name}, Auckland`,
-    text: s.name,
-    coordinates: s.coordinates,
-    suburbName: s.name,
-  }));
+  if (matched.length > 0) {
+    return matched.slice(0, 6).map((s) => ({
+      id: `suburb-${s.id}`,
+      placeName: `${s.name}, Auckland`,
+      text: s.name,
+      coordinates: s.coordinates,
+      suburbName: s.name,
+    }));
+  }
+
+  // If geocoding failed and neither Turso nor suburbs matched, surface to the caller
+  if (geocodeFailed) {
+    throw new Error('Address search unavailable: Mapbox and Turso both failed');
+  }
+
+  return [];
 }
 
 export interface RouteGeometryResponse {

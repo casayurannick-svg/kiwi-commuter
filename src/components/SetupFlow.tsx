@@ -327,7 +327,7 @@ export default function SetupFlow({
                   autoClearOnFocus
                   icon={<MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />}
                   dropdownZIndex="z-50"
-                  apiError={apiError}
+                  apiError={Boolean(process.env.NEXT_PUBLIC_MAPBOX_TOKEN && apiError)}
                   onError={() => setApiError(true)}
                   onClearError={() => setApiError(false)}
                   onChange={(val) => {
@@ -364,7 +364,7 @@ export default function SetupFlow({
                   autoClearOnFocus
                   icon={<MapPin className="w-3.5 h-3.5 text-sky-400 shrink-0" />}
                   dropdownZIndex="z-50"
-                  apiError={apiError}
+                  apiError={Boolean(process.env.NEXT_PUBLIC_MAPBOX_TOKEN && apiError)}
                   onError={() => setApiError(true)}
                   onClearError={() => setApiError(false)}
                   onChange={(val) => {

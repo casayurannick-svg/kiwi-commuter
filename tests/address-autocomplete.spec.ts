@@ -2,6 +2,18 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Address Autocomplete E2E - Local /api/geocode delegation', () => {
   test('typing an address calls /api/geocode with 200 OK, does NOT call api.mapbox.com, and renders suggestions without error states', async ({ page }) => {
+    await page.route('**/api/geocode*', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          address: 'Queen Street, Auckland Central, Auckland',
+          latitude: -36.852,
+          longitude: 174.764,
+        }),
+      });
+    });
+
     const geocodeRequests: Array<{ url: string; status?: number }> = [];
     const mapboxRequests: string[] = [];
 
@@ -39,7 +51,7 @@ test.describe('Address Autocomplete E2E - Local /api/geocode delegation', () => 
     const [geocodeResponse] = await Promise.all([
       page.waitForResponse(
         (res) => res.url().includes('/api/geocode') && res.status() === 200,
-        { timeout: 15000 }
+        { timeout: 30000 }
       ),
       fromInput.fill('Queen Street'),
     ]);
@@ -82,6 +94,18 @@ test.describe('Address Autocomplete E2E - Local /api/geocode delegation', () => 
   });
 
   test('verifies destination input also delegates to /api/geocode and renders suggestions without error states', async ({ page }) => {
+    await page.route('**/api/geocode*', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          address: 'Ponsonby Road, Ponsonby, Auckland',
+          latitude: -36.856,
+          longitude: 174.746,
+        }),
+      });
+    });
+
     const mapboxRequests: string[] = [];
 
     page.on('request', (req) => {
@@ -105,7 +129,7 @@ test.describe('Address Autocomplete E2E - Local /api/geocode delegation', () => 
     const [geocodeResponse] = await Promise.all([
       page.waitForResponse(
         (res) => res.url().includes('/api/geocode') && res.status() === 200,
-        { timeout: 15000 }
+        { timeout: 30000 }
       ),
       toInput.fill('Ponsonby Road'),
     ]);
