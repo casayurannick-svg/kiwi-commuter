@@ -184,7 +184,7 @@ test.describe('Address Autocomplete E2E - Local /api/geocode delegation', () => 
     await expect(fromInput).toBeEnabled();
   });
 
-  test('HTTP 500 geocode error triggers maintenance warning banner, and subsequent input change resets error banner', async ({ page }) => {
+  test('HTTP 500 geocode error triggers maintenance warning banner and disables address inputs (STORY-25)', async ({ page }) => {
     await page.route('**/api/geocode*', async (route) => {
       await route.fulfill({
         status: 500,
@@ -212,9 +212,8 @@ test.describe('Address Autocomplete E2E - Local /api/geocode delegation', () => 
     const banner = modal.locator('text=Live address search is currently down for maintenance');
     await expect(banner).toBeVisible({ timeout: 5000 });
 
-    // Typing a new character or clearing resets the sticky error banner immediately
-    await fromInput.type(' more text');
-    await expect(banner).toHaveCount(0);
+    // STORY-25: while search is down the inputs are disabled; user is pointed to Enter Manually
+    await expect(fromInput).toBeDisabled();
   });
 
   test('typing new keystrokes aborts in-flight request and catches AbortError without UI errors', async ({ page }) => {

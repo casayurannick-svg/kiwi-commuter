@@ -35,6 +35,7 @@ Next ticket number: KC-016. Older work (US-, BUG-, FEAT-, STORY-) is in docs/USE
   - Cause: src/lib/mapbox.ts only called /api/geocode when NEXT_PUBLIC_MAPBOX_TOKEN started with pk., so CI (no token) never hit /api/geocode.
   - Do: make client always call /api/geocode (server handles Mapbox/Nominatim fallback); keep Turso and suburb fallbacks after it. In tests 1 and 2 mock /api/geocode with page.route (no real network).
   - Done when: all 5 e2e tests pass with no Mapbox token set; all checks in AGENTS.md pass.
+  - Also: CI Playwright serves the prod build (dev server timed out); 500 test asserts STORY-25 disabled inputs; setupFlow unit test waits up to 3 s.
 
 - [ ] KC-004 Rate limiting and spend caps on upstream APIs
   - Why: no limits; /api/routes makes several billable Google Routes calls per request; Nominatim 1 req/s policy; Mapbox quota.

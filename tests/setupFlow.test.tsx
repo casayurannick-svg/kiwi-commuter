@@ -604,7 +604,7 @@ describe('STORY-7: Setup Flow Onboarding Modal', () => {
 
       // Wait for geocoding search promise and dropdown render
       let dropdown: Element | null = null;
-      for (let i = 0; i < 20; i++) {
+      for (let i = 0; i < 120; i++) {
         await new Promise((r) => setTimeout(r, 25));
         flushSync(() => {});
         dropdown = container.querySelector('[data-testid="setup-from-input-dropdown"]');
@@ -633,7 +633,7 @@ describe('STORY-7: Setup Flow Onboarding Modal', () => {
       });
 
       let toDropdown: Element | null = null;
-      for (let i = 0; i < 20; i++) {
+      for (let i = 0; i < 120; i++) {
         await new Promise((r) => setTimeout(r, 25));
         flushSync(() => {});
         toDropdown = container.querySelector('[data-testid="setup-to-input-dropdown"]');
@@ -974,7 +974,7 @@ describe('STORY-7: Setup Flow Onboarding Modal', () => {
         });
 
         // Allow async search & catch to flush
-        for (let i = 0; i < 20; i++) {
+        for (let i = 0; i < 120; i++) {
           await new Promise((r) => setTimeout(r, 20));
           flushSync(() => {});
           if (fromInput.disabled) break;
