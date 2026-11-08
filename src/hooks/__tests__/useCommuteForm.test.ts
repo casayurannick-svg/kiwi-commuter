@@ -44,7 +44,7 @@ describe('src/hooks/useCommuteForm.ts - URL State Synchronization Hook', () => {
     assert.strictEqual(DEFAULT_COMMUTE_INPUT.insuranceEnabled, true);
     assert.strictEqual(DEFAULT_COMMUTE_INPUT.defaultInsurance, 1311);
     assert.strictEqual(DEFAULT_COMMUTE_INPUT.chargeSource, 'HOME_OFFPEAK');
-    assert.strictEqual(DEFAULT_COMMUTE_INPUT.kwhRate, 0.33);
+    assert.strictEqual(DEFAULT_COMMUTE_INPUT.kwhRate, 0.18);
     assert.strictEqual(DEFAULT_COMMUTE_INPUT.evEfficiency, 15);
   });
 
