@@ -14,3 +14,19 @@ export function inferGitHubRepo(): { owner: string; repo: string } {
 
   return { owner: 'casayurannick-svg', repo: 'kiwi-commuter' };
 }
+
+/** The public app repo. Feedback with contact details must never be filed here. */
+export const PUBLIC_APP_REPO = { owner: 'casayurannick-svg', repo: 'kiwi-commuter' } as const;
+
+/**
+ * Where feedback issues go, and whether it is safe to include name and contact.
+ * Safe only when GITHUB_REPOSITORY is set, well formed, and not the public app repo.
+ */
+export function resolveFeedbackRepo(): { owner: string; repo: string; isPrivateTarget: boolean } {
+  const { owner, repo } = inferGitHubRepo();
+  const configured = (process.env.GITHUB_REPOSITORY ?? '').trim().toLowerCase();
+  const isPublic =
+    owner.toLowerCase() === PUBLIC_APP_REPO.owner && repo.toLowerCase() === PUBLIC_APP_REPO.repo;
+  const wellFormed = /^[a-z0-9-]+\/[a-z0-9._-]+$/.test(configured);
+  return { owner, repo, isPrivateTarget: wellFormed && !isPublic };
+}

@@ -12,7 +12,9 @@ Next ticket number: KC-016. Older work (US-, BUG-, FEAT-, STORY-) is in docs/USE
 
 ### P0
 
-- [ ] KC-001 Feedback: stop publishing contact details; add limits
+- [x] KC-001 Feedback: stop publishing contact details; add limits
+  - Shipped (option: private repo): name/contact only sent when GITHUB_REPOSITORY is a well-formed repo other than the public app repo, else anonymous (fail closed). Caps 2000/80/120/300, non-text → 400, honeypot field "website", @mentions defused, links stripped from title, issue URL no longer returned.
+  - Owner, pending: create private repo kiwi-commuter-feedback; fine-grained token (Issues R/W, that repo only); set GITHUB_TOKEN (secret) and GITHUB_REPOSITORY in Cloudflare; revoke old token; delete public feedback issues with contact details.
   - Why: /api/feedback writes name and contact into an issue on this public repo. No length or rate limits.
   - Do: remove name and contact from the public issue body. Either drop the contact field, or send feedback to a private repo via GITHUB_REPOSITORY (owner decides; default: private repo kiwi-commuter-feedback). Caps: message 2,000, name 80, contact 120, urlContext 300 chars; empty or oversized → 400. Honeypot field. Strip @mentions and links from the title.
   - Owner: create private repo if chosen; fine-grained token (Issues write, that repo only); set secret; lock or delete existing public issues containing contact details.

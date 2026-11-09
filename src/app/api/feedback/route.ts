@@ -1,22 +1,54 @@
 import { NextResponse } from 'next/server';
-import { inferGitHubRepo } from '@/lib/github';
+import { resolveFeedbackRepo } from '@/lib/github';
 
-interface FeedbackRequestBody {
-  name?: string;
-  contact?: string;
-  message: string;
-  urlContext?: string;
+const MAX_LENGTHS = { message: 2000, name: 80, contact: 120, urlContext: 300 } as const;
+type Field = keyof typeof MAX_LENGTHS;
+
+const LABELS: Record<Field, string> = {
+  message: 'Message',
+  name: 'Name',
+  contact: 'Contact',
+  urlContext: 'URL context',
+};
+
+/** Stop @mentions pinging GitHub users (zero-width space after @). */
+function defuseMentions(text: string): string {
+  return text.replace(/@(?=[A-Za-z0-9-])/g, '@​');
 }
 
 export async function POST(request: Request) {
   try {
-    const body: FeedbackRequestBody = await request.json();
+    let raw: unknown;
+    try {
+      raw = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid request body.' }, { status: 400 });
+    }
+    const body = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
 
-    if (!body || typeof body.message !== 'string' || !body.message.trim()) {
-      return NextResponse.json(
-        { error: 'Message is required.' },
-        { status: 400 }
-      );
+    // Honeypot: real users never see or fill "website". Pretend success, create nothing.
+    if (typeof body.website === 'string' && body.website.trim() !== '') {
+      return NextResponse.json({ success: true });
+    }
+
+    const fields = {} as Record<Field, string>;
+    for (const key of Object.keys(MAX_LENGTHS) as Field[]) {
+      const value = body[key];
+      if (value !== undefined && value !== null && typeof value !== 'string') {
+        return NextResponse.json({ error: `${LABELS[key]} must be text.` }, { status: 400 });
+      }
+      const trimmed = typeof value === 'string' ? value.trim() : '';
+      if (trimmed.length > MAX_LENGTHS[key]) {
+        return NextResponse.json(
+          { error: `${LABELS[key]} must be ${MAX_LENGTHS[key]} characters or fewer.` },
+          { status: 400 }
+        );
+      }
+      fields[key] = trimmed;
+    }
+
+    if (!fields.message) {
+      return NextResponse.json({ error: 'Message is required.' }, { status: 400 });
     }
 
     const token = process.env.GITHUB_TOKEN;
@@ -28,26 +60,33 @@ export async function POST(request: Request) {
       );
     }
 
-    const { owner, repo } = inferGitHubRepo();
-    const name = body.name?.trim() || 'Anonymous';
-    const contact = body.contact?.trim() || 'Not provided';
-    const urlContext = body.urlContext?.trim() || 'None';
-    const message = body.message.trim();
+    // Fail closed: name and contact are only sent to an explicitly configured repo that
+    // is not the public app repo. Otherwise the issue is anonymous.
+    const { owner, repo, isPrivateTarget } = resolveFeedbackRepo();
+    const message = defuseMentions(fields.message);
 
-    const titleSummary = message.length > 60 ? `${message.slice(0, 57)}...` : message;
+    const titleText = fields.message
+      .replace(/https?:\/\/\S+/g, '')
+      .replace(/@\S+/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    const titleSummary = titleText.length > 60 ? `${titleText.slice(0, 57)}...` : titleText || 'Feedback';
     const issueTitle = `[User Feedback] ${titleSummary}`;
 
     const issueBody = [
       '### User Feedback',
       '',
-      `- **Submitted by:** ${name}`,
-      `- **Contact:** ${contact}`,
-      `- **URL Context:** \`${urlContext}\``,
+      ...(isPrivateTarget
+        ? [
+            `- **Submitted by:** ${defuseMentions(fields.name) || 'Anonymous'}`,
+            `- **Contact:** ${defuseMentions(fields.contact) || 'Not provided'}`,
+          ]
+        : ['- **Submitted by:** Anonymous']),
+      `- **URL Context:** \`${(fields.urlContext || 'None').replace(/`/g, '')}\``,
       `- **Timestamp:** ${new Date().toISOString()}`,
       '',
-      '---',
-      '',
       '### Message',
+      '',
       message,
       '',
       '---',
@@ -58,38 +97,26 @@ export async function POST(request: Request) {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
-        Accept: 'application/vnd.github.v3+json',
+        Accept: 'application/vnd.github+json',
         'Content-Type': 'application/json',
         'User-Agent': 'KiwiCommuter-Feedback-Reporter',
       },
-      body: JSON.stringify({
-        title: issueTitle,
-        body: issueBody,
-        labels: ['feedback'],
-      }),
+      body: JSON.stringify({ title: issueTitle, body: issueBody, labels: ['feedback'] }),
     });
 
     if (!githubResponse.ok) {
-      const errText = await githubResponse.text();
-      console.error(`[Feedback API] GitHub API responded with status ${githubResponse.status}:`, errText);
+      console.error(`[Feedback API] GitHub API responded with status ${githubResponse.status}`);
       return NextResponse.json(
         { error: 'Failed to create GitHub issue. Try again later.' },
-        { status: githubResponse.status }
+        { status: 502 }
       );
     }
 
     const data = await githubResponse.json();
-
-    return NextResponse.json({
-      success: true,
-      issueNumber: data.number,
-      issueUrl: data.html_url,
-    });
+    // Don't return the issue URL: it would reveal the private feedback repo.
+    return NextResponse.json({ success: true, issueNumber: data.number });
   } catch (error) {
     console.error('[Feedback API] Unexpected error in feedback route:', error);
-    return NextResponse.json(
-      { error: 'An unexpected internal error occurred.' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'An unexpected internal error occurred.' }, { status: 500 });
   }
 }
