@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { resolveFeedbackRepo } from '@/lib/github';
 
-export const MAX_LENGTHS = { message: 2000, name: 80, contact: 120, urlContext: 300 } as const;
+const MAX_LENGTHS = { message: 2000, name: 80, contact: 120, urlContext: 300 } as const;
 type Field = keyof typeof MAX_LENGTHS;
 
 const LABELS: Record<Field, string> = {

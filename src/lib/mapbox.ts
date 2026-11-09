@@ -104,8 +104,9 @@ export async function searchAucklandAddresses(
     geocodeFailed = true;
   }
 
-  // Turso DB fallback – runs when geocoding timed out, rate-limited, or returned HTTP error
-  try {
+  // Turso DB fallback – runs when geocoding timed out, rate-limited, or returned HTTP error.
+  // Server only: the browser has no Turso credentials, so importing the client there only adds delay.
+  if (typeof window === 'undefined') try {
     const { searchAddressesInTurso } = await import('./turso');
     const tursoResults = await searchAddressesInTurso(cleanQuery);
     if (tursoResults.length > 0) {
