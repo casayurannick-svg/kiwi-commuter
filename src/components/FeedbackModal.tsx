@@ -123,6 +123,14 @@ export default function FeedbackModal({ isOpen, onClose, initialSuccess = false 
           <div className="flex items-center gap-2.5">
             <div className="p-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 shrink-0">
               <KiwiPathwayIcon className="w-6 h-6 text-emerald-500" aria-label="Kiwi Commuter" />
+            {/* Honeypot field – hidden from users. Bots that fill all fields will be caught. */}
+            <input
+              type="text"
+              name="honeypot"
+              value=""
+              readOnly
+              className="hidden"
+            />
             </div>
             <div>
               <h2 id="feedback-modal-title" className="text-lg font-bold text-white leading-tight">
@@ -131,6 +139,14 @@ export default function FeedbackModal({ isOpen, onClose, initialSuccess = false 
               <p className="text-xs text-slate-400 mt-0.5">
                 Share bugs, suggestions, or route updates with the developer.
               </p>
+            {/* Honeypot field – hidden from users. Bots that fill all fields will be caught. */}
+            <input
+              type="text"
+              name="honeypot"
+              value=""
+              readOnly
+              className="hidden"
+            />
             </div>
           </div>
           <button
@@ -148,6 +164,14 @@ export default function FeedbackModal({ isOpen, onClose, initialSuccess = false 
           <div className="py-8 text-center flex flex-col items-center">
             <div className="w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 mb-3 animate-in zoom-in-90 duration-200">
               <CheckCircle2 className="w-7 h-7" />
+            {/* Honeypot field – hidden from users. Bots that fill all fields will be caught. */}
+            <input
+              type="text"
+              name="honeypot"
+              value=""
+              readOnly
+              className="hidden"
+            />
             </div>
             <h3 className="text-base font-semibold text-white">Thank you for your feedback!</h3>
             <p className="text-xs text-slate-400 max-w-sm mt-1 mb-4 leading-relaxed">
@@ -166,7 +190,15 @@ export default function FeedbackModal({ isOpen, onClose, initialSuccess = false 
             {error && (
               <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs">
                 {error}
-              </div>
+              {/* Honeypot field – hidden from users. Bots that fill all fields will be caught. */}
+            <input
+              type="text"
+              name="honeypot"
+              value=""
+              readOnly
+              className="hidden"
+            />
+            </div>
             )}
 
             {/* Name Input */}
@@ -182,6 +214,14 @@ export default function FeedbackModal({ isOpen, onClose, initialSuccess = false 
                 placeholder="e.g. Alex Campbell"
                 className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-100 text-xs placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition"
               />
+            {/* Honeypot field – hidden from users. Bots that fill all fields will be caught. */}
+            <input
+              type="text"
+              name="honeypot"
+              value=""
+              readOnly
+              className="hidden"
+            />
             </div>
 
             {/* Contact Input */}
@@ -197,6 +237,14 @@ export default function FeedbackModal({ isOpen, onClose, initialSuccess = false 
                 placeholder="e.g. alex@example.com or 021..."
                 className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-100 text-xs placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition"
               />
+            {/* Honeypot field – hidden from users. Bots that fill all fields will be caught. */}
+            <input
+              type="text"
+              name="honeypot"
+              value=""
+              readOnly
+              className="hidden"
+            />
             </div>
 
             {/* Message Area */}
@@ -214,6 +262,14 @@ export default function FeedbackModal({ isOpen, onClose, initialSuccess = false 
                 placeholder="Describe your feedback, fare discrepancy, route issue, or feature idea..."
                 className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-100 text-xs placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 resize-none transition"
               />
+            {/* Honeypot field – hidden from users. Bots that fill all fields will be caught. */}
+            <input
+              type="text"
+              name="honeypot"
+              value=""
+              readOnly
+              className="hidden"
+            />
             </div>
 
             {/* URL Context Note */}
@@ -248,6 +304,14 @@ export default function FeedbackModal({ isOpen, onClose, initialSuccess = false 
                   </>
                 )}
               </button>
+            {/* Honeypot field – hidden from users. Bots that fill all fields will be caught. */}
+            <input
+              type="text"
+              name="honeypot"
+              value=""
+              readOnly
+              className="hidden"
+            />
             </div>
           </form>
         )}
